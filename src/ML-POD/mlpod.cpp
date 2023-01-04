@@ -242,6 +242,15 @@ void MLPOD::podeigenvaluedecomposition(double *Phi, double *Lambda, double *bess
       Phi[i + ns*m] = Phi[i + ns*m]/sqrt(area);
   }
 
+  // enforce consistent signs for the eigenvectors
+  
+  for (int m=0; m<ns; m++) {    
+    if (Phi[m + ns*m] < 0.0) {
+      for (int i=0; i<ns; i++)
+        Phi[i + ns*m] = -Phi[i + ns*m];      
+    }
+  }
+  
   memory->destroy(xij);
   memory->destroy(S);
   memory->destroy(A);
@@ -695,8 +704,9 @@ void MLPOD::read_coeff_file(const std::string &coeff_file)
 
 /*********************************************************************************************************/
 
-void MLPOD::linear_descriptors(double *gd, double *efatom, double *y, double *tmpmem, int *atomtype,
-      int *alist, int *pairlist, int *pairnum, int *pairnumsum, int *tmpint, int natom, int Nij)
+void MLPOD::linear_descriptors(double *gd, double *efatom, double *y, double *tmpmem,
+                               int *atomtype, int *alist, int *pairlist, int * /*pairnum*/,
+                               int *pairnumsum, int *tmpint, int natom, int Nij)
 {
   int dim = 3;
   int nelements = pod.nelements;

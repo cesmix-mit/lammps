@@ -1277,7 +1277,7 @@ void FitPOD::least_squares_fit(datastruct data)
 
     int nrhs=1, info;
     char chu = 'U';
-    DPOSV(&chu, &nd, &nrhs, desc.A, &nd, desc.c, &nd, &info);
+    DPOSV(&chu, &nd, &nrhs, desc.A, &nd, desc.c, &nd, &info);    
   }
 
   MPI_Bcast(desc.c, nd, MPI_DOUBLE, 0, world);
