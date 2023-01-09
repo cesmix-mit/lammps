@@ -83,8 +83,7 @@ void FitPOD::command(int narg, char **arg)
   // calculate energy and force for the training data set
 
   if ((traindata.training_calculation) && ((int) traindata.data_path.size() > 1) )
-    energyforce_calculation(traindata, desc.c);
-  
+    energyforce_calculation(traindata, desc.c);  
 
   if (!((testdata.data_path == traindata.data_path) && (testdata.fraction == 1.0) && (traindata.fraction == 1.0)))
   {  
@@ -207,6 +206,7 @@ int FitPOD::read_data_file(double *fitting_weights, std::string &file_format,
     if (keywd == "randomize_test_data_set") fitting_weights[10] = utils::numeric(FLERR,words[1],false,lmp);
     if (keywd == "fitting_regularization_parameter") fitting_weights[11] = utils::numeric(FLERR,words[1],false,lmp);
     if (keywd == "precision_for_pod_coefficients") precision = utils::inumeric(FLERR,words[1],false,lmp);
+    if (keywd == "save_pod_descriptors") save_descriptors = utils::inumeric(FLERR,words[1],false,lmp);
 
     // other settings
 
@@ -1052,7 +1052,17 @@ void FitPOD::linear_descriptors(datastruct data, int ci)
   double *tmpmem = &desc.gdd[dim*natom*nd1234+natom*nd1234];
   podptr->linear_descriptors(desc.gd, desc.gdd, nb.y, tmpmem, atomtype, nb.alist,
       nb.pairlist, nb.pairnum, nb.pairnum_cumsum, tmpint, natom, Nij);
+  
+  if (save_descriptors == 1) {
+    std::string filename = "descriptors_config" + std::to_string(ci+1) + ".bin";
 
+    FILE *fp = fopen(filename.c_str(), "wb");
+
+    fwrite( reinterpret_cast<char*>( desc.gd ), sizeof(double) * (nd1234), 1, fp);
+    fwrite( reinterpret_cast<char*>( desc.gdd ), sizeof(double) * (4*natom*nd1234), 1, fp);
+  
+    fclose(fp);    
+  }  
 }
 
 void FitPOD::quadratic_descriptors(datastruct data, int ci)

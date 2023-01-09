@@ -114,6 +114,7 @@ public:
     int szi;
   };
 
+  int save_descriptors = 0;
   datastruct traindata;
   datastruct testdata;
   descriptorstruct desc;
