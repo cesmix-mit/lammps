@@ -773,6 +773,7 @@ void FitPOD::read_data_files(std::string data_file, std::vector<std::string> spe
     memory->destroy(data.atomtype);
   }
 
+  testdata.filenametag = traindata.filenametag;
   testdata.fraction = traindata.fitting_weights[8];
   testdata.test_analysis = traindata.test_analysis;
   
@@ -1390,7 +1391,7 @@ void FitPOD::print_analysis(datastruct data, double *outarray, double *errors)
 
   std::string filename_errors = fmt::format("{}_{}_errors.pod", data.filenametag, data.training ? "training" : "test");
   std::string filename_analysis = fmt::format("{}_{}_analysis.pod", data.filenametag, data.training ? "training" : "test");
-
+  
   FILE *fp_errors = nullptr;
   FILE *fp_analysis = nullptr;
   fp_errors = fopen(filename_errors.c_str(), "w");
