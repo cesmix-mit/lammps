@@ -2,7 +2,7 @@
 # CMake build system
 # This file is part of LAMMPS
 # Created by Christoph Junghans and Richard Berger
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.22)
 # set policy to silence warnings about ignoring <PackageName>_ROOT but use it
 if(POLICY CMP0074)
   cmake_policy(SET CMP0074 NEW)
@@ -21,9 +21,10 @@ if(POLICY CMP0135)
   cmake_policy(SET CMP0135 OLD)
 endif()
 
+
 ########################################
 
-project(lammps CXX)
+project(lammps LANGUAGES C CXX)
 set(SOVERSION 0)
 get_property(BUILD_IS_MULTI_CONFIG GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
 
@@ -32,6 +33,12 @@ get_filename_component(LAMMPS_LIB_BINARY_DIR ${CMAKE_BINARY_DIR}/lib ABSOLUTE)
 # collect all executables and shared libs in the top level build folder
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+
+set(CMAKE_CXX_STANDARD 17)  # or newer
+set(CMAKE_CXX_STANDARD_REQUIRED YES)
+set(CMAKE_CXX_EXTENSIONS NO)
+
+find_package(Halide REQUIRED)
 
 set(LAMMPS_SOURCE_DIR     ${LAMMPS_DIR}/src)
 set(LAMMPS_LIB_SOURCE_DIR ${LAMMPS_DIR}/lib)
@@ -266,7 +273,7 @@ set(STANDARD_PACKAGES
   ML-QUIP
   ML-RANN
   ML-SNAP
-  ML-POD  
+  ML-POD
   MOFFF
   MOLECULE
   MOLFILE
@@ -642,6 +649,12 @@ endforeach()
 if(PKG_ELECTRODE OR PKG_ML-POD)
   target_link_libraries(lammps PRIVATE ${LAPACK_LIBRARIES})
 endif()
+
+if (PKG_ML-POD)
+   add_executable(mygen ${PKG_ML-POD_SOURCES_DIR}/gen.cpp)
+   target_link_libraries(mygen PRIVATE Halide::Generator)
+   add_halide_library(poddesc FROM mygen GENERATOR poddesc1  c_header static_library stmt stmt_html c_source object llvm_assembly)
+ endif()
 
 if(PKG_AWPMD)
   target_link_libraries(awpmd PRIVATE ${LAPACK_LIBRARIES})
