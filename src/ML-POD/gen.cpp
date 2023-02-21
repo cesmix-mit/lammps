@@ -655,221 +655,29 @@ public:
 class poddesc1 : public Halide::Generator<poddesc1> {
 public:
 
-  Input<Buffer<int>> pairlist{"pairlist", 1};
-  Input<Buffer<int>> pairnumsum{"pairnumsum", 1};
-  Input<Buffer<int>> atomtype{"atomtype", 1};
-  Input<Buffer<int>> alist{"alist", 1};
-  Input<Buffer<int>> interactions{"interactions", 2};
-  Input<Buffer<double>> besselparams{"besselparams", 1};
-  Input<Buffer<double>> Phi1{"Phi1", 3};
-  Input<Buffer<double>> Phi2{"Phi2", 2};
-  
+    Input<uint8_t> offset{"offset"};
+    Input<Buffer<uint8_t, 2>> input{"input"};
 
-  Input<Buffer<double>> y{"y", 2};
+    // We also declare the Outputs as public member variables.
+    Output<Buffer<uint8_t, 2>> brighter{"brighter"};
 
-  Input<int> nl{"nl", 1};
-  Input<int> npairs{"npairs", 1};
-  Input<int> natom{"natom", 1};
-  Input<int> bdegree{"bdegree", 1};
-  Input<int> adegree{"adegree", 1};
-  Input<int> adegreep{"adegreep", 1};
-  Input<int> tdegree1{"tdegree1", 1};
-  Input<int> tdegree2{"tdegree2", 1};
-  Input<int> nbesselparams{"nbesselparams", 1};
-  Input<int> nelems{"nelems", 1};
-  Input<int> nelemscombos{"nelemsCombos", 1};
-  
-  
-  Input<double> rin{"rin", 1};
-  Input<double> rcut{"rcut", 1};
+    // Typically you declare your Vars at this scope as well, so that
+    // they can be used in any helper methods you add later.
+    Var x, y;
 
+    // We then define a method that constructs and return the Halide
+    // pipeline:
+    void generate() {
+        // In lesson 10, here is where we called
+        // Func::compile_to_file. In a Generator, we just need to
+        // define the Output(s) representing the output of the pipeline.
+        brighter(x, y) = input(x, y) + offset;
 
-
-  GeneratorParam<int> nmaxp{"nmax", 100};
-
-  // Output<Buffer<int>> ijs{"ijs", 2};
-  // Output<Buffer<double>> rijs{"rijs", 2};
-
-  // Output<Buffer<double>> rbf{"rbf", 3};
-  // Output<Buffer<double>> drbf{"drbf", 4};
-  // Output<Buffer<double>> abf{"abf", 2};
-  // Output<Buffer<double>> dabf{"dabf", 3};
-
-  // Output<Buffer<double>> energyij{"energyij", 2};
-  // Output<Buffer<double>> forceij{"forceij", 3};
-
-  Output<Buffer<double>> eatom1{"eatom1", 2};
-  Output<Buffer<double>> fatom1{"fatom1", 3};
-  
-  Output<Buffer<double>> eatom2{"eatom2", 3};
-  Output<Buffer<double>> fatom2{"fatom2", 4};
-  
-  Output<Buffer<double>> eatom3{"eatom3", 5};
-  Output<Buffer<double>> fatom3{"fatom3", 6};
-
-  void generate (){
-
-    Var atom("atom");
-    Var dim("dim");
-    Var elem("elem");
-    Var inter("inter");
-    Var atom_o("atom_o");
-    Var atom_i("atom_i");
-    Var atom_j("atom_j");
-    Var atom_k("atom_k");
-    Var type("type");
-
-    
-
-
-    Var nm("nm");
-    Var np("pairindex");
-    Var numOuts("numOuts");
-
-    Var bfi("basis function index");
-    Var bfp("basis function param");
-    Var bfa("inverse basis function index");
-    Var rbf_v("rbf_v");
-
-    Expr tdegree = max(tdegree1, tdegree2);
-
-    
-    Expr nmax = min(nmaxp, natom);
-    pairlist.dim(0).set_bounds(0, npairs); // inum + nghost
-    pairnumsum.dim(0).set_bounds(0, natom + 1); // inum + 1
-    atomtype.dim(0).set_bounds(0, natom); // inum
-    alist.dim(0).set_bounds(0, nl * natom);//are we sure? // inum + nghost
-    // y.dim(0).set_bounds(0, npairs).set_stride(1);
-    // y.dim(1).set_bounds(0, 3).set_stride(npairs);
-    y.dim(0).set_bounds(0, nl * natom); // inum + nghost
-    y.dim(1).set_bounds(0, 3);
-    besselparams.dim(0).set_bounds(0, nbesselparams);
-    Phi1.dim(0).set_bounds(0, nbesselparams);
-    Phi1.dim(1).set_bounds(0, bdegree);
-    Phi1.dim(2).set_bounds(0, tdegree); //tdegree1
-    Phi2.dim(0).set_bounds(0, adegree);
-    Phi2.dim(1).set_bounds(0, tdegree); //tdegree2
-    interactions.dim(0).set_bounds(0, nelems);
-    interactions.dim(1).set_bounds(0, nelems);
-    
-    
-
-    Func ijs_f("ijs_f");
-    Func rijs_f("rijs_f");
-    
-    buildNeighPairs(ijs_f, rijs_f,
-		    pairlist, pairnumsum, atomtype, alist, y,
-		    nl, natom, 3, nmax, npairs,
-		    atom, dim, nm, np, numOuts);
-
-    Func rbf_f("rbf_f"), drbf_f("drbf_f"), abf_f("abf_f"), dabf_f("dabf_f");
-    buildRBF(rbf_f, drbf_f, abf_f, dabf_f,
-	     rijs_f, besselparams, rin, rcut-rin,
-	     bdegree, adegree, nbesselparams, npairs,
-	     bfi, bfp, np, dim);
-
-    Func energyij_f("energyij_f"), forceij_f("forceij_f");
-    buildStructureMatMul(energyij_f, forceij_f,
-			 rbf_f, abf_f, drbf_f, dabf_f, Phi1, Phi2,
-			 bdegree, adegree, tdegree, nbesselparams, npairs,
-			 bfi, bfa, bfp, np, dim);
-
-
-    //copy intermediates
-
-    Func eatom1_f("eatom1_f"), fatom1_f("fatom1_f");
-    buildPod1Body_p(eatom1_f, fatom1_f,
-		    atomtype,
-		    nelems, natom,
-		    atom, elem, dim);
-
-
-    Func eatom2_f("eatom2_f"), fatom2_f("fatom2_f");
-    buildPodTally2b(eatom2_f, fatom2_f,
-		    energyij_f, forceij_f,
-		    ijs_f, interactions,
-		    npairs, natom,  nelems, nelemscombos, tdegree1,
-		    np, atom, bfi, dim, elem, inter);
-
-
-    Func eatom3_f("eatom3_f"), fatom3_f("fatom3_f");
-    buildPodTally3b(eatom3_f, fatom3_f,
-		    y, energyij_f, forceij_f, interactions,
-		    pairlist, pairnumsum, atomtype, alist,
-		    tdegree2, adegreep + 1, nelems, nelemscombos, nl, natom, npairs, nmax,
-		    atom, atom_o, atom_i, atom_j, atom_k, inter, type,  bfa, rbf_v, dim);
-
-    Var ox("ox"), oy("oy"), oz("oz"), ozz("ozz"), ozzz("ozzz"), ozzzz("ozzzz");
-    
-    // ijs(ox, oy) = ijs_f(ox, oy);
-    // rijs(ox, oy) = rijs_f(ox, oy);
-    // rbf(ox, oy, oz) = rbf_f(ox, oy, oz);
-    // drbf(ox, oy, oz, ozz)= drbf_f(ox, oy, oz, ozz);
-    // abf(ox, oy) = abf_f(ox, oy);
-    // dabf(ox, oy, oz) = dabf_f(ox, oy, oz);
-    // energyij(ox, oy) = energyij_f(ox, oy);
-    // forceij(ox, oy, oz) = forceij_f(ox, oy, oz);
-    
-    eatom1(ox, oy) = eatom1_f(ox, oy);
-    fatom1(ox, oy, oz) = fatom1_f(ox, oy, oz);
-
-    eatom2(ox, oy, oz) = eatom2_f(ox, oy, oz);
-    fatom2(ox, oy, oz, ozz) = fatom2_f(ox, oy, oz, ozz);
-    // eatom2(ox, oy, oz) = Expr((double) 0);
-    // fatom2(ox, oy, oz, ozz) = Expr((double) 0);
-
-    eatom3(ox, oy, oz, ozz, ozzz) = eatom3_f(ox, oy, oz, ozzz, ozz);
-    fatom3(ox, oy, oz, ozz, ozzz, ozzzz) = fatom3_f(ox, oy, oz, ozz, ozzzz, ozzz);
-    // eatom3(ox, oy, oz, ozz, ozzz) = Expr((double) 0);
-    // fatom3(ox, oy, oz, ozz, ozzz, ozzzz) = Expr((double) 0);
-    
-    // ijs.dim(0).set_bounds(0, natom);
-    // ijs.dim(1).set_bounds(0, 4);
-    // rijs.dim(0).set_bounds(0, natom);
-    // rijs.dim(1).set_bounds(0, 3);
-    // energyij.dim(0).set_bounds(0, tdegree); //tdegree
-    // forceij.dim(0).set_bounds(0, tdegree);
-    // energyij.dim(1).set_bounds(0, npairs);
-    // forceij.dim(1).set_bounds(0, npairs);
-    // forceij.dim(2).set_bounds(0, 3);
-    
-    eatom1.dim(0).set_bounds(0, natom);
-    eatom1.dim(1).set_bounds(0, nelems);
-    fatom1.dim(0).set_bounds(0, natom);
-    fatom1.dim(1).set_bounds(0, nelems);
-    fatom1.dim(2).set_bounds(0, 3);
-
-    eatom2.dim(0).set_bounds(0, natom);
-    eatom2.dim(1).set_bounds(0, nelemscombos);
-    eatom2.dim(2).set_bounds(0, tdegree1);
-
-    fatom2.dim(0).set_bounds(0, 3);
-    fatom2.dim(1).set_bounds(0, natom);
-    fatom2.dim(2).set_bounds(0, nelemscombos);
-    fatom2.dim(3).set_bounds(0, tdegree1);
-
-
-
-    eatom3.dim(0).set_bounds(0, natom);
-    eatom3.dim(1).set_bounds(0, nelemscombos);
-    eatom3.dim(2).set_bounds(0, nelems);
-    eatom3.dim(3).set_bounds(0, adegreep + 1);
-    eatom3.dim(4).set_bounds(0, tdegree2);
-
-    fatom3.dim(0).set_bounds(0, 3);
-    fatom3.dim(1).set_bounds(0, natom);
-    fatom3.dim(2).set_bounds(0, nelemscombos);
-    fatom3.dim(3).set_bounds(0, nelems);
-    fatom3.dim(4).set_bounds(0, adegreep + 1);
-    fatom3.dim(5).set_bounds(0, tdegree2);
-
-      
-    
-    
-  }
-
-
+        // Schedule it.
+        brighter.vectorize(x, 16).parallel(y);
+    }
 };
+
 
 
 class snapshot : public Halide::Generator<snapshot> {
