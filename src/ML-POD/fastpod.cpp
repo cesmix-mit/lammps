@@ -26,6 +26,8 @@
 #include "math_special.h"
 #include "memory.h"
 #include "tokenizer.h"
+#include "poddesc.h"
+#include "HalideBuffer.h"
 
 #include <cmath>
 #include <chrono>
@@ -466,6 +468,41 @@ int FASTPOD::read_coeff_file(std::string coeff_file)
   return ncoeffall;
 }
 
+void poddesc_halide( ) {
+   /*
+    Input<int> offset{"offset"};
+    Input<Buffer<int, 2>> input{"input"};
+
+    // We also declare the Outputs as public member variables.
+    Output<Buffer<int, 2>> brighter{"brighter"};
+
+    // Typically you declare your Vars at this scope as well, so that
+    // they can be used in any helper methods you add later.
+    Var x, y;
+
+    // We then define a method that constructs and return the Halide
+    // pipeline:
+    void generate() {
+        // In lesson 10, here is where we called
+        // Func::compile_to_file. In a Generator, we just need to
+        // define the Output(s) representing the output of the pipeline.
+        brighter(x, y) = print(input(x, y) + offset, "<- GENERATOR IS WORKING! :)");
+
+        // Schedule it.
+        brighter.vectorize(x, 16).parallel(y);
+
+    }
+
+    *
+    */
+    Halide::Runtime::Buffer<int> input(2, 2);
+    Halide::Runtime::Buffer<int> output(2, 2);
+    poddesc(4, input, output);
+}
+    
+
+
+
 double FASTPOD::peratomenergyforce(double *fij, double *rij, double *temp,
         int *ti, int *tj, int Nj)
 {
@@ -500,6 +537,8 @@ double FASTPOD::peratomenergyforce(double *fij, double *rij, double *temp,
   double *rbfxt = &temp[4*n1 + n5 + 4*n2 + n3]; // Nj*ns
   double *rbfyt = &temp[4*n1 + n5 + 4*n2 + 2*n3]; // Nj*ns
   double *rbfzt = &temp[4*n1 + n5 + 4*n2 + 3*n3]; // Nj*ns
+  
+  poddesc_halide();
 
   // orthogonal radial basis functions
   

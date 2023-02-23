@@ -655,11 +655,11 @@ public:
 class poddesc1 : public Halide::Generator<poddesc1> {
 public:
 
-    Input<uint8_t> offset{"offset"};
-    Input<Buffer<uint8_t, 2>> input{"input"};
+    Input<int> offset{"offset"};
+    Input<Buffer<int, 2>> input{"input"};
 
     // We also declare the Outputs as public member variables.
-    Output<Buffer<uint8_t, 2>> brighter{"brighter"};
+    Output<Buffer<int, 2>> brighter{"brighter"};
 
     // Typically you declare your Vars at this scope as well, so that
     // they can be used in any helper methods you add later.
@@ -671,10 +671,11 @@ public:
         // In lesson 10, here is where we called
         // Func::compile_to_file. In a Generator, we just need to
         // define the Output(s) representing the output of the pipeline.
-        brighter(x, y) = input(x, y) + offset;
+        brighter(x, y) = print(input(x, y) + offset, "<- GENERATOR IS WORKING! :)");
 
         // Schedule it.
         brighter.vectorize(x, 16).parallel(y);
+
     }
 };
 
