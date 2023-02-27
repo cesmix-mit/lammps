@@ -653,7 +653,7 @@ endif()
 if (PKG_ML-POD)
    add_executable(mygen ${LAMMPS_SOURCE_DIR}/ML-POD/gen.cpp)
    target_link_libraries(mygen PRIVATE Halide::Generator)
-   add_halide_library(poddesc FROM mygen GENERATOR poddesc1  c_header static_library stmt stmt_html c_source object llvm_assembly)
+   add_halide_library(poddesc FROM mygen GENERATOR poddescRBF  c_header static_library stmt stmt_html c_source object llvm_assembly)
    target_link_libraries(lammps PRIVATE poddesc)
  endif()
 

@@ -468,36 +468,23 @@ int FASTPOD::read_coeff_file(std::string coeff_file)
   return ncoeffall;
 }
 
-void poddesc_halide( ) {
-   /*
-    Input<int> offset{"offset"};
-    Input<Buffer<int, 2>> input{"input"};
+void buildRBFHalide (rbf_f, drbf_f, abf_f, dabf_f, besselparams, nbesselpars, bdegree, adegree, npairs, rin, rcut) {
+    /*
+        Input<Buffer<double>> besselparams{"besselparams", 1};
+        Input<int> nbesselparams{"nbesselparams", 1};
+        Input<int> bdegree{"bdegree", 1};
+        Input<int> adegree{"adegree", 1};
+        Input<int> npairs{"npairs", 1};
 
-    // We also declare the Outputs as public member variables.
-    Output<Buffer<int, 2>> brighter{"brighter"};
+        Input<double> rin{"rin", 1};
+        Input<double> rcut{"rcut", 1};
 
-    // Typically you declare your Vars at this scope as well, so that
-    // they can be used in any helper methods you add later.
-    Var x, y;
+        Func rbf_f("rbf_f"), drbf_f("drbf_f"), abf_f("abf_f"), dabf_f("dabf_f");
+     */
 
-    // We then define a method that constructs and return the Halide
-    // pipeline:
-    void generate() {
-        // In lesson 10, here is where we called
-        // Func::compile_to_file. In a Generator, we just need to
-        // define the Output(s) representing the output of the pipeline.
-        brighter(x, y) = print(input(x, y) + offset, "<- GENERATOR IS WORKING! :)");
+    Halide::Runtime::Buffer<double> besselparams_buffer(besselparams, nbesselpars);
+    poddescRBF(rbf_f, drbf_f, abf_f, dabf_f, besselparams_buffer, nbesselparams, bdegree, adegree, npairs, rin, rcut);
 
-        // Schedule it.
-        brighter.vectorize(x, 16).parallel(y);
-
-    }
-
-    *
-    */
-    Halide::Runtime::Buffer<int> input(2, 2);
-    Halide::Runtime::Buffer<int> output(2, 2);
-    poddesc(4, input, output);
 }
     
 
@@ -538,7 +525,9 @@ double FASTPOD::peratomenergyforce(double *fij, double *rij, double *temp,
   double *rbfyt = &temp[4*n1 + n5 + 4*n2 + 2*n3]; // Nj*ns
   double *rbfzt = &temp[4*n1 + n5 + 4*n2 + 3*n3]; // Nj*ns
   
-  poddesc_halide();
+  buildRBFHalide(rbft, rbfxt, rbfyt, rbfzt, besselparams, nbesselpars, pdegree[0], pdegree[1], rij, rin, rcut);
+  // void buildRBFHalide (nbesselparams, bdegree, adegree, npairs, rin, rcut) {
+
 
   // orthogonal radial basis functions
   

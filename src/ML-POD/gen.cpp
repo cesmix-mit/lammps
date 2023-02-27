@@ -652,30 +652,38 @@ public:
 };
 
 
-class poddesc1 : public Halide::Generator<poddesc1> {
+class poddescRBF : public Halide::Generator<poddescRBF> {
 public:
 
-    Input<int> offset{"offset"};
-    Input<Buffer<int, 2>> input{"input"};
+    Input<Buffer<double>> besselparams{"besselparams", 1};
+    Input<int> nbesselparams{"nbesselpars", 1};
+    Input<int> bdegree{"bdegree", 1};
+    Input<int> adegree{"adegree", 1};
+    Input<int> npairs{"npairs", 1};
 
-    // We also declare the Outputs as public member variables.
-    Output<Buffer<int, 2>> brighter{"brighter"};
+    Input<double> rin{"rin", 1};
+    Input<double> rcut{"rcut", 1};
 
-    // Typically you declare your Vars at this scope as well, so that
-    // they can be used in any helper methods you add later.
-    Var x, y;
-
-    // We then define a method that constructs and return the Halide
-    // pipeline:
+    Output<Buffer<double>> rbf_f{"rbf_f", 3};
+    Output<Buffer<double>> drbf_f{"drbf_f", 4};
+    Output<Buffer<double>> abf_f{"abf_f", 2};
+    Output<Buffer<double>> dabf_f{"dabf_f", 3};
+    
     void generate() {
-        // In lesson 10, here is where we called
-        // Func::compile_to_file. In a Generator, we just need to
-        // define the Output(s) representing the output of the pipeline.
-        brighter(x, y) = print(input(x, y) + offset, "<- GENERATOR IS WORKING! :)");
 
-        // Schedule it.
-        brighter.vectorize(x, 16).parallel(y);
+        besselparams.dim(0).set_bounds(0, nbesselparams);
+        Var bfi("basis function index");
+        Var bfp("basis function param");
+        Var np("pairindex");
+        Var numOuts("numOuts");
+        Var dim("dim");
 
+        Func rijs_f("rijs_f");
+
+        buildRBF(rbf_f, drbf_f, abf_f, dabf_f,
+             rijs_f, besselparams, rin, rcut-rin,
+             bdegree, adegree, nbesselparams, npairs,
+             bfi, bfp, np, dim);
     }
 };
 
@@ -721,4 +729,4 @@ public:
 
 HALIDE_REGISTER_GENERATOR(pod1, pod1);
 HALIDE_REGISTER_GENERATOR(snapshot, snapshot);
-HALIDE_REGISTER_GENERATOR(poddesc1, poddesc1);
+HALIDE_REGISTER_GENERATOR(poddescRBF, poddescRBF);
