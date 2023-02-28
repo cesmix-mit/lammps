@@ -47,7 +47,7 @@ using namespace Halide;
   // return rbf;
 }
 
-void buildRBF(Func & rbf, Func & drbf, Func & abf, Func & dabf,
+void buildRBF(Func & rbf_f, Func & rbfx_f, Func & rbfy_f, Func & rbfz_f,
 	      Func xij, Func besselparams, Expr rin, Expr rmax,
 	      Expr bdegree, Expr adegree, Expr nbparams, Expr npairs,
 	      Var bfi, Var bfp, Var np, Var dim)
@@ -89,6 +89,8 @@ void buildRBF(Func & rbf, Func & drbf, Func & abf, Func & dabf,
   Expr b = sqrt(2 * one/rmax)/(bfi + 1);
   Expr c = pow(dij, bfi + 1);
 
+  Func rbf("rbf"), drbf("drbf_f"), abf("abf_f"), dabf("dabf_f");
+
   rbf(bfp, bfi, np) = b * fcut * sin(a*x)/r;
   // rbf.trace_stores();
   rbf.bound(bfp, 0, nbparams);
@@ -113,6 +115,24 @@ void buildRBF(Func & rbf, Func & drbf, Func & abf, Func & dabf,
   dabf.bound(dim, 0, 3);
   dabf.bound(bfi, 0, adegree);
   dabf.bound(np, 0, npairs);
+
+  // rbf.size() = nbparams * bdegree * npairs
+  // drbf[x].size() = nbparams * bdegree * npairs
+  // abf.size() = adegree * npairs 
+  // dabf[x].size() = adegree * npairs
+  // output.size() = nbparams * bdgree * npairs + adegree * npairs
+  rbf(rbf_info, abf_info) = 
+  rbf_f.bound(rbf_info, 0, nbparams * bdegree * npairs);
+  rbf_f.bound(abf_info, 0, adegree * npairs);
+  
+  rbfx_f.bound(rbf_info, 0, nbparams * bdegree * npairs);
+  rbfx_f.bound(abf_info, 0, adegree * npairs);
+
+  rbfy_f.bound(rbf_info, 0, nbparams * bdegree * npairs);
+  rbfy_f.bound(abf_info, 0, adegree * npairs);
+
+  rbfz_f.bound(rbf_info, 0, nbparams * bdegree * npairs);
+  rbfz_f.bound(abf_info, 0, adegree * npairs);
 
   rbf.compute_root();
   drbf.compute_root();
@@ -663,11 +683,12 @@ public:
 
     Input<double> rin{"rin", 1};
     Input<double> rcut{"rcut", 1};
+    Input<Buffer<double>> rijs{"rijs", 2};
 
-    Output<Buffer<double>> rbf_f{"rbf_f", 3};
-    Output<Buffer<double>> drbf_f{"drbf_f", 4};
-    Output<Buffer<double>> abf_f{"abf_f", 2};
-    Output<Buffer<double>> dabf_f{"dabf_f", 3};
+    Output<Buffer<double>> rbf_o{"rbf_f", 3};
+    Output<Buffer<double>> rbfxf_o{"rbfx_f", 4};
+    Output<Buffer<double>> rbfyf_o{"rbfy_f", 2};
+    Output<Buffer<double>> rbfzf_o{"rbfz_f", 3};
     
     void generate() {
 
@@ -678,12 +699,19 @@ public:
         Var numOuts("numOuts");
         Var dim("dim");
 
-        Func rijs_f("rijs_f");
-
-        buildRBF(rbf_f, drbf_f, abf_f, dabf_f,
-             rijs_f, besselparams, rin, rcut-rin,
+        Func rbf_f("rbf_f"), rbfx_f("rbfx_f"), rbfy_f("rbfy_f"), dabf_f("rbfz_f");
+        buildRBF(rbf_f, rbfx_f, rbfy_f, rbfz_f,
+             rijs, besselparams, rin, rcut-rin,
              bdegree, adegree, nbesselparams, npairs,
              bfi, bfp, np, dim);
+
+        Var besselParam("besselParam"), besselDegree("besselDegree"), numPairs("numPairs"),
+        inverseDegree("inverseDegree");
+
+        rbf_o(besselParam, besselDegree, numPairs) = rbf_f(besselParam, besselDegree, numPairs);
+        drbf_o(besselParam, besselDegree, numPairs, dim) = drbf_f(besselParam, besselDegree, numPairs, dim);
+        abf_o(besselDegree, numPairs) = abf_f(besselDegree, numPairs);
+        dabf_o(besselDegree, numPairs, dim) = dabf_f(besselDegree, numPairs, dim);
     }
 };
 

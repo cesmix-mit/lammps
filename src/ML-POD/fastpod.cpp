@@ -468,7 +468,7 @@ int FASTPOD::read_coeff_file(std::string coeff_file)
   return ncoeffall;
 }
 
-void buildRBFHalide (rbf_f, drbf_f, abf_f, dabf_f, besselparams, nbesselpars, bdegree, adegree, npairs, rin, rcut) {
+void buildRBFHalide (rbf_f, drbf_f, abf_f, dabf_f, rijs, besselparams, nbesselpars, bdegree, adegree, npairs, rin, rcut) {
     /*
         Input<Buffer<double>> besselparams{"besselparams", 1};
         Input<int> nbesselparams{"nbesselparams", 1};
@@ -482,6 +482,7 @@ void buildRBFHalide (rbf_f, drbf_f, abf_f, dabf_f, besselparams, nbesselpars, bd
         Func rbf_f("rbf_f"), drbf_f("drbf_f"), abf_f("abf_f"), dabf_f("dabf_f");
      */
 
+    Halide::Runtime::Buffer<double> rijs(rijs, Nj);
     Halide::Runtime::Buffer<double> besselparams_buffer(besselparams, nbesselpars);
     poddescRBF(rbf_f, drbf_f, abf_f, dabf_f, besselparams_buffer, nbesselparams, bdegree, adegree, npairs, rin, rcut);
 
@@ -525,9 +526,7 @@ double FASTPOD::peratomenergyforce(double *fij, double *rij, double *temp,
   double *rbfyt = &temp[4*n1 + n5 + 4*n2 + 2*n3]; // Nj*ns
   double *rbfzt = &temp[4*n1 + n5 + 4*n2 + 3*n3]; // Nj*ns
   
-  buildRBFHalide(rbft, rbfxt, rbfyt, rbfzt, besselparams, nbesselpars, pdegree[0], pdegree[1], rij, rin, rcut);
-  // void buildRBFHalide (nbesselparams, bdegree, adegree, npairs, rin, rcut) {
-
+  buildRBFHalide(rbft, rbfxt, rbfyt, rbfzt, rij, besselparams, nbesselpars, pdegree[0], pdegree[1], Nj, rin, rcut);
 
   // orthogonal radial basis functions
   
