@@ -116,32 +116,78 @@ void buildRBF(Func & rbf_f, Func & rbfx_f, Func & rbfy_f, Func & rbfz_f,
   dabf.bound(bfi, 0, adegree);
   dabf.bound(np, 0, npairs);
 
-  // rbf.size() = nbparams * bdegree * npairs
-  // drbf[x].size() = nbparams * bdegree * npairs
-  // abf.size() = adegree * npairs 
-  // dabf[x].size() = adegree * npairs
-  // output.size() = nbparams * bdgree * npairs + adegree * npairs
-  rbf(rbf_info, abf_info) = 
-  rbf_f.bound(rbf_info, 0, nbparams * bdegree * npairs);
-  rbf_f.bound(abf_info, 0, adegree * npairs);
-  
-  rbfx_f.bound(rbf_info, 0, nbparams * bdegree * npairs);
-  rbfx_f.bound(abf_info, 0, adegree * npairs);
-
-  rbfy_f.bound(rbf_info, 0, nbparams * bdegree * npairs);
-  rbfy_f.bound(abf_info, 0, adegree * npairs);
-
-  rbfz_f.bound(rbf_info, 0, nbparams * bdegree * npairs);
-  rbfz_f.bound(abf_info, 0, adegree * npairs);
-
   rbf.compute_root();
+
   drbf.compute_root();
 
   abf.compute_root();
   
   dabf.compute_root();
+  // rbf.size() = nbparams * bdegree * npairs
+  // drbf[x].size() = nbparams * bdegree * npairs
+  // abf.size() = adegree * npairs 
+  // dabf[x].size() = adegree * npairs
+  // output.size() = nbparams * bdgree * npairs + adegree * npairs
+  Var rbf_abf_info("rbf_abf_info"), drbf_dabf_info("drbf_dabf_info");
+  RDom r1(0, nbparams, 0, bdegree, 0, npairs);
+  RDom r2(0, adegree, 0, npairs);
 
+  // Set up rbf_info
+  rbf_f(rbf_abf_info) = 0;
+  rbf_f(r1.z * (nbparams * bdegree) + r1.y * (nbparams) + r1.x) = rbf(r1.x, r1.y, r1.z);
+  // rbf_f(r1.z + r1.y * (npairs) + r1.x * (npairs * bdegree)) = rbf(r1.x, r1.y, r1.z); ?? Maybe this one
+
+  // Set up abf_info
+  Var abf_index("abf_index");
+  Expr rbf_info_length = nbparams * bdegree * npairs;
+  Func get_abf_index(abf_index) = rbf_info_length + abf_index;
+
+  rbf_f(get_abf_index(r2.y * adegree + r2.x)) = abf(r2.x, r2.y);
+  // rbf_f(get_abf_index(r2.y + r2.x * (npairs)) = abf(r2.x, r2.y);
+
+  rbf_f.bound(rbf_abf_info, 0, nbparams * bdegree * npairs + adegree * npairs);
   
+
+  // Do the same for rbfx_f
+  // Set up drbf_dabf_info
+  rbfx_f(drbf_dabf_info) = 0;
+  rbfx_f(r1.z * (nbparams * bdegree) + r1.y * (nbparams) + r1.x) = drbf(r1.x, r1.y, r1.z, 0);
+  // rbfx_f(r1.z + r1.y * (npairs) + r1.x * (npairs * bdegree)) = drbf(r1.x, r1.y, r1.z, 0); ?? Maybe this one
+
+  // Set up dabf_info
+  rbfx_f(get_abf_index(r2.y * adegree + r2.x)) = dabf(r2.x, r2.y, 0);
+  // rbfx_f(get_abf_index(r2.y + r2.x * (npairs)) = dabf(r2.x, r2.y, 0);
+
+  rbfx_f.bound(0, nbparams * bdegree * npairs + adegree * npairs);
+
+  // Do the same for rbfy_f
+  // Set up drbf_dabf_info
+  rbfy_f(drbf_dabf_info) = 0;
+  rbfy_f(r1.z * (nbparams * bdegree) + r1.y * (nbparams) + r1.x) = drbf(r1.x, r1.y, r1.z, 1);
+  // rbfy_f(r1.z + r1.y * (npairs) + r1.x * (npairs * bdegree)) = drbf(r1.x, r1.y, r1.z, 1); ?? Maybe this one
+
+  // Set up dabf_info
+  rbfy_f(get_abf_index(r2.y * adegree + r2.x)) = dabf(r2.x, r2.y, 1);
+  // rbfy_f(get_abf_index(r2.y + r2.x * (npairs)) = dabf(r2.x, r2.y, 1);
+
+  rbfy_f.bound(0, nbparams * bdegree * npairs + adegree * npairs);
+
+  // Do the same for rbfz_f
+  // Set up drbf_dabf_info
+  rbfz_f(drbf_dabf_info) = 0;
+  rbfz_f(r1.z * (nbparams * bdegree) + r1.y * (nbparams) + r1.x) = drbf(r1.x, r1.y, r1.z, 2);
+  // rbfz_f(r1.z + r1.y * (npairs) + r1.x * (npairs * bdegree)) = drbf(r1.x, r1.y, r1.z, 2); ?? Maybe this one
+
+  // Set up dabf_info
+  rbfz_f(get_abf_index(r2.y * adegree + r2.x)) = dabf(r2.x, r2.y, 2);
+  // rbfz_f(get_abf_index(r2.y + r2.x * (npairs)) = dabf(r2.x, r2.y, 2);
+  
+  rbfz_f.bound(0, nbparams * bdegree * npairs + adegree * npairs);
+
+  rbf_f.compute_root();
+  rbfx_f.compute_root();
+  rbfy_f.compute_root();
+  rbfz_f.compute_root();
 }
 
 void buildStructureMatMul(Func & energyij, Func & forceij,
@@ -685,10 +731,10 @@ public:
     Input<double> rcut{"rcut", 1};
     Input<Buffer<double>> rijs{"rijs", 2};
 
-    Output<Buffer<double>> rbf_o{"rbf_f", 3};
-    Output<Buffer<double>> rbfxf_o{"rbfx_f", 4};
-    Output<Buffer<double>> rbfyf_o{"rbfy_f", 2};
-    Output<Buffer<double>> rbfzf_o{"rbfz_f", 3};
+    Output<Buffer<double>> rbf_o{"rbf_f", 1};
+    Output<Buffer<double>> rbfxf_o{"rbfx_f", 1};
+    Output<Buffer<double>> rbfyf_o{"rbfy_f", 1};
+    Output<Buffer<double>> rbfzf_o{"rbfz_f", 1};
     
     void generate() {
 
@@ -709,9 +755,9 @@ public:
         inverseDegree("inverseDegree");
 
         rbf_o(besselParam, besselDegree, numPairs) = rbf_f(besselParam, besselDegree, numPairs);
-        drbf_o(besselParam, besselDegree, numPairs, dim) = drbf_f(besselParam, besselDegree, numPairs, dim);
-        abf_o(besselDegree, numPairs) = abf_f(besselDegree, numPairs);
-        dabf_o(besselDegree, numPairs, dim) = dabf_f(besselDegree, numPairs, dim);
+        drbf_o(besselParam, besselDegree, numPairs, dim) = rbfx_f(besselParam, besselDegree, numPairs, dim);
+        abf_o(besselDegree, numPairs) = rbfy_f(besselDegree, numPairs);
+        dabf_o(besselDegree, numPairs, dim) = rbfz_f(besselDegree, numPairs, dim);
     }
 };
 
