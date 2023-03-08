@@ -468,24 +468,19 @@ int FASTPOD::read_coeff_file(std::string coeff_file)
   return ncoeffall;
 }
 
-void buildRBFHalide (rbf_f, drbf_f, abf_f, dabf_f, rijs, besselparams, nbesselpars, bdegree, adegree, npairs, rin, rcut) {
-    /*
-        Input<Buffer<double>> besselparams{"besselparams", 1};
-        Input<int> nbesselparams{"nbesselparams", 1};
-        Input<int> bdegree{"bdegree", 1};
-        Input<int> adegree{"adegree", 1};
-        Input<int> npairs{"npairs", 1};
-
-        Input<double> rin{"rin", 1};
-        Input<double> rcut{"rcut", 1};
-
-        Func rbf_f("rbf_f"), drbf_f("drbf_f"), abf_f("abf_f"), dabf_f("dabf_f");
-     */
-
-    Halide::Runtime::Buffer<double> rijs(rijs, Nj);
+void buildRBFHalide (double *rbf_f, double *rbfx_f, double *rbfy_f, double *rbfz_f, double *rijs, double *besselparams, int nbesselpars, int bdegree, int adegree, int npairs, double rin, double rcut) {
+    Halide::Runtime::Buffer<double> rbf_buffer(rbf_f, nbesselpars * bdegree * npairs + 
+            adegree * npairs);
+    Halide::Runtime::Buffer<double> rbfx_buffer(rbfx_f, nbesselpars * bdegree * npairs +
+            adegree * npairs);
+    Halide::Runtime::Buffer<double> rbfy_buffer(rbfy_f, nbesselpars * bdegree * npairs +
+            adegree * npairs);
+    Halide::Runtime::Buffer<double> rbfz_buffer(rbfz_f, nbesselpars * bdegree * npairs +
+            adegree * npairs);
+    Halide::Runtime::Buffer<double> rijs_buffer(rijs, 3, npairs);
+    rijs_buffer.transpose(0, 1);
     Halide::Runtime::Buffer<double> besselparams_buffer(besselparams, nbesselpars);
-    poddescRBF(rbf_f, drbf_f, abf_f, dabf_f, besselparams_buffer, nbesselparams, bdegree, adegree, npairs, rin, rcut);
-
+    poddesc(besselparams_buffer, nbesselpars, bdegree, adegree, npairs, rin, rcut, rijs_buffer, rbf_buffer, rbfx_buffer, rbfy_buffer, rbfz_buffer);
 }
     
 
@@ -535,7 +530,7 @@ double FASTPOD::peratomenergyforce(double *fij, double *rij, double *temp,
   
   //begin = std::chrono::high_resolution_clock::now(); 
   
-  radialbasis(rbft, rbfxt, rbfyt, rbfzt, rij, besselparams, rin, rcut-rin, pdegree[0], pdegree[1], nbesselpars, Nj);
+  // radialbasis(rbft, rbfxt, rbfyt, rbfzt, rij, besselparams, rin, rcut-rin, pdegree[0], pdegree[1], nbesselpars, Nj, true);
 
   //end = std::chrono::high_resolution_clock::now();   
   //comptime[0] += std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count()/1e6;        
@@ -1544,13 +1539,18 @@ void FASTPOD::radialfunctions(double *rbf, double *rij, double *besselparams, do
   }
 }
 
+#include <iostream>
+
 void FASTPOD::radialbasis(double *rbf, double *rbfx, double *rbfy, double *rbfz, double *rij, double *besselparams, double rin,
-        double rmax, int besseldegree, int inversedegree, int nbesselpars, int N)
+        double rmax, int besseldegree, int inversedegree, int nbesselpars, int N, bool printer = false)
 {
   for (int n=0; n<N; n++) {
     double xij1 = rij[0+3*n];
     double xij2 = rij[1+3*n];
     double xij3 = rij[2+3*n];
+    if (printer) {
+        std::cout << xij3 << " <- xij3\n" << xij1 << " <- xij1\n" << xij2 << " <- xij2\n";
+    }
 
     double dij = sqrt(xij1*xij1 + xij2*xij2 + xij3*xij3);
     double dr1 = xij1/dij;

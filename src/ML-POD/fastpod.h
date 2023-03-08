@@ -58,7 +58,7 @@ private:
         double rmax, int besseldegree, int inversedegree, int nbesselpars, int N);
 
   void radialbasis(double *rbf, double *rbfx, double *rbfy, double *rbfz, double *rij, double *besselparams, double rin,
-        double rmax, int besseldegree, int inversedegree, int nbesselpars, int N);
+        double rmax, int besseldegree, int inversedegree, int nbesselpars, int N, bool printer);
 
   void orthogonalradialbasis(double *orthorbf, double *rij, double *Phi, double *besselparams,
         double rin, double rmax, int besseldegree, int inversedegree, int nbesselpars, int nrbf2, int N);

@@ -47,6 +47,10 @@ using namespace Halide;
   // return rbf;
 }
 
+Expr get_abf_index(Expr original_index, Expr rbf_info_length) {
+  return rbf_info_length + original_index;
+}
+
 void buildRBF(Func & rbf_f, Func & rbfx_f, Func & rbfy_f, Func & rbfz_f,
 	      Func xij, Func besselparams, Expr rin, Expr rmax,
 	      Expr bdegree, Expr adegree, Expr nbparams, Expr npairs,
@@ -57,12 +61,12 @@ void buildRBF(Func & rbf_f, Func & rbfx_f, Func & rbfy_f, Func & rbfz_f,
   Expr zero = Expr((double) 0.0);
   Expr onefive = Expr((double) 1.5);
   Expr PI = Expr( (double)M_PI);
-  Expr xij1 = xij(np, 0);
-  Expr xij2 = xij(np, 1);
-  Expr xij3 = xij(np, 2);
-  // Expr xij1 = print(xij(np, 0), "<- xij1");
-  // Expr xij2 = print(xij(np, 1), "<- xij2");
-  // Expr xij3 = print(xij(np, 2), "<- xij3");
+  //Expr xij1 = xij(np, 0);
+  //Expr xij2 = xij(np, 1);
+  //Expr xij3 = xij(np, 2);
+  Expr xij1 = print(xij(np, 0), "<- xij1");
+  Expr xij2 = print(xij(np, 1), "<- xij2");
+  Expr xij3 = print(xij(np, 2), "<- xij3");
 
   Expr s = xij1*xij1 + xij2*xij2 + xij3*xij3;
   Expr dij = sqrt(s);
@@ -133,56 +137,55 @@ void buildRBF(Func & rbf_f, Func & rbfx_f, Func & rbfy_f, Func & rbfz_f,
   RDom r2(0, adegree, 0, npairs);
 
   // Set up rbf_info
-  rbf_f(rbf_abf_info) = 0;
-  rbf_f(r1.z * (nbparams * bdegree) + r1.y * (nbparams) + r1.x) = rbf(r1.x, r1.y, r1.z);
-  // rbf_f(r1.z + r1.y * (npairs) + r1.x * (npairs * bdegree)) = rbf(r1.x, r1.y, r1.z); ?? Maybe this one
+  rbf_f(rbf_abf_info) = zero;
+  // rbf_f(r1.z * (nbparams * bdegree) + r1.y * (nbparams) + r1.x) = rbf(r1.x, r1.y, r1.z);
+  rbf_f(r1.z + r1.y * (npairs) + r1.x * (npairs * bdegree)) = rbf(r1.x, r1.y, r1.z);
 
   // Set up abf_info
   Var abf_index("abf_index");
   Expr rbf_info_length = nbparams * bdegree * npairs;
-  Func get_abf_index(abf_index) = rbf_info_length + abf_index;
 
-  rbf_f(get_abf_index(r2.y * adegree + r2.x)) = abf(r2.x, r2.y);
-  // rbf_f(get_abf_index(r2.y + r2.x * (npairs)) = abf(r2.x, r2.y);
+  // rbf_f(get_abf_index(r2.y * adegree + r2.x)) = abf(r2.x, r2.y);
+  rbf_f(get_abf_index(r2.y + r2.x * (npairs), rbf_info_length)) = abf(r2.x, r2.y);
 
   rbf_f.bound(rbf_abf_info, 0, nbparams * bdegree * npairs + adegree * npairs);
   
 
   // Do the same for rbfx_f
   // Set up drbf_dabf_info
-  rbfx_f(drbf_dabf_info) = 0;
-  rbfx_f(r1.z * (nbparams * bdegree) + r1.y * (nbparams) + r1.x) = drbf(r1.x, r1.y, r1.z, 0);
-  // rbfx_f(r1.z + r1.y * (npairs) + r1.x * (npairs * bdegree)) = drbf(r1.x, r1.y, r1.z, 0); ?? Maybe this one
+  rbfx_f(drbf_dabf_info) = zero;
+  // rbfx_f(r1.z * (nbparams * bdegree) + r1.y * (nbparams) + r1.x) = drbf(r1.x, r1.y, r1.z, 0);
+  rbfx_f(r1.z + r1.y * (npairs) + r1.x * (npairs * bdegree)) = drbf(r1.x, r1.y, r1.z, 0);
 
   // Set up dabf_info
-  rbfx_f(get_abf_index(r2.y * adegree + r2.x)) = dabf(r2.x, r2.y, 0);
-  // rbfx_f(get_abf_index(r2.y + r2.x * (npairs)) = dabf(r2.x, r2.y, 0);
+  // rbfx_f(get_abf_index(r2.y * adegree + r2.x)) = dabf(r2.x, r2.y, 0);
+  rbfx_f(get_abf_index(r2.y + r2.x * (npairs), rbf_info_length)) = dabf(r2.x, r2.y, 0);
 
-  rbfx_f.bound(0, nbparams * bdegree * npairs + adegree * npairs);
+  rbfx_f.bound(drbf_dabf_info, 0, nbparams * bdegree * npairs + adegree * npairs);
 
   // Do the same for rbfy_f
   // Set up drbf_dabf_info
-  rbfy_f(drbf_dabf_info) = 0;
-  rbfy_f(r1.z * (nbparams * bdegree) + r1.y * (nbparams) + r1.x) = drbf(r1.x, r1.y, r1.z, 1);
-  // rbfy_f(r1.z + r1.y * (npairs) + r1.x * (npairs * bdegree)) = drbf(r1.x, r1.y, r1.z, 1); ?? Maybe this one
+  rbfy_f(drbf_dabf_info) = zero;
+  // rbfy_f(r1.z * (nbparams * bdegree) + r1.y * (nbparams) + r1.x) = drbf(r1.x, r1.y, r1.z, 1);
+  rbfy_f(r1.z + r1.y * (npairs) + r1.x * (npairs * bdegree)) = drbf(r1.x, r1.y, r1.z, 1);
 
   // Set up dabf_info
-  rbfy_f(get_abf_index(r2.y * adegree + r2.x)) = dabf(r2.x, r2.y, 1);
-  // rbfy_f(get_abf_index(r2.y + r2.x * (npairs)) = dabf(r2.x, r2.y, 1);
+  // rbfy_f(get_abf_index(r2.y * adegree + r2.x)) = dabf(r2.x, r2.y, 1);
+  rbfy_f(get_abf_index(r2.y + r2.x * (npairs), rbf_info_length)) = dabf(r2.x, r2.y, 1);
 
-  rbfy_f.bound(0, nbparams * bdegree * npairs + adegree * npairs);
+  rbfy_f.bound(drbf_dabf_info, 0, nbparams * bdegree * npairs + adegree * npairs);
 
   // Do the same for rbfz_f
   // Set up drbf_dabf_info
-  rbfz_f(drbf_dabf_info) = 0;
-  rbfz_f(r1.z * (nbparams * bdegree) + r1.y * (nbparams) + r1.x) = drbf(r1.x, r1.y, r1.z, 2);
-  // rbfz_f(r1.z + r1.y * (npairs) + r1.x * (npairs * bdegree)) = drbf(r1.x, r1.y, r1.z, 2); ?? Maybe this one
+  rbfz_f(drbf_dabf_info) = zero;
+  // rbfz_f(r1.z * (nbparams * bdegree) + r1.y * (nbparams) + r1.x) = drbf(r1.x, r1.y, r1.z, 2);
+  rbfz_f(r1.z + r1.y * (npairs) + r1.x * (npairs * bdegree)) = drbf(r1.x, r1.y, r1.z, 2);
 
   // Set up dabf_info
-  rbfz_f(get_abf_index(r2.y * adegree + r2.x)) = dabf(r2.x, r2.y, 2);
-  // rbfz_f(get_abf_index(r2.y + r2.x * (npairs)) = dabf(r2.x, r2.y, 2);
+  // rbfz_f(get_abf_index(r2.y * adegree + r2.x)) = dabf(r2.x, r2.y, 2);
+  rbfz_f(get_abf_index(r2.y + r2.x * (npairs), rbf_info_length)) = dabf(r2.x, r2.y, 2);
   
-  rbfz_f.bound(0, nbparams * bdegree * npairs + adegree * npairs);
+  rbfz_f.bound(drbf_dabf_info, 0, nbparams * bdegree * npairs + adegree * npairs);
 
   rbf_f.compute_root();
   rbfx_f.compute_root();
@@ -737,6 +740,9 @@ public:
     Output<Buffer<double>> rbfzf_o{"rbfz_f", 1};
     
     void generate() {
+        rijs.dim(0).set_bounds(0, npairs).set_stride(3);
+        rijs.dim(1).set_bounds(0, 3).set_stride(1);
+
 
         besselparams.dim(0).set_bounds(0, nbesselparams);
         Var bfi("basis function index");
@@ -745,19 +751,18 @@ public:
         Var numOuts("numOuts");
         Var dim("dim");
 
-        Func rbf_f("rbf_f"), rbfx_f("rbfx_f"), rbfy_f("rbfy_f"), dabf_f("rbfz_f");
+        Func rbf_f("rbf_f"), rbfx_f("rbfx_f"), rbfy_f("rbfy_f"), rbfz_f("rbfz_f");
         buildRBF(rbf_f, rbfx_f, rbfy_f, rbfz_f,
              rijs, besselparams, rin, rcut-rin,
              bdegree, adegree, nbesselparams, npairs,
              bfi, bfp, np, dim);
 
-        Var besselParam("besselParam"), besselDegree("besselDegree"), numPairs("numPairs"),
-        inverseDegree("inverseDegree");
+        Var rbf_output("rbf_output");
 
-        rbf_o(besselParam, besselDegree, numPairs) = rbf_f(besselParam, besselDegree, numPairs);
-        drbf_o(besselParam, besselDegree, numPairs, dim) = rbfx_f(besselParam, besselDegree, numPairs, dim);
-        abf_o(besselDegree, numPairs) = rbfy_f(besselDegree, numPairs);
-        dabf_o(besselDegree, numPairs, dim) = rbfz_f(besselDegree, numPairs, dim);
+        rbf_o(rbf_output) = rbf_f(rbf_output);
+        rbfxf_o(rbf_output) = rbfx_f(rbf_output);
+        rbfyf_o(rbf_output) = rbfy_f(rbf_output);
+        rbfzf_o(rbf_output) = rbfz_f(rbf_output);
     }
 };
 
