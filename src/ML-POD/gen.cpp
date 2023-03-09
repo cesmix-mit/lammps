@@ -677,56 +677,45 @@ void buildPod1Body_p(Func & eatom, Func & fatom,
 }
 
 
-void radialAngularBasis(Func & sumU, Func & U, Func & Ux, Func & Uy, Func & Uz
-        Func rbf, Func rbfx, Func rbfy, Funch rbfz, Func abf,
-        Func abfx, Func abfy, Func abfz, Func atomtype, int N, int K, int M, int Ne)
+void radialAngularBasis(Func & sumU, Func & U, Func & Ux, Func & Uy, Func & Uz,
+        Func rbf, Func rbfx, Func rbfy, Func rbfz, Func abf,
+        Func abfx, Func abfy, Func abfz, Func atomtype, Expr N, Expr K, Expr M, Expr Ne)
 {
     Expr zero = Expr((double) 0.0);
 
-    Func sumU3d("sumU3d"), U3d("U3d"), Ux3d("Ux3d"), Uy3d("Uy3d"), Uz3d("Uz3d");
-    sumU3d(m, k, ne) = 0;
-
     Var n("n"), k("k"), m("m"), ne("ne");
+    sumU(m, k, ne) = zero;
 
     Expr c1 = rbf(k, n);
     Expr c2 = abf(m, n);
     
-    U3d(m, k, n) = c1 * c2;
-    Ux3d(m, k, n) = abfx(k, n) * c1 + c2 * rbfx(m, n);
-    Uy3d(m, k, n) = abfy(k, n) * c1 + c2 * rbfy(m, n);
-    Uz3d(m, k, n) = abfz(k, n) * c1 + c2 * rbfz(m, n);
+    U(m, k, n) = c1 * c2;
+    Ux(m, k, n) = abfx(k, n) * c1 + c2 * rbfx(m, n);
+    Uy(m, k, n) = abfy(k, n) * c1 + c2 * rbfy(m, n);
+    Uz(m, k, n) = abfz(k, n) * c1 + c2 * rbfz(m, n);
 
-    Expr in = atomtype(n) - 1;
-    RDom r(0, K, 0, M);
+    RDom r(0, M, 0, K, 0, N);
+    Expr in = atomtype(r.z) - 1;
 
-    sumU3d(m, k, in) += c1 * c2;
+    sumU(r.x, r.y, clamp(in, 0, Ne)) += rbf(r.x, r.z) * abf(r.y, r.z);
 
+    sumU.bound(ne, 0, Ne);
+    U.bound(n, 0, N);
+    Ux.bound(n, 0, N);
+    Uy.bound(n, 0, N);
+    Uz.bound(n, 0, N);
 
-    sumU3d.bound(ne, 0, Ne);
-    U3d.bound(n, 0, N);
-    Ux3d.bound(n, 0, N);
-    Uy3d.bound(n, 0, N);
-    Uz3d.bound(n, 0, N);
+    sumU.bound(k, 0, K);
+    U.bound(k, 0, K);
+    Ux.bound(k, 0, K);
+    Uy.bound(k, 0, K);
+    Uz.bound(k, 0, K);
 
-    sumU3d.bound(k, 0, K);
-    U3d.bound(k, 0, K);
-    Ux3d.bound(k, 0, K);
-    Uy3d.bound(k, 0, K);
-    Uz3d.bound(k, 0, K);
-
-    sumU3d.bound(m, 0, M);
-    U3d.bound(m, 0, M);
-    Ux3d.bound(m, 0, M);
-    Uy3d.bound(m, 0, M);
-    Uz3d.bound(m, 0, M);
-
-    Var u_outputs("u_outputs");
-
-    sumU(u_outputs) = sumU3d(u_outputs / (K * N), int(u_outputs / N) % (K * N), u_outputs % N);
-    U(u_outputs) = U3d(u_outputs / (K * N), int(u_outputs / N) % (K * N), u_outputs % N);
-    Ux(u_outputs) = Ux3d(u_outputs / (K * N), int(u_outputs / N) % (K * N), u_outputs % N);
-    Uy(u_outputs) = Uy3d(u_outputs / (K * N), int(u_outputs / N) % (K * N), u_outputs % N);
-    Uz(u_outputs) = Uz3d(u_outputs / (K * N), int(u_outputs / N) % (K * N), u_outputs % N);
+    sumU.bound(m, 0, M);
+    U.bound(m, 0, M);
+    Ux.bound(m, 0, M);
+    Uy.bound(m, 0, M);
+    Uz.bound(m, 0, M);
 }
 
 
@@ -822,38 +811,77 @@ public:
 class poddescRadialAngularBasis : public Halide::Generator<poddescRadialAngularBasis> {
 public:
 
-    Input<Buffer<double>> rbf("rbf", 2);
-    Input<Buffer<double>> rbfx("rbfx", 2);
-    Input<Buffer<double>> rbfy("rbfy", 2);
-    Input<Buffer<double>> rbfz("rbfz", 2);
-    Input<Buffer<double>> abf("abf", 2);
-    Input<Buffer<double>> abfx("abfx", 2);
-    Input<Buffer<double>> abfy("abfy", 2);
-    Input<Buffer<double>> abfz("abfz", 2);
-    Input<Buffer<int>> atomtype("atomtype", 1);
+    Input<int> Nj{"Nj", 1};
+    Input<int> K3{"K3", 1};
+    Input<int> nrbf3{"nrbf3", 1};
+    Input<int> nelements{"nelements", 1};
+    Input<int> ns{"ns", 1};
 
-    Output<Buffer<double>> sumU_o("sumU", 1);
-    Output<Buffer<double>> U_o("U", 1);
-    Output<Buffer<double>> Ux_o("Ux", 1);
-    Output<Buffer<double>> Uy_o("Uy", 1);
-    Output<Buffer<double>> Uz_o("Uz", 1);
+    Input<Buffer<double>> rbf{"rbf", 2};
+    Input<Buffer<double>> rbfx{"rbfx", 2};
+    Input<Buffer<double>> rbfy{"rbfy", 2};
+    Input<Buffer<double>> rbfz{"rbfz", 2};
+    Input<Buffer<double>> abf{"abf", 2};
+    Input<Buffer<double>> abfx{"abfx", 2};
+    Input<Buffer<double>> abfy{"abfy", 2};
+    Input<Buffer<double>> abfz{"abfz", 2};
+    Input<Buffer<int>> tj{"tj", 1};
+
+    Output<Buffer<double>> sumU_o{"sumU", 3};
+    Output<Buffer<double>> U_o{"U", 3};
+    Output<Buffer<double>> Ux_o{"Ux", 3};
+    Output<Buffer<double>> Uy_o{"Uy", 3};
+    Output<Buffer<double>> Uz_o{"Uz", 3};
 
     void generate() {
+        rbf.dim(0).set_bounds(0, Nj).set_stride(1);
+        rbf.dim(1).set_bounds(0, ns).set_stride(Nj);
+        rbfx.dim(0).set_bounds(0, Nj).set_stride(1);
+        rbfx.dim(1).set_bounds(0, ns).set_stride(Nj);
+        rbfy.dim(0).set_bounds(0, Nj).set_stride(1);
+        rbfy.dim(1).set_bounds(0, ns).set_stride(Nj);
+        rbfz.dim(0).set_bounds(0, Nj).set_stride(1);
+        rbfz.dim(1).set_bounds(0, ns).set_stride(Nj);
+
+        abf.dim(0).set_bounds(0, Nj).set_stride(1);
+        abf.dim(1).set_bounds(0, ns).set_stride(Nj);
+        abfx.dim(0).set_bounds(0, Nj).set_stride(1);
+        abfx.dim(1).set_bounds(0, ns).set_stride(Nj);
+        abfy.dim(0).set_bounds(0, Nj).set_stride(1);
+        abfy.dim(1).set_bounds(0, ns).set_stride(Nj);
+        abfz.dim(0).set_bounds(0, Nj).set_stride(1);
+        abfz.dim(1).set_bounds(0, ns).set_stride(Nj);
+
 
         Func sumU("sumU"), U("U"), Ux("Ux"), Uy("Uy"), Uz("Uz");
-        void radialAngularBasis(Func & sumU,
-                Func & U, Func & Ux, Func & Uy, Func & Uz,
-                Func rbf, Func rbfx, Func rbfy, Funch rbfz,
-                Func abf, Func abfx, Func abfy, Func abfz,
-                Func atomtype, int N, int K, int M, int Ne)
+        radialAngularBasis(sumU, U, Ux, Uy, Uz,
+                rbf, rbfx, rbfy, rbfz,
+                abf, abfx, abfy, abfz,
+                tj, Nj, K3, nrbf3, nelements);
 
-        Var u_output("u_output");
+        Var m("m"), k("k"), n("n");
 
-        sumU_o(u_output) = sumU(u_output);
-        U_o(u_output) = U(u_output);
-        Ux_o(u_output) = Ux(u_output);
-        Uy_o(u_output) = Uy(u_output);
-        Uz_o(u_output) = Uz(u_output);
+        sumU_o(m, k, n) = sumU(m, k, n);
+        U_o(m, k, n) = U(m, k, n);
+        Ux_o(m, k, n) = Ux(m, k, n);
+        Uy_o(m, k, n) = Uy(m, k, n);
+        Uz_o(m, k, n) = Uz(m, k, n);
+
+        sumU_o.dim(0).set_bounds(0, Nj).set_stride(1);
+        sumU_o.dim(1).set_bounds(0, K3).set_stride(Nj);
+        sumU_o.dim(2).set_bounds(0, nrbf3).set_stride(Nj * K3);
+        U_o.dim(0).set_bounds(0, Nj).set_stride(1);
+        U_o.dim(1).set_bounds(0, K3).set_stride(Nj);
+        U_o.dim(2).set_bounds(0, nrbf3).set_stride(Nj * K3);
+        Ux_o.dim(0).set_bounds(0, Nj).set_stride(1);
+        Ux_o.dim(1).set_bounds(0, K3).set_stride(Nj);
+        Ux_o.dim(2).set_bounds(0, nrbf3).set_stride(Nj * K3);
+        Uy_o.dim(0).set_bounds(0, Nj).set_stride(1);
+        Uy_o.dim(1).set_bounds(0, K3).set_stride(Nj);
+        Uy_o.dim(2).set_bounds(0, nrbf3).set_stride(Nj * K3);
+        Uz_o.dim(0).set_bounds(0, Nj).set_stride(1);
+        Uz_o.dim(1).set_bounds(0, K3).set_stride(Nj);
+        Uz_o.dim(2).set_bounds(0, nrbf3).set_stride(Nj * K3);
     }
 };
 
