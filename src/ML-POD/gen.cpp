@@ -61,12 +61,12 @@ void buildRBF(Func & rbf_f, Func & rbfx_f, Func & rbfy_f, Func & rbfz_f,
   Expr zero = Expr((double) 0.0);
   Expr onefive = Expr((double) 1.5);
   Expr PI = Expr( (double)M_PI);
-  //Expr xij1 = xij(np, 0);
-  //Expr xij2 = xij(np, 1);
-  //Expr xij3 = xij(np, 2);
-  Expr xij1 = print(xij(np, 0), "<- xij1");
-  Expr xij2 = print(xij(np, 1), "<- xij2");
-  Expr xij3 = print(xij(np, 2), "<- xij3");
+  Expr xij1 = xij(np, 0);
+  Expr xij2 = xij(np, 1);
+  Expr xij3 = xij(np, 2);
+  // Expr xij1 = print(xij(np, 0), "<- xij1");
+  // Expr xij2 = print(xij(np, 1), "<- xij2");
+  // Expr xij3 = print(xij(np, 2), "<- xij3");
 
   Expr s = xij1*xij1 + xij2*xij2 + xij3*xij3;
   Expr dij = sqrt(s);
@@ -804,8 +804,57 @@ public:
   }
 
 };
+
+class poddescFourMult : public Halide::Generator<poddescFourMult> {
+public:
+
+
+  Input<int> npairs{"npairs", 1};
+  Input<int> nrbfmax{"nrbfmax", 1};
+  Input<int> ns{"ns", 1};
+  Input<Buffer<double>> rbf4_in{"rbf_in", 3};
+  Input<Buffer<double>> Phi{"Phi", 2};
+
+  Output<Buffer<double>> rbf4_o{"rbf_o", 3};
+  
+  
+
+    
+    void generate() {
+      Phi.dim(0).set_bounds(0, ns).set_stride(1);
+      Phi.dim(1).set_bounds(0, ns).set_stride(ns);
+      // 
+
+      rbf4_in.dim(2).set_bounds(0, 4).set_stride(npairs * ns);
+      rbf4_in.dim(1).set_bounds(0, ns).set_stride(npairs);
+      rbf4_in.dim(0).set_bounds(0, npairs).set_stride(1);
+      // rbf4_in.dim(1).set_bounds(0, npairs);
+      // rbf4_in.dim(2).set_bounds(0, nrbfmax);
+      Var i("i");
+      Var j("j");
+      Var k("k");
+      Var c("c");
+      Func prod("prod");
+      prod(c, k, i, j) = Phi(k, i) * rbf4_in(j, k, c);
+      prod.bound(c, 0, 4);
+      prod.bound(k, 0, nrbfmax);
+      prod.bound(j, 0, npairs);
+      prod.bound(i, 0, npairs);
+      rbf4_o(j, i, c) = Expr((double) 0.0);
+      RDom r(0, ns);
+      rbf4_o(j, i, c) += prod(c, r, i, j);
+
+      rbf4_o.dim(2).set_bounds(0, 4).set_stride(nrbfmax * npairs);
+      rbf4_o.dim(1).set_bounds(0, nrbfmax).set_stride(npairs);
+      rbf4_o.dim(0).set_bounds(0, npairs).set_stride(1);
+
+    }
+};
+
+
   
 
 HALIDE_REGISTER_GENERATOR(pod1, pod1);
 HALIDE_REGISTER_GENERATOR(snapshot, snapshot);
 HALIDE_REGISTER_GENERATOR(poddescRBF, poddescRBF);
+HALIDE_REGISTER_GENERATOR(poddescFourMult, poddescFourMult);

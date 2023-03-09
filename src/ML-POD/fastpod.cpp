@@ -27,11 +27,12 @@
 #include "memory.h"
 #include "tokenizer.h"
 #include "poddesc.h"
+#include "poddescFourMult.h"
 #include "HalideBuffer.h"
 
 #include <cmath>
 #include <chrono>
-
+#include <iostream>
 using namespace LAMMPS_NS;
 using MathConst::MY_PI;
 using MathSpecial::cube;
@@ -482,7 +483,20 @@ void buildRBFHalide (double *rbf_f, double *rbfx_f, double *rbfy_f, double *rbfz
     Halide::Runtime::Buffer<double> besselparams_buffer(besselparams, nbesselpars);
     poddesc(besselparams_buffer, nbesselpars, bdegree, adegree, npairs, rin, rcut, rijs_buffer, rbf_buffer, rbfx_buffer, rbfy_buffer, rbfz_buffer);
 }
-    
+
+void buildHalideFourMult(double * rbfo_all, double *rbft_all, double * Phi, int npairs, int nrbfmax, int ns){
+  //  Halide::Runtime::Buffer<double> A(rbft_all, 4, nrbfmax, npairs);
+
+  Halide::Runtime::Buffer<double> A(rbft_all, {{0, npairs, 1}, {0, ns, npairs}, {0, 4, ns *npairs}});  
+  //  A.transpose({0, 1, 2});nrbfmax, ns
+  Halide::Runtime::Buffer<double> B(Phi, {{0, ns, 1}, {0, ns, ns}});
+  //B.transpose({0, 1});
+  Halide::Runtime::Buffer<double> C(rbfo_all, {{0, npairs, 1}, {0, nrbfmax, npairs}, {0, 4, nrbfmax *npairs}});
+  //  C.transpose({0, 1, 2});
+
+
+  poddescFourMult(npairs, nrbfmax, ns, A, B, C);
+}
 
 
 
@@ -537,12 +551,23 @@ double FASTPOD::peratomenergyforce(double *fij, double *rij, double *temp,
   
   //begin = std::chrono::high_resolution_clock::now();
       
-  char chn = 'N';
-  double alpha = 1.0, beta = 0.0;
-  DGEMM(&chn, &chn, &Nj, &nrbfmax, &ns, &alpha, rbft, &Nj, Phi, &ns, &beta, rbf, &Nj);
-  DGEMM(&chn, &chn, &Nj, &nrbfmax, &ns, &alpha, rbfxt, &Nj, Phi, &ns, &beta, rbfx, &Nj);
-  DGEMM(&chn, &chn, &Nj, &nrbfmax, &ns, &alpha, rbfyt, &Nj, Phi, &ns, &beta, rbfy, &Nj);
-  DGEMM(&chn, &chn, &Nj, &nrbfmax, &ns, &alpha, rbfzt, &Nj, Phi, &ns, &beta, rbfz, &Nj);    
+  // char chn = 'N';
+  // double alpha = 1.0, beta = 0.0;
+  // DGEMM(&chn, &chn, &Nj, &nrbfmax, &ns, &alpha, rbft, &Nj, Phi, &ns, &beta, rbf, &Nj);
+  // DGEMM(&chn, &chn, &Nj, &nrbfmax, &ns, &alpha, rbfxt, &Nj, Phi, &ns, &beta, rbfx, &Nj);
+  // DGEMM(&chn, &chn, &Nj, &nrbfmax, &ns, &alpha, rbfyt, &Nj, Phi, &ns, &beta, rbfy, &Nj);
+  // DGEMM(&chn, &chn, &Nj, &nrbfmax, &ns, &alpha, rbfzt, &Nj, Phi, &ns, &beta, rbfz, &Nj);
+
+  buildHalideFourMult(rbf, rbft, Phi, Nj, nrbfmax, ns);
+  // std::cout << "ugg:" << nrbfmax << ", " << Nj << ", " << ns << "\n";
+  // for(int a = 0; a < 4; a++){
+  //   for(int b = 0; b < ns; b++){
+  //     for(int c = 0; c < Nj; c++){
+  // 	std::cout << "ret=" << a << "," << b << ", " << c << ":" << rbf[a * ns * Nj + b * Nj + c] << "\n";
+  //     }
+  //   }
+  // }
+  // std::cout << "ugg:" << nrbfmax << ", " << Nj << ", " << ns << "\n";
   
   //end = std::chrono::high_resolution_clock::now();   
   //comptime[4] += std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count()/1e6;        
@@ -1539,7 +1564,7 @@ void FASTPOD::radialfunctions(double *rbf, double *rij, double *besselparams, do
   }
 }
 
-#include <iostream>
+
 
 void FASTPOD::radialbasis(double *rbf, double *rbfx, double *rbfy, double *rbfz, double *rij, double *besselparams, double rin,
         double rmax, int besseldegree, int inversedegree, int nbesselpars, int N, bool printer = false)
@@ -1548,9 +1573,9 @@ void FASTPOD::radialbasis(double *rbf, double *rbfx, double *rbfy, double *rbfz,
     double xij1 = rij[0+3*n];
     double xij2 = rij[1+3*n];
     double xij3 = rij[2+3*n];
-    if (printer) {
-        std::cout << xij3 << " <- xij3\n" << xij1 << " <- xij1\n" << xij2 << " <- xij2\n";
-    }
+    // if (printer) {
+    //     std::cout << xij3 << " <- xij3\n" << xij1 << " <- xij1\n" << xij2 << " <- xij2\n";
+    // }
 
     double dij = sqrt(xij1*xij1 + xij2*xij2 + xij3*xij3);
     double dr1 = xij1/dij;
