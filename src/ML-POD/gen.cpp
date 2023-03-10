@@ -61,12 +61,9 @@ void buildRBF(Func & rbf_f, Func & rbfx_f, Func & rbfy_f, Func & rbfz_f,
   Expr zero = Expr((double) 0.0);
   Expr onefive = Expr((double) 1.5);
   Expr PI = Expr( (double)M_PI);
-  //Expr xij1 = xij(np, 0);
-  //Expr xij2 = xij(np, 1);
-  //Expr xij3 = xij(np, 2);
-  Expr xij1 = print(xij(np, 0), "<- xij1");
-  Expr xij2 = print(xij(np, 1), "<- xij2");
-  Expr xij3 = print(xij(np, 2), "<- xij3");
+  Expr xij1 = xij(np, 0);
+  Expr xij2 = xij(np, 1);
+  Expr xij3 = xij(np, 2);
 
   Expr s = xij1*xij1 + xij2*xij2 + xij3*xij3;
   Expr dij = sqrt(s);
@@ -686,9 +683,13 @@ void radialAngularBasis(Func & sumU, Func & U, Func & Ux, Func & Uy, Func & Uz,
     Var n("n"), k("k"), m("m"), ne("ne");
     sumU(m, k, ne) = zero;
 
-    Expr c1 = rbf(k, n);
-    Expr c2 = abf(m, n);
+    Expr c1 = rbf(m, n);
+    Expr c2 = abf(k, n);
     
+    // U(n, k, m) = c1 * c2;
+    // Ux(n, k, m) = abfx(n, k) * c1 + c2 * rbfx(n, m);
+    // Uy(n, k, m) = abfy(n, k) * c1 + c2 * rbfy(n, m);
+    // Uz(n, k, m) = abfz(n, k) * c1 + c2 * rbfz(n, m);
     U(m, k, n) = c1 * c2;
     Ux(m, k, n) = abfx(k, n) * c1 + c2 * rbfx(m, n);
     Uy(m, k, n) = abfy(k, n) * c1 + c2 * rbfy(m, n);
@@ -697,6 +698,7 @@ void radialAngularBasis(Func & sumU, Func & U, Func & Ux, Func & Uy, Func & Uz,
     RDom r(0, M, 0, K, 0, N);
     Expr in = atomtype(r.z) - 1;
 
+    // sumU(clamp(in, 0, Ne), r.y, r.x) += rbf(r.z, r.x) * abf(r.z, r.y);
     sumU(r.x, r.y, clamp(in, 0, Ne)) += rbf(r.x, r.z) * abf(r.y, r.z);
 
     sumU.bound(ne, 0, Ne);
@@ -844,13 +846,13 @@ public:
         rbfz.dim(1).set_bounds(0, ns).set_stride(Nj);
 
         abf.dim(0).set_bounds(0, Nj).set_stride(1);
-        abf.dim(1).set_bounds(0, ns).set_stride(Nj);
+        abf.dim(1).set_bounds(0, K3).set_stride(Nj);
         abfx.dim(0).set_bounds(0, Nj).set_stride(1);
-        abfx.dim(1).set_bounds(0, ns).set_stride(Nj);
+        abfx.dim(1).set_bounds(0, K3).set_stride(Nj);
         abfy.dim(0).set_bounds(0, Nj).set_stride(1);
-        abfy.dim(1).set_bounds(0, ns).set_stride(Nj);
+        abfy.dim(1).set_bounds(0, K3).set_stride(Nj);
         abfz.dim(0).set_bounds(0, Nj).set_stride(1);
-        abfz.dim(1).set_bounds(0, ns).set_stride(Nj);
+        abfz.dim(1).set_bounds(0, K3).set_stride(Nj);
 
 
         Func sumU("sumU"), U("U"), Ux("Ux"), Uy("Uy"), Uz("Uz");
@@ -859,17 +861,17 @@ public:
                 abf, abfx, abfy, abfz,
                 tj, Nj, K3, nrbf3, nelements);
 
-        Var m("m"), k("k"), n("n");
+        Var m("m"), k("k"), n("n"), ne("ne");
 
-        sumU_o(m, k, n) = sumU(m, k, n);
+        sumU_o(m, k, ne) = sumU(m, k, ne);
         U_o(m, k, n) = U(m, k, n);
         Ux_o(m, k, n) = Ux(m, k, n);
         Uy_o(m, k, n) = Uy(m, k, n);
         Uz_o(m, k, n) = Uz(m, k, n);
 
-        sumU_o.dim(0).set_bounds(0, Nj).set_stride(1);
-        sumU_o.dim(1).set_bounds(0, K3).set_stride(Nj);
-        sumU_o.dim(2).set_bounds(0, nrbf3).set_stride(Nj * K3);
+        sumU_o.dim(0).set_bounds(0, nelements).set_stride(1);
+        sumU_o.dim(1).set_bounds(0, K3).set_stride(nelements);
+        sumU_o.dim(2).set_bounds(0, nrbf3).set_stride(nelements * K3);
         U_o.dim(0).set_bounds(0, Nj).set_stride(1);
         U_o.dim(1).set_bounds(0, K3).set_stride(Nj);
         U_o.dim(2).set_bounds(0, nrbf3).set_stride(Nj * K3);

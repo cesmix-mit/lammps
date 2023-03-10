@@ -488,7 +488,7 @@ void buildRBFHalide (double *rbf_f, double *rbfx_f, double *rbfy_f, double *rbfz
 }
     
 void buildradialangularbasis(double *sumU, double *U, double *Ux, double *Uy, double *Uz, double *rbf, double *rbfx, double *rbfy, double *rbfz, double *abf, double *abfx, double *abfy, double *abfz, int *tj, int Nj, int K3, int nrbf3, int nelements, int ns) {
-    Halide::Runtime::Buffer<double> sumU_buffer(sumU, {{0, Nj, 1}, {0, K3, Nj}, {0, nrbf3, K3 * Nj}});
+    Halide::Runtime::Buffer<double> sumU_buffer(sumU, {{0, nelements, 1}, {0, K3, nelements}, {0, nrbf3, K3 * nelements}});
     Halide::Runtime::Buffer<double> U_buffer(U, {{0, Nj, 1}, {0, K3, Nj}, {0, nrbf3, K3 * Nj}});
     Halide::Runtime::Buffer<double> Ux_buffer(Ux, {{0, Nj, 1}, {0, K3, Nj}, {0, nrbf3, K3 * Nj}});
     Halide::Runtime::Buffer<double> Uy_buffer(Uy, {{0, Nj, 1}, {0, K3, Nj}, {0, nrbf3, K3 * Nj}});
@@ -498,14 +498,14 @@ void buildradialangularbasis(double *sumU, double *U, double *Ux, double *Uy, do
     Halide::Runtime::Buffer<double> rbfx_buffer(rbfx, {{0, Nj, 1}, {0, ns, Nj}});
     Halide::Runtime::Buffer<double> rbfy_buffer(rbfy, {{0, Nj, 1}, {0, ns, Nj}});
     Halide::Runtime::Buffer<double> rbfz_buffer(rbfz, {{0, Nj, 1}, {0, ns, Nj}});
-    Halide::Runtime::Buffer<double> abf_buffer(abf, {{0, Nj, 1}, {0, ns, Nj}});
-    Halide::Runtime::Buffer<double> abfx_buffer(abfx, {{0, Nj, 1}, {0, ns, Nj}});
-    Halide::Runtime::Buffer<double> abfy_buffer(abfy, {{0, Nj, 1}, {0, ns, Nj}});
-    Halide::Runtime::Buffer<double> abfz_buffer(abfz, {{0, Nj, 1}, {0, ns, Nj}});
+    Halide::Runtime::Buffer<double> abf_buffer(abf, {{0, Nj, 1}, {0, K3, Nj}});
+    Halide::Runtime::Buffer<double> abfx_buffer(abfx, {{0, Nj, 1}, {0, K3, Nj}});
+    Halide::Runtime::Buffer<double> abfy_buffer(abfy, {{0, Nj, 1}, {0, K3, Nj}});
+    Halide::Runtime::Buffer<double> abfz_buffer(abfz, {{0, Nj, 1}, {0, K3, Nj}});
 
     Halide::Runtime::Buffer<int> tj_buffer(tj, Nj);
 
-    poddescRadialAngularBasis(sumU, U, Ux, Uy, Uz, rbf, rbfx, rbfy, rbfz, abf, abfx, abfy, abfz, tj, Nj, K3, nrbf3, nelements, ns);
+    poddescRadialAngularBasis(Nj, K3, nrbf3, nelements, ns, rbf_buffer, rbfx_buffer, rbfy_buffer, rbfz_buffer, abf_buffer, abfx_buffer, abfy_buffer, abfz_buffer, tj_buffer, sumU_buffer, U_buffer, Ux_buffer, Uy_buffer, Uz_buffer);
 }
 
 
@@ -554,7 +554,7 @@ double FASTPOD::peratomenergyforce(double *fij, double *rij, double *temp,
   
   //begin = std::chrono::high_resolution_clock::now(); 
   
-  // radialbasis(rbft, rbfxt, rbfyt, rbfzt, rij, besselparams, rin, rcut-rin, pdegree[0], pdegree[1], nbesselpars, Nj, true);
+  // radialbasis(rbft, rbfxt, rbfyt, rbfzt, rij, besselparams, rin, rcut-rin, pdegree[0], pdegree[1], nbesselpars, Nj);
 
   //end = std::chrono::high_resolution_clock::now();   
   //comptime[0] += std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count()/1e6;        
@@ -1566,18 +1566,14 @@ void FASTPOD::radialfunctions(double *rbf, double *rij, double *besselparams, do
   }
 }
 
-#include <iostream>
 
 void FASTPOD::radialbasis(double *rbf, double *rbfx, double *rbfy, double *rbfz, double *rij, double *besselparams, double rin,
-        double rmax, int besseldegree, int inversedegree, int nbesselpars, int N, bool printer = false)
+        double rmax, int besseldegree, int inversedegree, int nbesselpars, int N)
 {
   for (int n=0; n<N; n++) {
     double xij1 = rij[0+3*n];
     double xij2 = rij[1+3*n];
     double xij3 = rij[2+3*n];
-    if (printer) {
-        std::cout << xij3 << " <- xij3\n" << xij1 << " <- xij1\n" << xij2 << " <- xij2\n";
-    }
 
     double dij = sqrt(xij1*xij1 + xij2*xij2 + xij3*xij3);
     double dr1 = xij1/dij;
