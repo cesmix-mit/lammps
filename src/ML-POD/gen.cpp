@@ -851,6 +851,66 @@ public:
     }
 };
 
+class poddescAngularBasis : public Halide::Generator<poddescAngularBasis> {
+public:
+
+
+  Input<int> npairs{"npairs", 1};
+  Input<int> k3{"k3", 1};
+  Input<Buffer<double>> rij{"rij", 2};
+  //  Input<Buffer<int>> pq{"pq", 1};
+
+  Output<Buffer<double>> abf4{"abf", 3};
+  
+  
+
+    
+    void generate() {
+      rij.dim(0).set_bounds(0, 3).set_stride(1);
+      rij.dim(1).set_bounds(0, npairs).set_stride(3);
+
+      abf4.dim(2).set_bounds(0, 4).set_stride(k3* npairs);
+      abf4.dim(1).set_bounds(0, k3).set_stride(npairs);
+      abf4.dim(0).set_bounds(0, npairs).set_stride(1);
+      
+      Var c("c");
+      Var pair("pair");
+      Var abfi("abfi");
+
+      Expr x = rij(0, pair);
+      Expr y = rij(1, pair);
+      Expr z = rij(2, pair);
+
+      Expr xx = x*x;
+      Expr yy = y*y;
+      Expr zz = z*z;
+      Expr xy = x*y;
+      Expr xz = x*z;
+      Expr yz = y*z;
+
+      Expr dij = sqrt(xx + yy + zz);
+      Expr u = x/dij;
+      Expr v = y/dij;
+      Expr w = z/dij;
+
+      Expr dij3 = dij*dij*dij;
+      Expr dudx = (yy+zz)/dij3;
+      Expr dudy = -xy/dij3;
+      Expr dudz = -xz/dij3;
+
+      Expr dvdx = -xy/dij3;
+      Expr dvdy = (xx+zz)/dij3;
+      Expr dvdz = -yz/dij3;
+
+      Expr dwdx = -xz/dij3;
+      Expr dwdy = -yz/dij3;
+      Expr dwdz = (xx+yy)/dij3;
+
+
+      
+    }
+};
+
 
   
 
