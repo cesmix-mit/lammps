@@ -686,7 +686,7 @@ void radialAngularBasis(Func & sumU, Func & U, Func & Ux, Func & Uy, Func & Uz,
     //Expr c1 = rbf(m, n);
     //Expr c2 = abf(k, n);
     Expr c1 = rbf(n, m);
-    Expr c2 = abf(n, m);
+    Expr c2 = abf(n, k);
     
     // U(m, k, n) = c1 * c2;
     // Ux(m, k, n) = abfx(k, n) * c1 + c2 * rbfx(m, n);
