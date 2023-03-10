@@ -683,29 +683,31 @@ void radialAngularBasis(Func & sumU, Func & U, Func & Ux, Func & Uy, Func & Uz,
     Var n("n"), k("k"), m("m"), ne("ne");
     sumU(m, k, ne) = zero;
 
-    Expr c1 = rbf(m, n);
-    Expr c2 = abf(k, n);
+    //Expr c1 = rbf(m, n);
+    //Expr c2 = abf(k, n);
+    Expr c1 = rbf(n, m);
+    Expr c2 = abf(n, m);
     
-    // U(n, k, m) = c1 * c2;
-    // Ux(n, k, m) = abfx(n, k) * c1 + c2 * rbfx(n, m);
-    // Uy(n, k, m) = abfy(n, k) * c1 + c2 * rbfy(n, m);
-    // Uz(n, k, m) = abfz(n, k) * c1 + c2 * rbfz(n, m);
+    // U(m, k, n) = c1 * c2;
+    // Ux(m, k, n) = abfx(k, n) * c1 + c2 * rbfx(m, n);
+    // Uy(m, k, n) = abfy(k, n) * c1 + c2 * rbfy(m, n);
+    // Uz(m, k, n) = abfz(k, n) * c1 + c2 * rbfz(m, n);
     U(m, k, n) = c1 * c2;
-    Ux(m, k, n) = abfx(k, n) * c1 + c2 * rbfx(m, n);
-    Uy(m, k, n) = abfy(k, n) * c1 + c2 * rbfy(m, n);
-    Uz(m, k, n) = abfz(k, n) * c1 + c2 * rbfz(m, n);
+    Ux(m, k, n) = abfx(n, k) * c1 + c2 * rbfx(n, m);
+    Uy(m, k, n) = abfy(n, k) * c1 + c2 * rbfy(n, m);
+    Uz(m, k, n) = abfz(n, k) * c1 + c2 * rbfz(n, m);
 
     RDom r(0, M, 0, K, 0, N);
     Expr in = atomtype(r.z) - 1;
 
-    // sumU(clamp(in, 0, Ne), r.y, r.x) += rbf(r.z, r.x) * abf(r.z, r.y);
-    sumU(r.x, r.y, clamp(in, 0, Ne)) += rbf(r.x, r.z) * abf(r.y, r.z);
+    // sumU(r.x, r.y, clamp(in, 0, Ne - 1)) += rbf(r.x, r.z) * abf(r.y, r.z);
+    sumU(r.x, r.y, clamp(in, 0, Ne - 1)) += rbf(r.z, r.x) * abf(r.z, r.y);
 
-    sumU.bound(ne, 0, Ne);
-    U.bound(n, 0, N);
-    Ux.bound(n, 0, N);
-    Uy.bound(n, 0, N);
-    Uz.bound(n, 0, N);
+    sumU.bound(m, 0, M);
+    U.bound(m, 0, M);
+    Ux.bound(m, 0, M);
+    Uy.bound(m, 0, M);
+    Uz.bound(m, 0, M);
 
     sumU.bound(k, 0, K);
     U.bound(k, 0, K);
@@ -713,11 +715,12 @@ void radialAngularBasis(Func & sumU, Func & U, Func & Ux, Func & Uy, Func & Uz,
     Uy.bound(k, 0, K);
     Uz.bound(k, 0, K);
 
-    sumU.bound(m, 0, M);
-    U.bound(m, 0, M);
-    Ux.bound(m, 0, M);
-    Uy.bound(m, 0, M);
-    Uz.bound(m, 0, M);
+    sumU.bound(ne, 0, Ne);
+    U.bound(n, 0, N);
+    Ux.bound(n, 0, N);
+    Uy.bound(n, 0, N);
+    Uz.bound(n, 0, N);
+
 }
 
 
@@ -863,11 +866,16 @@ public:
 
         Var m("m"), k("k"), n("n"), ne("ne");
 
-        sumU_o(m, k, ne) = sumU(m, k, ne);
-        U_o(m, k, n) = U(m, k, n);
-        Ux_o(m, k, n) = Ux(m, k, n);
-        Uy_o(m, k, n) = Uy(m, k, n);
-        Uz_o(m, k, n) = Uz(m, k, n);
+        //sumU_o(m, k, ne) = sumU(m, k, ne);
+        //U_o(m, k, n) = U(m, k, n);
+        //Ux_o(m, k, n) = Ux(m, k, n);
+        //Uy_o(m, k, n) = Uy(m, k, n);
+        //Uz_o(m, k, n) = Uz(m, k, n);
+        sumU_o(ne, k, m) = sumU(m, k, ne);
+        U_o(n, k, m) = U(m, k, n);
+        Ux_o(n, k, m) = Ux(m, k, n);
+        Uy_o(n, k, m) = Uy(m, k, n);
+        Uz_o(n, k, m) = Uz(m, k, n);
 
         sumU_o.dim(0).set_bounds(0, nelements).set_stride(1);
         sumU_o.dim(1).set_bounds(0, K3).set_stride(nelements);
