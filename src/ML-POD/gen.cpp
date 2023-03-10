@@ -4,6 +4,7 @@
 #include <math.h> 
 using namespace Halide;
 
+
 //Func buildRbfFunc(std::string call, Func rij, Func scalefunc, Expr rin, Expr rmax, int pdegree, int K, )
 
  void buildSnap(Func &  rbf, Func xij, Func besselparams, Expr rin, Expr rcut,
@@ -695,11 +696,11 @@ void radialAngularBasis(Func & sumU, Func & U, Func & Ux, Func & Uy, Func & Uz,
     Uy(m, k, n) = abfy(k, n) * c1 + c2 * rbfy(m, n);
     Uz(m, k, n) = abfz(k, n) * c1 + c2 * rbfz(m, n);
 
-    RDom r(0, M, 0, K, 0, N);
+    RDom r(0, M, 0, K, 0, Ne);
     Expr in = atomtype(r.z) - 1;
 
     // sumU(clamp(in, 0, Ne), r.y, r.x) += rbf(r.z, r.x) * abf(r.z, r.y);
-    sumU(r.x, r.y, clamp(in, 0, Ne)) += rbf(r.x, r.z) * abf(r.y, r.z);
+    sumU(r.x, r.y, clamp(in, 0, Ne - 1)) += rbf(r.x, r.z) * abf(r.y, r.z);
 
     sumU.bound(ne, 0, Ne);
     U.bound(n, 0, N);
