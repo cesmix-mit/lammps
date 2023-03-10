@@ -723,104 +723,83 @@ void radialAngularBasis(Func & sumU, Func & U, Func & Ux, Func & Uy, Func & Uz,
 
 }
 
+void twoBodyDescDeriv(Func & d2, Func & dd2, Func rbf, Func rbfx, Func rbfy, Func rbfz, Func tj, Expr N, Expr Ne, Expr nrbf2)
+{
+    Expr zero = Expr((double) 0.0);
 
+    Var ne("ne"), m("m"), n("n"), dim("dim");
+    d2(ne, m) = zero;
+    dd2(ne, m, n, dim) = zero;
 
-class pod1 : public Halide::Generator<pod1> {
-public:
-  //Func pairnumsum, Func pairlist,
-  //				       Expr NPairs, Expr NAtoms, Expr NMax, Expr dim,
-  //				       Func atomtype, Func alist, Func atompos
-  
-  Input<Buffer<int>> pairlist{"pairlist", 1};
-  Input<Buffer<int>> pairnumsum{"pairnumsum", 1};
-  Input<Buffer<int>> atomtype{"atomptype", 1};
-  Input<Buffer<int>> alist{"alist", 1};
-  Input<Buffer<double>> atompos{"atompos", 2};
+    RDom r(0, N, 0, nrbf2);
 
-  Output<Buffer<double>> rij{"rij", 2};
-  Output<Buffer<int>> meta{"meta", 2};
+    d2(clamp(tj(r.x)-1, 0, Ne - 1), r.y) += rbf(r.x, r.y);
+    dd2(clamp(tj(r.x)-1, 0, Ne - 1), r.y, r.x, 0) += rbfx(r.x, r.y);
+    dd2(clamp(tj(r.x)-1, 0, Ne - 1), r.y, r.x, 1) += rbfy(r.x, r.y);
+    dd2(clamp(tj(r.x)-1, 0, Ne - 1), r.y, r.x, 2) += rbfz(r.x, r.y);
 
-  Pipeline pipeline;
+    d2.bound(ne, 0, Ne);
+    d2.bound(m, 0, nrbf2);
 
-  GeneratorParam<int> NMax{"NMax", 100};
-  GeneratorParam<int> NTypes{"NTypes", 3};
-  //  GeneratorParam<int> M{"M", 50};
-  //  GeneratorParam<int> I{"I", 5000};
-  
-
-
-  void generate (){
-
-    Expr NPairs = pairlist.dim(0).max();
-    Expr NAtoms = atomtype.dim(0).max();
-    alist.dim(0).set_bounds(0, NAtoms);
-    atompos.dim(0).set_bounds(0, NAtoms);
-    atompos.dim(1).set_bounds(0, 3);
-    Func np1_data, np1_vecs;
-
-    Var i("i"), j("j");
-
-    //    rij(i, j)= np1_vecs(i, j);
-    //    meta(i, j) = np1_data(i, j);
-
-  }
-
-};
-
-
-class poddescRBF : public Halide::Generator<poddescRBF> {
-public:
-
-    Input<Buffer<double>> besselparams{"besselparams", 1};
-    Input<int> nbesselparams{"nbesselpars", 1};
-    Input<int> bdegree{"bdegree", 1};
-    Input<int> adegree{"adegree", 1};
-    Input<int> npairs{"npairs", 1};
-
-    Input<double> rin{"rin", 1};
-    Input<double> rcut{"rcut", 1};
-    Input<Buffer<double>> rijs{"rijs", 2};
-
-    Output<Buffer<double>> rbf_o{"rbf_f", 1};
-    Output<Buffer<double>> rbfxf_o{"rbfx_f", 1};
-    Output<Buffer<double>> rbfyf_o{"rbfy_f", 1};
-    Output<Buffer<double>> rbfzf_o{"rbfz_f", 1};
+    dd2.bound(ne, 0, Ne);
+    dd2.bound(m, 0, nrbf2);
+    dd2.bound(n, 0, N);
+    dd2.bound(dim, 0, 3);
     
+}
+
+class poddescTwoBodyDescDeriv : public Halide::Generator<poddescTwoBodyDescDeriv> {
+public:
+    Output<Buffer<double>> d2_o{"d2_o", 2};
+    Output<Buffer<double>> dd2_o{"dd2_o", 4};
+
+    Input<Buffer<double>> rbf{"rbf", 2};
+    Input<Buffer<double>> rbfx{"rbfx", 2};
+    Input<Buffer<double>> rbfy{"rbfy", 2};
+    Input<Buffer<double>> rbfz{"rbfz", 2};
+
+    Input<Buffer<int>> tj{"tj", 1};
+    
+    Input<int> N{"N", 1};
+    Input<int> Ne{"Ne", 1};
+    Input<int> nrbf2{"nrbf2", 1};
+    Input<int> ns{"ns", 1};
+
     void generate() {
-        rijs.dim(0).set_bounds(0, npairs).set_stride(3);
-        rijs.dim(1).set_bounds(0, 3).set_stride(1);
+        rbf.dim(0).set_bounds(0, N).set_stride(1);
+        rbf.dim(1).set_bounds(0, ns).set_stride(N);
+        rbfx.dim(0).set_bounds(0, N).set_stride(1);
+        rbfx.dim(1).set_bounds(0, ns).set_stride(N);
+        rbfy.dim(0).set_bounds(0, N).set_stride(1);
+        rbfy.dim(1).set_bounds(0, ns).set_stride(N);
+        rbfz.dim(0).set_bounds(0, N).set_stride(1);
+        rbfz.dim(1).set_bounds(0, ns).set_stride(N);
 
+        Func d2("d2"), dd2("dd2");
+        twoBodyDescDeriv(d2, dd2, rbf, rbfx, rbfy, rbfz, tj, N, Ne, nrbf2);
 
-        besselparams.dim(0).set_bounds(0, nbesselparams);
-        Var bfi("basis function index");
-        Var bfp("basis function param");
-        Var np("pairindex");
-        Var numOuts("numOuts");
-        Var dim("dim");
+        Var ne("ne"), m("m"), n("n"), dim("dim");
+        d2_o(ne, m) = d2(ne, m);
+        dd2_o(ne, m, n, dim) = dd2(ne, m, n, dim);
+        
+        d2_o.dim(0).set_bounds(0, Ne).set_stride(1);
+        d2_o.dim(1).set_bounds(0, nrbf2).set_stride(Ne);
 
-        Func rbf_f("rbf_f"), rbfx_f("rbfx_f"), rbfy_f("rbfy_f"), rbfz_f("rbfz_f");
-        buildRBF(rbf_f, rbfx_f, rbfy_f, rbfz_f,
-             rijs, besselparams, rin, rcut-rin,
-             bdegree, adegree, nbesselparams, npairs,
-             bfi, bfp, np, dim);
-
-        Var rbf_output("rbf_output");
-
-        rbf_o(rbf_output) = rbf_f(rbf_output);
-        rbfxf_o(rbf_output) = rbfx_f(rbf_output);
-        rbfyf_o(rbf_output) = rbfy_f(rbf_output);
-        rbfzf_o(rbf_output) = rbfz_f(rbf_output);
+        dd2_o.dim(0).set_bounds(0, Ne).set_stride(1);
+        dd2_o.dim(1).set_bounds(0, nrbf2).set_stride(Ne);
+        dd2_o.dim(2).set_bounds(0, N).set_stride(Ne * nrbf2);
+        dd2_o.dim(3).set_bounds(0, 3).set_stride(Ne * nrbf2 * N);
     }
 };
 
 class poddescRadialAngularBasis : public Halide::Generator<poddescRadialAngularBasis> {
 public:
 
-    Input<int> Nj{"Nj", 1};
-    Input<int> K3{"K3", 1};
-    Input<int> nrbf3{"nrbf3", 1};
-    Input<int> nelements{"nelements", 1};
-    Input<int> ns{"ns", 1};
+    Output<Buffer<double>> sumU_o{"sumU", 3};
+    Output<Buffer<double>> U_o{"U", 3};
+    Output<Buffer<double>> Ux_o{"Ux", 3};
+    Output<Buffer<double>> Uy_o{"Uy", 3};
+    Output<Buffer<double>> Uz_o{"Uz", 3};
 
     Input<Buffer<double>> rbf{"rbf", 2};
     Input<Buffer<double>> rbfx{"rbfx", 2};
@@ -832,11 +811,11 @@ public:
     Input<Buffer<double>> abfz{"abfz", 2};
     Input<Buffer<int>> tj{"tj", 1};
 
-    Output<Buffer<double>> sumU_o{"sumU", 3};
-    Output<Buffer<double>> U_o{"U", 3};
-    Output<Buffer<double>> Ux_o{"Ux", 3};
-    Output<Buffer<double>> Uy_o{"Uy", 3};
-    Output<Buffer<double>> Uz_o{"Uz", 3};
+    Input<int> Nj{"Nj", 1};
+    Input<int> K3{"K3", 1};
+    Input<int> nrbf3{"nrbf3", 1};
+    Input<int> nelements{"nelements", 1};
+    Input<int> ns{"ns", 1};
 
     void generate() {
         rbf.dim(0).set_bounds(0, Nj).set_stride(1);
@@ -895,6 +874,50 @@ public:
     }
 };
 
+class poddescRBF : public Halide::Generator<poddescRBF> {
+public:
+
+    Output<Buffer<double>> rbf_o{"rbf_f", 1};
+    Output<Buffer<double>> rbfxf_o{"rbfx_f", 1};
+    Output<Buffer<double>> rbfyf_o{"rbfy_f", 1};
+    Output<Buffer<double>> rbfzf_o{"rbfz_f", 1};
+    
+    Input<Buffer<double>> rijs{"rijs", 2};
+    Input<Buffer<double>> besselparams{"besselparams", 1};
+    Input<int> nbesselparams{"nbesselpars", 1};
+    Input<int> bdegree{"bdegree", 1};
+    Input<int> adegree{"adegree", 1};
+    Input<int> npairs{"npairs", 1};
+
+    Input<double> rin{"rin", 1};
+    Input<double> rcut{"rcut", 1};
+
+    void generate() {
+        rijs.dim(0).set_bounds(0, npairs).set_stride(3);
+        rijs.dim(1).set_bounds(0, 3).set_stride(1);
+
+
+        besselparams.dim(0).set_bounds(0, nbesselparams);
+        Var bfi("basis function index");
+        Var bfp("basis function param");
+        Var np("pairindex");
+        Var numOuts("numOuts");
+        Var dim("dim");
+
+        Func rbf_f("rbf_f"), rbfx_f("rbfx_f"), rbfy_f("rbfy_f"), rbfz_f("rbfz_f");
+        buildRBF(rbf_f, rbfx_f, rbfy_f, rbfz_f,
+             rijs, besselparams, rin, rcut-rin,
+             bdegree, adegree, nbesselparams, npairs,
+             bfi, bfp, np, dim);
+
+        Var rbf_output("rbf_output");
+
+        rbf_o(rbf_output) = rbf_f(rbf_output);
+        rbfxf_o(rbf_output) = rbfx_f(rbf_output);
+        rbfyf_o(rbf_output) = rbfy_f(rbf_output);
+        rbfzf_o(rbf_output) = rbfz_f(rbf_output);
+    }
+};
 
 
 class snapshot : public Halide::Generator<snapshot> {
@@ -933,9 +956,52 @@ public:
   }
 
 };
+
+class pod1 : public Halide::Generator<pod1> {
+public:
+  //Func pairnumsum, Func pairlist,
+  //				       Expr NPairs, Expr NAtoms, Expr NMax, Expr dim,
+  //				       Func atomtype, Func alist, Func atompos
+
+  Input<Buffer<int>> pairlist{"pairlist", 1};
+  Input<Buffer<int>> pairnumsum{"pairnumsum", 1};
+  Input<Buffer<int>> atomtype{"atomptype", 1};
+  Input<Buffer<int>> alist{"alist", 1};
+  Input<Buffer<double>> atompos{"atompos", 2};
+
+  Output<Buffer<double>> rij{"rij", 2};
+  Output<Buffer<int>> meta{"meta", 2};
+
+  Pipeline pipeline;
+
+  GeneratorParam<int> NMax{"NMax", 100};
+  GeneratorParam<int> NTypes{"NTypes", 3};
+  //  GeneratorParam<int> M{"M", 50};
+  //  GeneratorParam<int> I{"I", 5000};
+
+
+
+  void generate (){
+
+    Expr NPairs = pairlist.dim(0).max();
+    Expr NAtoms = atomtype.dim(0).max();
+    alist.dim(0).set_bounds(0, NAtoms);
+    atompos.dim(0).set_bounds(0, NAtoms);
+    atompos.dim(1).set_bounds(0, 3);
+    Func np1_data, np1_vecs;
+
+    Var i("i"), j("j");
+
+    //    rij(i, j)= np1_vecs(i, j);
+    //    meta(i, j) = np1_data(i, j);
+
+  }
+
+};
   
 
 HALIDE_REGISTER_GENERATOR(pod1, pod1);
 HALIDE_REGISTER_GENERATOR(snapshot, snapshot);
 HALIDE_REGISTER_GENERATOR(poddescRBF, poddescRBF);
 HALIDE_REGISTER_GENERATOR(poddescRadialAngularBasis, poddescRadialAngularBasis);
+HALIDE_REGISTER_GENERATOR(poddescTwoBodyDescDeriv, poddescTwoBodyDescDeriv);
