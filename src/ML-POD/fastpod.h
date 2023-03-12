@@ -180,7 +180,7 @@ public:
   double onebodyenergy(double *coeff1, int *ti);
 
   void twobodydescderiv(double *d2, double *dd2, double *rbf, double *rbfx,
-        double *rbfy, double *rbfz, int *tj, int N);
+        double *rbfy, double *rbfz, int *tj, int N, bool printer = false);
 
   void twobodydescriptors(double *d2, double *dd2, double *rij, double *tempmem, int *tj, int Nj);
 
