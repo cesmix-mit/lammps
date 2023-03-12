@@ -876,6 +876,7 @@ public:
       Var c("c");
       Var pair("pair");
       Var abfi("abfi");
+      Var dim("dim");
 
       Expr x = rij(0, pair);
       Expr y = rij(1, pair);
@@ -884,14 +885,63 @@ public:
       Expr xx = x*x;
       Expr yy = y*y;
       Expr zz = z*z;
-      Expr xy = x*y;
-      Expr xz = x*z;
-      Expr yz = y*z;
 
+      Func dij_f("dij_f");
       Expr dij = sqrt(xx + yy + zz);
-      Expr u = x/dij;
-      Expr v = y/dij;
-      Expr w = z/dij;
+      dij_f(pair) = dij;
+      //dij_f.bound(npair, 0, npairs);
+      //dij_f.compute_root();
+
+      //Make x/sqrt(rij dot rij)
+      Func rijnormed;
+      rijnormed(dim, pair) = rij(dim, pair)/dij_f(pair);
+      rijnormed.bound(dim, 0, 3).bound(pair, 0, npairs);
+
+      //Make monos: u^i v^k w^k
+      Func uvw("uvw");
+      Var x1("x1");
+      Var x2("x2");
+      Var x3("x3");
+      Func pows("pows");
+      pows(x1, pair, dim) = pow(rijnormed(dim, pair), x1);
+      pows.bound(x1, 0, k3).bound(pair, 0, npairs).bound(dim, 0, 3);
+      pows.compute_root();
+      
+      uvw(x1,x2,x3, pair) = pows(x1, pair, 0) * pows(x2, pair, 1) * pows(x3, pair, 2);
+      uvw.bound(x1, 0, k3);
+      uvw.bound(x2, 0, k3);
+      uvw.bound(x3, 0, k3);
+      uvw.bound(pair, 0, npairs);
+
+      ///Manually lift to avoid /
+      Expr norm = powx(2, pair) + powy(2, pair) + powz(2, pair);
+      Func uvwdu;
+      uvwdu(pair, x1,x2,x3) = (x1 * (pows(2, pair, 1) + pows(2, pair, 2)) - ((x2 + x3) * pows(2,pair, 0)))/(x * norm);
+      uvwdu.bound(x1, 0, k3);
+      uvwdu.bound(x2, 0, k3);
+      uvwdu.bound(x3, 0, k3);
+      uvwdu.bound(pair, 0, npairs);
+
+      Func uvwdv;
+      uvwdv(pair, x1,x2,x3) = (x2 * (pows(2, pair, 0) + pows(2, pair, 2)) - ((x1 + x3) * pows(2,pair, 1)))/(y * norm);
+      uvwdv.bound(x1, 0, k3);
+      uvwdv.bound(x2, 0, k3);
+      uvwdv.bound(x3, 0, k3);
+      uvwdv.bound(pair, 0, npairs);
+      Func uvwdw;
+      uvwdw(pair, x1,x2,x3) = (x3 * (pows(2, pair, 0) + pows(2, pair, 1)) - ((x1 + x2) * pows(2,pair, 2)))/(z * norm);
+      uvwdv.bound(x1, 0, k3);
+      uvwdv.bound(x2, 0, k3);
+      uvwdv.bound(x3, 0, k3);
+      uvwdv.bound(pair, 0, npairs);
+      //Reduce mono x+y+z=n
+      abf4(c, abfi, pair) = Expr((double) 0.0);
+      RDom r(0, k3, 0, k3, 0, k3);
+      r.where(r.x + r.y + r.z <= k3);
+      abf4(0, r.x + r.y + r.z, pair) += uvw(pair, r.x, r.y, r.z);
+      abf4(1, r.x + r.y + r.z, pair) += uvw(pair, r.x, r.y, r.z, pair) * uvwdu(pair, r.x, r.y, r.z);
+      abf4(2, r.x + r.y + r.z, pair) += uvw(pair, r.x, r.y, r.z, pair) * uvwdv(pair, r.x, r.y, r.z);
+      abf4(3, r.x + r.y + r.z, pair) += uvw(pair, r.x, r.y, r.z, pair) * uvwdw(pair, r.x, r.y, r.z);
 
       Expr dij3 = dij*dij*dij;
       Expr dudx = (yy+zz)/dij3;
