@@ -794,8 +794,8 @@ public:
         twoBodyDescDeriv(d2, dd2, rbf, rbfx, rbfy, rbfz, tj, N, Ne, nrbf2);
 
         Var ne("ne"), m("m"), n("n"), dim("dim");
-        d2_o(ne, m) = d2(ne, m);
-        dd2_o(ne, m, n, dim) = dd2(ne, m, n, dim);
+        d2_o(m, ne) = d2(ne, m);
+        dd2_o(dim, n, m, ne) = dd2(ne, m, n, dim);
 
         d2_o.trace_stores();
         dd2_o.trace_stores();
@@ -804,13 +804,13 @@ public:
         d2_o.dim(0).set_bounds(0, nrbf2).set_stride(1);
         d2_o.dim(1).set_bounds(0, Ne).set_stride(nrbf2);
         */
-        d2_o.dim(0).set_bounds(0, Ne).set_stride(1);
-        d2_o.dim(1).set_bounds(0, nrbf2).set_stride(Ne);
+        d2_o.dim(0).set_bounds(0, nrbf2).set_stride(1);
+        d2_o.dim(1).set_bounds(0, Ne).set_stride(nrbf2);
 
-        dd2_o.dim(0).set_bounds(0, Ne).set_stride(1);
-        dd2_o.dim(1).set_bounds(0, nrbf2).set_stride(Ne);
-        dd2_o.dim(2).set_bounds(0, N).set_stride(Ne * nrbf2);
-        dd2_o.dim(3).set_bounds(0, 3).set_stride(Ne * nrbf2 * N);
+        dd2_o.dim(0).set_bounds(0, 3).set_stride(1);
+        dd2_o.dim(1).set_bounds(0, N).set_stride(3);
+        dd2_o.dim(2).set_bounds(0, nrbf2).set_stride(3 * N);
+        dd2_o.dim(3).set_bounds(0, Ne).set_stride(3 * N * nrbf2);
 
         /*
         dd2_o.dim(0).set_bounds(0, 3).set_stride(1);
