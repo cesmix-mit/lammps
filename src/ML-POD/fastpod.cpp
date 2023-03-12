@@ -512,9 +512,11 @@ void buildradialangularbasis(double *sumU, double *U, double *Ux, double *Uy, do
 void buildtwobodydescderiv(double *d2, double *dd2, double *rbf, double *rbfx, double *rbfy, double *rbfz, int *tj, int N, int Ne, int nrbf2, int ns)
 {
     //Halide::Runtime::Buffer<double> d2_buffer(d2, {{0, Ne, 1}, {0, nrbf2, Ne}});
-    Halide::Runtime::Buffer<double> d2_buffer(d2, {{0, nrbf2, 1}, {0, Ne, nrbf2}});
+    Halide::Runtime::Buffer<double> d2_buffer(d2, {{0, Ne, Ne}, {0, nrbf2, 1}});
+    //Halide::Runtime::Buffer<double> d2_buffer(d2, {{0, nrbf2, 1}, {0, Ne, nrbf2}});
     //Halide::Runtime::Buffer<double> dd2_buffer(d2, {{0, Ne, 1}, {0, nrbf2, Ne}, {0, N, Ne * nrbf2}, {0, 3, Ne * nrbf2 * N}});
-    Halide::Runtime::Buffer<double> dd2_buffer(d2, {{0, 3, 1}, {0, N, 3}, {0, nrbf2, 3 * N}, {0, Ne, 3 * N * nrbf2}});
+    Halide::Runtime::Buffer<double> dd2_buffer(d2, {{0, Ne, Ne * nrbf2 * N}, {0, nrbf2, Ne * nrbf2}, {0, N, Ne}, {0, 3, 1}});
+    //Halide::Runtime::Buffer<double> dd2_buffer(d2, {{0, 3, 1}, {0, N, 3}, {0, nrbf2, 3 * N}, {0, Ne, 3 * N * nrbf2}});
     
     Halide::Runtime::Buffer<double> rbf_buffer(rbf, {{0, N, 1}, {0, ns, N}});
     Halide::Runtime::Buffer<double> rbfx_buffer(rbfx, {{0, N, 1}, {0, ns, N}});
