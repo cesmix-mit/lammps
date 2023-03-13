@@ -28,6 +28,7 @@
 #include "tokenizer.h"
 #include "poddesc.h"
 #include "poddescFourMult.h"
+#include "poddescAngularBasis.h"
 #include "HalideBuffer.h"
 
 #include <cmath>
@@ -499,6 +500,13 @@ void buildHalideFourMult(double * rbfo_all, double *rbft_all, double * Phi, int 
 }
 
 
+void buildHalideAngularBasis(double *abf, double *rij, double * tm, int *pq, int N, int K){
+  Halide::Runtime::Buffer<double> rij_buffer(rij, {{0, 3, 1}, {0, N, 3}});
+  Halide::Runtime::Buffer<double> abf_buffer(abf, {{0, N, 1}, {0, K, N}, {0, 4, K * N}});
+  poddescAngularBasis(N, K, rij_buffer, abf_buffer);
+}
+
+
 
 double FASTPOD::peratomenergyforce(double *fij, double *rij, double *temp,
         int *ti, int *tj, int Nj)
@@ -593,7 +601,9 @@ double FASTPOD::peratomenergyforce(double *fij, double *rij, double *temp,
 
     //begin = std::chrono::high_resolution_clock::now(); 
     
-    angularbasis(abf, abfx, abfy, abfz, rij, tm, pq3, Nj, K3);
+    //    angularbasis(abf, abfx, abfy, abfz, rij, tm, pq3, Nj, K3);
+    std::cout << "Using " << Nj << " and " << K3 << "\n";
+    buildHalideAngularBasis(abf, rij, tm, pq3, Nj, K3);
 
     //end = std::chrono::high_resolution_clock::now();   
     //comptime[2] += std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count()/1e6;        
@@ -1760,6 +1770,8 @@ void FASTPOD::angularfunctions(double *abf, double *rij, double *tm, int *pq, in
   }
 }
 
+
+
 void FASTPOD::angularbasis(double *abf, double *abfx, double *abfy, double *abfz, double *rij, double *tm, int *pq, int N, int K)
 {
   double *tmu = &tm[K];
@@ -1786,6 +1798,8 @@ void FASTPOD::angularbasis(double *abf, double *abfx, double *abfy, double *abfz
     double u = x/dij;
     double v = y/dij;
     double w = z/dij;
+    
+    
 
     double dij3 = dij*dij*dij;
     double dudx = (yy+zz)/dij3;
