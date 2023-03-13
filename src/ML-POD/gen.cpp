@@ -763,6 +763,70 @@ void twoBodyDescDeriv(Func & d2, Func & dd2, Func rbf, Func rbfx, Func rbfy, Fun
     
 }
 
+Expr tallyTwoBodyLocalForce(Func & fij, Func coeff2, Func rbf, Func rbfx, Func rbfy, Func rbfz, Func tj, Expr nbf, Expr N)
+{
+    Expr zero = Expr((double) 0.0);
+
+    Expr e = zero;
+    Var n("n"), m("m"), dim("dim");
+    fij(n, dim) = zero;
+
+    RDom r(0, N, 0, nbf);
+
+    Expr c = coeff2(clamp(tj(r.x), 0, N - 1) - 1, r.y);
+    e += c * rbf(r.x, r.y);
+    fij(r.x, 0) += c * rbfx(r.x, r.y);
+    fij(r.x, 1) += c * rbfy(r.x, r.y);
+    fij(r.x, 2) += c * rbfz(r.x, r.y);
+
+    fij.bound(n, 0, N);
+    fij.bound(dim, 0, 3);
+
+    return e;
+}
+
+class poddescTallyTwoBodyLocalForce : public Halide::Generator<poddescTallyTwoBodyLocalForce> {
+public:
+    Output<Buffer<double>> fij_o{"fij_o", 2};
+    Output<double> e_o{"e_o"};
+
+    Input<Buffer<double>> coeff2{"coeff2", 2};
+    Input<Buffer<double>> rbf{"rbf", 2};
+    Input<Buffer<double>> rbfx{"rbfx", 2};
+    Input<Buffer<double>> rbfy{"rbfy", 2};
+    Input<Buffer<double>> rbfz{"rbfz", 2};
+
+    Input<Buffer<int>> tj{"tj", 1};
+
+    Input<int> nbf{"nbf", 1};
+    Input<int> N{"N", 1};
+    Input<int> ns{"ns", 1};
+
+    void generate() {
+        rbf.dim(0).set_bounds(0, N).set_stride(1);
+        rbf.dim(1).set_bounds(0, ns).set_stride(N);
+        rbfx.dim(0).set_bounds(0, N).set_stride(1);
+        rbfx.dim(1).set_bounds(0, ns).set_stride(N);
+        rbfy.dim(0).set_bounds(0, N).set_stride(1);
+        rbfy.dim(1).set_bounds(0, ns).set_stride(N);
+        rbfz.dim(0).set_bounds(0, N).set_stride(1);
+        rbfz.dim(1).set_bounds(0, ns).set_stride(N);
+
+        coeff2.dim(0).set_bounds(0, nbf).set_stride(1);
+        coeff2.dim(1).set_bounds(0, N).set_stride(nbf);
+
+        Func fij("fij");
+        tallyTwoBodyLocalForce(fij, coeff2, rbf, rbfx, rbfy, rbfz, tj, nbf, N);
+
+        Var n("n"), dim("dim");
+        fij_o(n, dim) = fij(n, dim);
+
+        fij_o.dim(0).set_bounds(0, N).set_stride(1);
+        fij_o.dim(1).set_bounds(0, 3).set_stride(N);
+    }
+};
+
+
 class poddescTwoBodyDescDeriv : public Halide::Generator<poddescTwoBodyDescDeriv> {
 public:
     Output<Buffer<double>> d2_o{"d2_o", 2};
@@ -797,19 +861,21 @@ public:
         d2_o(ne, m) = d2(ne, m);
         dd2_o(ne, m, n, dim) = dd2(ne, m, n, dim);
 
+        /*
         d2_o.trace_stores();
         dd2_o.trace_stores();
+        */
         
         /*
         d2_o.dim(0).set_bounds(0, nrbf2).set_stride(1);
         d2_o.dim(1).set_bounds(0, Ne).set_stride(nrbf2);
         */
-        d2_o.dim(0).set_bounds(0, Ne).set_stride(Ne);
+        d2_o.dim(0).set_bounds(0, Ne).set_stride(nrbf2);
         d2_o.dim(1).set_bounds(0, nrbf2).set_stride(1);
 
-        dd2_o.dim(0).set_bounds(0, Ne).set_stride(Ne * nrbf2 * N);
-        dd2_o.dim(1).set_bounds(0, nrbf2).set_stride(Ne * nrbf2);
-        dd2_o.dim(2).set_bounds(0, N).set_stride(Ne);
+        dd2_o.dim(0).set_bounds(0, Ne).set_stride(3 * N * nrbf2);
+        dd2_o.dim(1).set_bounds(0, nrbf2).set_stride(3 * N);
+        dd2_o.dim(2).set_bounds(0, N).set_stride(3);
         dd2_o.dim(3).set_bounds(0, 3).set_stride(1);
 
         /*
@@ -1035,3 +1101,4 @@ HALIDE_REGISTER_GENERATOR(snapshot, snapshot);
 HALIDE_REGISTER_GENERATOR(poddescRBF, poddescRBF);
 HALIDE_REGISTER_GENERATOR(poddescRadialAngularBasis, poddescRadialAngularBasis);
 HALIDE_REGISTER_GENERATOR(poddescTwoBodyDescDeriv, poddescTwoBodyDescDeriv);
+//HALIDE_REGISTER_GENERATOR(poddescTallyTwoBodyLocalForce, poddescTallyTwoBodyLocalForce);
