@@ -512,12 +512,8 @@ void buildradialangularbasis(double *sumU, double *U, double *Ux, double *Uy, do
 
 void buildtwobodydescderiv(double *d2, double *dd2, double *rbf, double *rbfx, double *rbfy, double *rbfz, int *tj, int N, int Ne, int nrbf2, int ns)
 {
-    //Halide::Runtime::Buffer<double> d2_buffer(d2, {{0, Ne, 1}, {0, nrbf2, Ne}});
     Halide::Runtime::Buffer<double> d2_buffer(d2, {{0, Ne, nrbf2}, {0, nrbf2, 1}});
-    //Halide::Runtime::Buffer<double> d2_buffer(d2, {{0, nrbf2, 1}, {0, Ne, nrbf2}});
-    //Halide::Runtime::Buffer<double> dd2_buffer(d2, {{0, Ne, 1}, {0, nrbf2, Ne}, {0, N, Ne * nrbf2}, {0, 3, Ne * nrbf2 * N}});
     Halide::Runtime::Buffer<double> dd2_buffer(dd2, {{0, Ne, 3 * N * nrbf2}, {0, nrbf2, 3 * N}, {0, N, 3}, {0, 3, 1}});
-    //Halide::Runtime::Buffer<double> dd2_buffer(d2, {{0, 3, 1}, {0, N, 3}, {0, nrbf2, 3 * N}, {0, Ne, 3 * N * nrbf2}});
     
     Halide::Runtime::Buffer<double> rbf_buffer(rbf, {{0, N, 1}, {0, ns, N}});
     Halide::Runtime::Buffer<double> rbfx_buffer(rbfx, {{0, N, 1}, {0, ns, N}});
@@ -646,18 +642,6 @@ double FASTPOD::peratomenergyforce(double *fij, double *rij, double *temp,
     if (nd23>0) {
       // twobodydescderiv(d2, dd2, rbf, rbfx, rbfy, rbfz, tj, Nj, true);
       buildtwobodydescderiv(d2, dd2, rbf, rbfx, rbfy, rbfz, tj, Nj, nelements, nrbf2, ns);
-      
-      for (int ne=0; ne < nelements; ne++) {
-        for (int m=0; m < nrbf2; m++) {
-          std::cout << "d2[" << ne << " ," << m << "] = " << d2[m + ne * nrbf2] << std::endl;
-
-          for (int n=0; n < Nj; n++) {
-              for (int dim=0; dim < 3; dim++) {
-                  std::cout << "dd2[" << ne << " ," << m << " ," << n << " ," << dim <<  "] = " << dd2[dim + n*3 + m*3*Nj + ne*3*Nj*nrbf2] << std::endl;
-              }
-          }
-        }
-      }
     }
 
     if ((nd23>0) || (nd33>0) || (nd34>0)) {
