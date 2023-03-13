@@ -858,21 +858,15 @@ public:
   Input<int> npairs{"npairs", 1};
   Input<int> k3{"k3", 1};
   Input<Buffer<double>> rij{"rij", 2};
-  //  Input<Buffer<int>> pq{"pq", 1};
-
   Output<Buffer<double>> abf4{"abf", 3};
   
-  
-
     
     void generate() {
       rij.dim(0).set_bounds(0, 3).set_stride(1);
       rij.dim(1).set_bounds(0, npairs).set_stride(3);
 
-      abf4.dim(2).set_bounds(0, 4).set_stride(k3* npairs);
-      abf4.dim(1).set_bounds(0, k3).set_stride(npairs);
-      abf4.dim(0).set_bounds(0, npairs).set_stride(1);
-      
+      Expr eps = Expr((double)1e-6);
+
       Var c("c");
       Var pair("pair");
       Var abfi("abfi");
@@ -896,6 +890,7 @@ public:
       Func rijnormed;
       rijnormed(dim, pair) = rij(dim, pair)/dij_f(pair);
       rijnormed.bound(dim, 0, 3).bound(pair, 0, npairs);
+      rijnormed.compute_root();
 
       //Make monos: u^i v^k w^k
       Func uvw("uvw");
@@ -904,59 +899,64 @@ public:
       Var x3("x3");
       Func pows("pows");
       pows(x1, pair, dim) = pow(rijnormed(dim, pair), x1);
-      pows.bound(x1, 0, k3).bound(pair, 0, npairs).bound(dim, 0, 3);
+      pows.bound(x1, -1, k3 + 1).bound(pair, 0, npairs).bound(dim, 0, 3);
       pows.compute_root();
       
-      uvw(x1,x2,x3, pair) = pows(x1, pair, 0) * pows(x2, pair, 1) * pows(x3, pair, 2);
-      uvw.bound(x1, 0, k3);
-      uvw.bound(x2, 0, k3);
-      uvw.bound(x3, 0, k3);
+      uvw(pair, x1,x2,x3) = pows(x1, pair, 0) * pows(x2, pair, 1) * pows(x3, pair, 2);
+      uvw.bound(x1, -1, k3);
+      uvw.bound(x2, -1, k3);
+      uvw.bound(x3, -1, k3);
       uvw.bound(pair, 0, npairs);
 
       ///Manually lift to avoid /
-      Expr norm = powx(2, pair) + powy(2, pair) + powz(2, pair);
-      Func uvwdu;
-      uvwdu(pair, x1,x2,x3) = (x1 * (pows(2, pair, 1) + pows(2, pair, 2)) - ((x2 + x3) * pows(2,pair, 0)))/(x * norm);
-      uvwdu.bound(x1, 0, k3);
-      uvwdu.bound(x2, 0, k3);
-      uvwdu.bound(x3, 0, k3);
-      uvwdu.bound(pair, 0, npairs);
+      ///Issue: Numerical https://www.wolframalpha.com/input?i=d%2Fdx+%28x%2Fsqrt%28x%5E2%2By%5E2%2Bz%5E2%29%29%5Ek+*+%28y%2Fsqrt%28x%5E2%2By%5E2%2Bz%5E2%29%29%5Ej+*++%28z%2Fsqrt%28x%5E2%2By%5E2%2Bz%5E2%29%29%5El
+      
+      Expr norm = pows(2, pair, 0) + pows(2, pair, 1) + pows(2, pair, 2);
+      Expr norm35 = dij_f(pair) * dij_f(pair) * dij_f(pair);
+      Expr divnorm35 = 1/norm35;
+      // Func uvwdu("uvwdu");
+      // uvwdu(pair, x1,x2,x3) = (x1 * (pows(2, pair, 1) + pows(2, pair, 2)) - ((x2 + x3) * pows(2,pair, 0)))/(x * norm + eps);
+      // uvwdu.bound(x1, 0, k3);
+      // uvwdu.bound(x2, 0, k3);
+      // uvwdu.bound(x3, 0, k3);
+      // uvwdu.bound(pair, 0, npairs);
 
-      Func uvwdv;
-      uvwdv(pair, x1,x2,x3) = (x2 * (pows(2, pair, 0) + pows(2, pair, 2)) - ((x1 + x3) * pows(2,pair, 1)))/(y * norm);
-      uvwdv.bound(x1, 0, k3);
-      uvwdv.bound(x2, 0, k3);
-      uvwdv.bound(x3, 0, k3);
-      uvwdv.bound(pair, 0, npairs);
-      Func uvwdw;
-      uvwdw(pair, x1,x2,x3) = (x3 * (pows(2, pair, 0) + pows(2, pair, 1)) - ((x1 + x2) * pows(2,pair, 2)))/(z * norm);
-      uvwdv.bound(x1, 0, k3);
-      uvwdv.bound(x2, 0, k3);
-      uvwdv.bound(x3, 0, k3);
-      uvwdv.bound(pair, 0, npairs);
+      // Func uvwdv("uvwdv");
+      // uvwdv(pair, x1,x2,x3) = (x2 * (pows(2, pair, 0) + pows(2, pair, 2)) - ((x1 + x3) * pows(2,pair, 1)))/(y * norm + eps);
+      // uvwdv.bound(x1, 0, k3);
+      // uvwdv.bound(x2, 0, k3);
+      // uvwdv.bound(x3, 0, k3);
+      // uvwdv.bound(pair, 0, npairs);
+      // Func uvwdw("uvwdw");
+      // uvwdw(pair, x1,x2,x3) = (x3 * (pows(2, pair, 0) + pows(2, pair, 1)) - ((x1 + x2) * pows(2,pair, 2)))/(z * norm + eps);
+      // uvwdv.bound(x1, 0, k3);
+      // uvwdv.bound(x2, 0, k3);
+      // uvwdv.bound(x3, 0, k3);
+      // uvwdv.bound(pair, 0, npairs);
       //Reduce mono x+y+z=n
-      abf4(c, abfi, pair) = Expr((double) 0.0);
+      abf4(pair, abfi, c) = Expr((double) 0.0);
+      abf4.bound(c, 0, 4).bound(abfi, 0, k3).bound(pair, 0, npairs);
       RDom r(0, k3, 0, k3, 0, k3);
       r.where(r.x + r.y + r.z <= k3);
-      abf4(0, r.x + r.y + r.z, pair) += uvw(pair, r.x, r.y, r.z);
-      abf4(1, r.x + r.y + r.z, pair) += uvw(pair, r.x, r.y, r.z, pair) * uvwdu(pair, r.x, r.y, r.z);
-      abf4(2, r.x + r.y + r.z, pair) += uvw(pair, r.x, r.y, r.z, pair) * uvwdv(pair, r.x, r.y, r.z);
-      abf4(3, r.x + r.y + r.z, pair) += uvw(pair, r.x, r.y, r.z, pair) * uvwdw(pair, r.x, r.y, r.z);
+      Expr lacc = clamp(r.x + r.y + r.z, 0, k3 -1);
+      Expr zero = Expr((double) 0.0);
+      Expr rx1 = r.x - 1;
+      Expr ry1 = r.y - 1;
+      Expr rz1 = r.z - 1;
+      //clamp the rx, ry, rz in uvwdu...
+      //it should be an rorigina plus the various derivative terms
+      //adjust by norm and k l k
+      abf4(pair, lacc, 0) += uvw(pair, r.x, r.y, r.z);
+      abf4(pair, lacc, 1) += r.x * uvw(pair, rx1, r.y, r.z)/norm + -(r.y * x * y * uvw(pair, r.x, ry1, r.z) + r.z * x * z * uvw(pair, r.x, r.x, rz1) + r.x * x * x * uvw(pair, rx1, r.y, r.z))  * divnorm35;
+	//uvw(pair, r.x, r.y, r.z) * uvwdu(pair, r.x, r.y, r.z);
+      //      abf4(pair, lacc, 2) +=  uvw(pair, r.x, r.y, r.z) * uvwdv(pair, r.x, r.y, r.z);
+      abf4(pair, lacc, 2) += r.y * uvw(pair, r.x, ry1, r.z)/norm + -(r.z * y * z * uvw(pair, r.x, r.y, rz1) + r.x * x * y * uvw(pair, rx1, r.x, r.z) + r.y* y * y * uvw(pair, r.x, ry1, r.z))  * divnorm35;
+      //      abf4(pair, lacc, 3) += uvw(pair, r.x, r.y, r.z) * uvwdw(pair, r.x, r.y, r.z);
+      abf4(pair, lacc, 3) += r.z * uvw(pair, r.x, r.y, rz1)/norm + -(r.y * y * z * uvw(pair, r.x, ry1, r.z) + r.x * x * z * uvw(pair, rx1, r.x, r.z) + r.z* z * z * uvw(pair, r.x, r.y, rz1))  * divnorm35;
 
-      Expr dij3 = dij*dij*dij;
-      Expr dudx = (yy+zz)/dij3;
-      Expr dudy = -xy/dij3;
-      Expr dudz = -xz/dij3;
-
-      Expr dvdx = -xy/dij3;
-      Expr dvdy = (xx+zz)/dij3;
-      Expr dvdz = -yz/dij3;
-
-      Expr dwdx = -xz/dij3;
-      Expr dwdy = -yz/dij3;
-      Expr dwdz = (xx+yy)/dij3;
-
-
+      abf4.dim(2).set_bounds(0, 4).set_stride(k3* npairs);
+      abf4.dim(1).set_bounds(0, k3).set_stride(npairs);
+      abf4.dim(0).set_bounds(0, npairs).set_stride(1);
       
     }
 };
@@ -968,3 +968,4 @@ HALIDE_REGISTER_GENERATOR(pod1, pod1);
 HALIDE_REGISTER_GENERATOR(snapshot, snapshot);
 HALIDE_REGISTER_GENERATOR(poddescRBF, poddescRBF);
 HALIDE_REGISTER_GENERATOR(poddescFourMult, poddescFourMult);
+HALIDE_REGISTER_GENERATOR(poddescAngularBasis, poddescAngularBasis);
