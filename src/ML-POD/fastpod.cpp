@@ -33,6 +33,7 @@
 
 #include <cmath>
 #include <chrono>
+#include <iostream>
 
 using namespace LAMMPS_NS;
 using MathConst::MY_PI;
@@ -515,7 +516,7 @@ void buildtwobodydescderiv(double *d2, double *dd2, double *rbf, double *rbfx, d
     Halide::Runtime::Buffer<double> d2_buffer(d2, {{0, Ne, nrbf2}, {0, nrbf2, 1}});
     //Halide::Runtime::Buffer<double> d2_buffer(d2, {{0, nrbf2, 1}, {0, Ne, nrbf2}});
     //Halide::Runtime::Buffer<double> dd2_buffer(d2, {{0, Ne, 1}, {0, nrbf2, Ne}, {0, N, Ne * nrbf2}, {0, 3, Ne * nrbf2 * N}});
-    Halide::Runtime::Buffer<double> dd2_buffer(d2, {{0, Ne, 3 * N * nrbf2}, {0, nrbf2, 3 * N}, {0, N, 3}, {0, 3, 1}});
+    Halide::Runtime::Buffer<double> dd2_buffer(dd2, {{0, Ne, 3 * N * nrbf2}, {0, nrbf2, 3 * N}, {0, N, 3}, {0, 3, 1}});
     //Halide::Runtime::Buffer<double> dd2_buffer(d2, {{0, 3, 1}, {0, N, 3}, {0, nrbf2, 3 * N}, {0, Ne, 3 * N * nrbf2}});
     
     Halide::Runtime::Buffer<double> rbf_buffer(rbf, {{0, N, 1}, {0, ns, N}});
@@ -646,19 +647,17 @@ double FASTPOD::peratomenergyforce(double *fij, double *rij, double *temp,
       // twobodydescderiv(d2, dd2, rbf, rbfx, rbfy, rbfz, tj, Nj, true);
       buildtwobodydescderiv(d2, dd2, rbf, rbfx, rbfy, rbfz, tj, Nj, nelements, nrbf2, ns);
       
-      /*
-      for (int ne=0; ne < Ne; ne++) {
-        for (int m=0; m < nrbf2; n++) {
-          int i2 = n + N*m;
-          int i1 = n + N*m + N*nrbf2*(tj[n]-1);
-          std::cout << d2[m + nrbf2*(tj[n]-1] << std::endl;
-          d2[m + nrbf2*(tj[n]-1)] += rbf[i2];
-          dd2[0 + 3*i1] += rbfx[i2];
-          dd2[1 + 3*i1] += rbfy[i2];
-          dd2[2 + 3*i1] += rbfz[i2];
+      for (int ne=0; ne < nelements; ne++) {
+        for (int m=0; m < nrbf2; m++) {
+          std::cout << "d2[" << ne << " ," << m << "] = " << d2[m + ne * nrbf2] << std::endl;
+
+          for (int n=0; n < Nj; n++) {
+              for (int dim=0; dim < 3; dim++) {
+                  std::cout << "dd2[" << ne << " ," << m << " ," << n << " ," << dim <<  "] = " << dd2[dim + n*3 + m*3*Nj + ne*3*Nj*nrbf2] << std::endl;
+              }
+          }
         }
       }
-      */
     }
 
     if ((nd23>0) || (nd33>0) || (nd34>0)) {
@@ -1504,7 +1503,6 @@ double FASTPOD::threebodycoeff(double *cU, double *coeff3, double *sumU, int N)
   return e;
 }
 
-#include <iostream>
 
 void FASTPOD::twobodydescderiv(double *d2, double *dd2, double *rbf, double *rbfx,
         double *rbfy, double *rbfz, int *tj, int N, bool printer)

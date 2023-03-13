@@ -728,21 +728,21 @@ void twoBodyDescDeriv(Func & d2, Func & dd2, Func rbf, Func rbfx, Func rbfy, Fun
     Expr zero = Expr((double) 0.0);
 
     Var ne("ne"), m("m"), n("n"), dim("dim");
-    d2(ne, m) = zero;
+    d2(m, ne) = zero;
     //dd2(dim, n, m, ne) = zero;
     dd2(ne, m, n, dim) = zero;
 
     RDom r(0, N, 0, nrbf2);
 
-    d2(clamp(tj(r.x)-1, 0, Ne - 1), r.y) += rbf(r.x, r.y);
+    d2(r.y, clamp(tj(r.x)-1, 0, Ne - 1)) += rbf(r.x, r.y);
     /*
     dd2(0, r.x, r.y, clamp(tj(r.x)-1, 0, Ne - 1)) += rbfx(r.x, r.y);
     dd2(1, r.x, r.y, clamp(tj(r.x)-1, 0, Ne - 1)) += rbfy(r.x, r.y);
     dd2(2, r.x, r.y, clamp(tj(r.x)-1, 0, Ne - 1)) += rbfz(r.x, r.y);
     */
     dd2(clamp(tj(r.x)-1, 0, Ne - 1), r.y, r.x, 0) += rbfx(r.x, r.y);
-    dd2(clamp(tj(r.x)-1, 0, Ne - 1), r.y, r.x, 1) += rbfx(r.x, r.y);
-    dd2(clamp(tj(r.x)-1, 0, Ne - 1), r.y, r.x, 2) += rbfx(r.x, r.y);
+    dd2(clamp(tj(r.x)-1, 0, Ne - 1), r.y, r.x, 1) += rbfy(r.x, r.y);
+    dd2(clamp(tj(r.x)-1, 0, Ne - 1), r.y, r.x, 2) += rbfz(r.x, r.y);
 
     /*
     rbf.trace_loads();
@@ -858,7 +858,7 @@ public:
         twoBodyDescDeriv(d2, dd2, rbf, rbfx, rbfy, rbfz, tj, N, Ne, nrbf2);
 
         Var ne("ne"), m("m"), n("n"), dim("dim");
-        d2_o(ne, m) = d2(ne, m);
+        d2_o(ne, m) = d2(m, ne);
         dd2_o(ne, m, n, dim) = dd2(ne, m, n, dim);
 
         /*
