@@ -748,26 +748,25 @@ void twoBodyDescDeriv(Func & d2, Func & dd2, Func rbf, Func rbfx, Func rbfy, Fun
     
 }
 
-Expr tallyTwoBodyLocalForce(Func & fij, Func coeff2, Func rbf, Func rbfx, Func rbfy, Func rbfz, Func tj, Expr nbf, Expr N)
+Expr tallyTwoBodyLocalForce(Func & fij, Func & e, Func coeff2, Func rbf, Func rbfx, Func rbfy, Func rbfz, Func tj, Expr nbf, Expr N)
 {
     Expr zero = Expr((double) 0.0);
 
-    Expr e = zero;
-    Var n("n"), m("m"), dim("dim");
+    Var n("n"), m("m"), dim("dim"), empty("empty");
+    e(empty) = zero;
     fij(n, dim) = zero;
 
     RDom r(0, N, 0, nbf);
 
     Expr c = coeff2(clamp(tj(r.x), 0, N - 1) - 1, r.y);
-    e += c * rbf(r.x, r.y);
+    e(0) += c * rbf(r.x, r.y);
     fij(r.x, 0) += c * rbfx(r.x, r.y);
     fij(r.x, 1) += c * rbfy(r.x, r.y);
     fij(r.x, 2) += c * rbfz(r.x, r.y);
 
+    e.bound(empty, 0, 1);
     fij.bound(n, 0, N);
     fij.bound(dim, 0, 3);
-
-    return e;
 }
 
 class poddescTallyTwoBodyLocalForce : public Halide::Generator<poddescTallyTwoBodyLocalForce> {
@@ -787,7 +786,7 @@ public:
     Input<int> N{"N", 1};
     Input<int> ns{"ns", 1};
 
-    void generate() {
+    double generate() {
         rbf.dim(0).set_bounds(0, N).set_stride(1);
         rbf.dim(1).set_bounds(0, ns).set_stride(N);
         rbfx.dim(0).set_bounds(0, N).set_stride(1);
@@ -797,17 +796,20 @@ public:
         rbfz.dim(0).set_bounds(0, N).set_stride(1);
         rbfz.dim(1).set_bounds(0, ns).set_stride(N);
 
-        coeff2.dim(0).set_bounds(0, nbf).set_stride(1);
-        coeff2.dim(1).set_bounds(0, N).set_stride(nbf);
+        coeff2.dim(0).set_bounds(0, N).set_stride(nbf);
+        coeff2.dim(1).set_bounds(0, nbf).set_stride(1);
 
-        Func fij("fij");
-        tallyTwoBodyLocalForce(fij, coeff2, rbf, rbfx, rbfy, rbfz, tj, nbf, N);
+        Func fij("fij"), e("e");
+        tallyTwoBodyLocalForce(fij, e, coeff2, rbf, rbfx, rbfy, rbfz, tj, nbf, N);
+        e_o = e(0);
 
         Var n("n"), dim("dim");
         fij_o(n, dim) = fij(n, dim);
 
-        fij_o.dim(0).set_bounds(0, N).set_stride(1);
-        fij_o.dim(1).set_bounds(0, 3).set_stride(N);
+        fij_o.dim(0).set_bounds(0, N).set_stride(3);
+        fij_o.dim(1).set_bounds(0, 3).set_stride(1);
+        e_o.dim(0).set_bounds(0, 1).set_stride(1);
+        return e_o;
     }
 };
 
@@ -1070,4 +1072,4 @@ HALIDE_REGISTER_GENERATOR(snapshot, snapshot);
 HALIDE_REGISTER_GENERATOR(poddescRBF, poddescRBF);
 HALIDE_REGISTER_GENERATOR(poddescRadialAngularBasis, poddescRadialAngularBasis);
 HALIDE_REGISTER_GENERATOR(poddescTwoBodyDescDeriv, poddescTwoBodyDescDeriv);
-//HALIDE_REGISTER_GENERATOR(poddescTallyTwoBodyLocalForce, poddescTallyTwoBodyLocalForce);
+HALIDE_REGISTER_GENERATOR(poddescTallyTwoBodyLocalForce, poddescTallyTwoBodyLocalForce);
