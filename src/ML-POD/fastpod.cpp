@@ -503,7 +503,8 @@ void buildHalideFourMult(double * rbfo_all, double *rbft_all, double * Phi, int 
 void buildHalideAngularBasis(double *abf, double *rij, double * tm, int *pq, int N, int K){
   Halide::Runtime::Buffer<double> rij_buffer(rij, {{0, 3, 1}, {0, N, 3}});
   Halide::Runtime::Buffer<double> abf_buffer(abf, {{0, N, 1}, {0, K, N}, {0, 4, K * N}});
-  poddescAngularBasis(N, K, rij_buffer, abf_buffer);
+  Halide::Runtime::Buffer<int> tm_buffer(pq, K*3);
+  poddescAngularBasis(N, K, tm_buffer, rij_buffer, abf_buffer);
 }
 
 
@@ -603,7 +604,13 @@ double FASTPOD::peratomenergyforce(double *fij, double *rij, double *temp,
     
     //    angularbasis(abf, abfx, abfy, abfz, rij, tm, pq3, Nj, K3);
     std::cout << "Using " << Nj << " and " << K3 << "\n";
+    //angularbasis(abf, abfx, abfy, abfz, rij, tm, pq3, Nj, K3);
     buildHalideAngularBasis(abf, rij, tm, pq3, Nj, K3);
+    for (int p = 0; p < Nj; p++){
+      for (int k =0; k < K3; k++){
+	std::cout << "abf(" << p << ", " << k << ") = " << abf[p + Nj*k] << "\n";
+      }
+    }
 
     //end = std::chrono::high_resolution_clock::now();   
     //comptime[2] += std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count()/1e6;        
