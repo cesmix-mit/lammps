@@ -30,6 +30,8 @@
 #include "poddescRadialAngularBasis.h"
 #include "poddescTwoBodyDescDeriv.h"
 #include "poddescTallyTwoBodyLocalForce.h"
+#include "poddescFourMult.h"
+#include "poddescAngularBasis.h"
 #include "HalideBuffer.h"
 
 #include <cmath>
@@ -542,6 +544,23 @@ void buildtallytwobodylocalforce(double *fij, double *e2, double *coeff2, double
     poddescTallyTwoBodyLocalForce(coeff2_buffer, rbf_buffer, rbfx_buffer, rbfy_buffer, rbfz_buffer, tj_buffer, nbf, N, ns, fij_buffer, e2_buffer);
 }
 
+void buildHalideFourMult(double * rbfo_all, double *rbft_all, double * Phi, int npairs, int nrbfmax, int ns){
+
+  Halide::Runtime::Buffer<double> A(rbft_all, {{0, npairs, 1}, {0, ns, npairs}, {0, 4, ns *npairs}});  
+  Halide::Runtime::Buffer<double> B(Phi, {{0, ns, 1}, {0, ns, ns}});
+  Halide::Runtime::Buffer<double> C(rbfo_all, {{0, npairs, 1}, {0, nrbfmax, npairs}, {0, 4, nrbfmax *npairs}});
+
+  poddescFourMult(npairs, nrbfmax, ns, A, B, C);
+}
+
+
+void buildHalideAngularBasis(double *abf, double *rij, double * tm, int *pq, int N, int K){
+  Halide::Runtime::Buffer<double> rij_buffer(rij, {{0, 3, 1}, {0, N, 3}});
+  Halide::Runtime::Buffer<double> abf_buffer(abf, {{0, N, 1}, {0, K, N}, {0, 4, K * N}});
+  Halide::Runtime::Buffer<int> tm_buffer(pq, K*3);
+  poddescAngularBasis(N, K, tm_buffer, rij_buffer, abf_buffer);
+}
+
 
 
 double FASTPOD::peratomenergyforce(double *fij, double *rij, double *temp,
@@ -595,12 +614,23 @@ double FASTPOD::peratomenergyforce(double *fij, double *rij, double *temp,
   
   //begin = std::chrono::high_resolution_clock::now();
       
-  char chn = 'N';
-  double alpha = 1.0, beta = 0.0;
-  DGEMM(&chn, &chn, &Nj, &nrbfmax, &ns, &alpha, rbft, &Nj, Phi, &ns, &beta, rbf, &Nj);
-  DGEMM(&chn, &chn, &Nj, &nrbfmax, &ns, &alpha, rbfxt, &Nj, Phi, &ns, &beta, rbfx, &Nj);
-  DGEMM(&chn, &chn, &Nj, &nrbfmax, &ns, &alpha, rbfyt, &Nj, Phi, &ns, &beta, rbfy, &Nj);
-  DGEMM(&chn, &chn, &Nj, &nrbfmax, &ns, &alpha, rbfzt, &Nj, Phi, &ns, &beta, rbfz, &Nj);    
+  // char chn = 'N';
+  // double alpha = 1.0, beta = 0.0;
+  // DGEMM(&chn, &chn, &Nj, &nrbfmax, &ns, &alpha, rbft, &Nj, Phi, &ns, &beta, rbf, &Nj);
+  // DGEMM(&chn, &chn, &Nj, &nrbfmax, &ns, &alpha, rbfxt, &Nj, Phi, &ns, &beta, rbfx, &Nj);
+  // DGEMM(&chn, &chn, &Nj, &nrbfmax, &ns, &alpha, rbfyt, &Nj, Phi, &ns, &beta, rbfy, &Nj);
+  // DGEMM(&chn, &chn, &Nj, &nrbfmax, &ns, &alpha, rbfzt, &Nj, Phi, &ns, &beta, rbfz, &Nj);
+
+  buildHalideFourMult(rbf, rbft, Phi, Nj, nrbfmax, ns);
+  // std::cout << "ugg:" << nrbfmax << ", " << Nj << ", " << ns << "\n";
+  // for(int a = 0; a < 4; a++){
+  //   for(int b = 0; b < ns; b++){
+  //     for(int c = 0; c < Nj; c++){
+  // 	std::cout << "ret=" << a << "," << b << ", " << c << ":" << rbf[a * ns * Nj + b * Nj + c] << "\n";
+  //     }
+  //   }
+  // }
+  // std::cout << "ugg:" << nrbfmax << ", " << Nj << ", " << ns << "\n";
   
   //end = std::chrono::high_resolution_clock::now();   
   //comptime[4] += std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count()/1e6;        
@@ -627,7 +657,15 @@ double FASTPOD::peratomenergyforce(double *fij, double *rij, double *temp,
 
     //begin = std::chrono::high_resolution_clock::now(); 
     
-    angularbasis(abf, abfx, abfy, abfz, rij, tm, pq3, Nj, K3);
+    //    angularbasis(abf, abfx, abfy, abfz, rij, tm, pq3, Nj, K3);
+    // std::cout << "Using " << Nj << " and " << K3 << "\n";
+    //angularbasis(abf, abfx, abfy, abfz, rij, tm, pq3, Nj, K3);
+    buildHalideAngularBasis(abf, rij, tm, pq3, Nj, K3);
+    for (int p = 0; p < Nj; p++){
+      for (int k =0; k < K3; k++){
+	// std::cout << "abf(" << p << ", " << k << ") = " << abf[p + Nj*k] << "\n";
+      }
+    }
 
     //end = std::chrono::high_resolution_clock::now();   
     //comptime[2] += std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count()/1e6;        
@@ -1602,7 +1640,6 @@ void FASTPOD::radialfunctions(double *rbf, double *rij, double *besselparams, do
   }
 }
 
-
 void FASTPOD::radialbasis(double *rbf, double *rbfx, double *rbfy, double *rbfz, double *rij, double *besselparams, double rin,
         double rmax, int besseldegree, int inversedegree, int nbesselpars, int N)
 {
@@ -1794,6 +1831,8 @@ void FASTPOD::angularfunctions(double *abf, double *rij, double *tm, int *pq, in
   }
 }
 
+
+
 void FASTPOD::angularbasis(double *abf, double *abfx, double *abfy, double *abfz, double *rij, double *tm, int *pq, int N, int K)
 {
   double *tmu = &tm[K];
@@ -1820,6 +1859,8 @@ void FASTPOD::angularbasis(double *abf, double *abfx, double *abfy, double *abfz
     double u = x/dij;
     double v = y/dij;
     double w = z/dij;
+    
+    
 
     double dij3 = dij*dij*dij;
     double dudx = (yy+zz)/dij3;

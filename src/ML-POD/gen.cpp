@@ -1062,7 +1062,121 @@ public:
   }
 
 };
+
+class poddescFourMult : public Halide::Generator<poddescFourMult> {
+public:
+
+
+  Input<int> npairs{"npairs", 1};
+  Input<int> nrbfmax{"nrbfmax", 1};
+  Input<int> ns{"ns", 1};
+  Input<Buffer<double>> rbf4_in{"rbf_in", 3};
+  Input<Buffer<double>> Phi{"Phi", 2};
+
+  Output<Buffer<double>> rbf4_o{"rbf_o", 3};
   
+    void generate() {
+      Phi.dim(0).set_bounds(0, ns).set_stride(1);
+      Phi.dim(1).set_bounds(0, ns).set_stride(ns);
+
+      rbf4_in.dim(2).set_bounds(0, 4).set_stride(npairs * ns);
+      rbf4_in.dim(1).set_bounds(0, ns).set_stride(npairs);
+      rbf4_in.dim(0).set_bounds(0, npairs).set_stride(1);
+      Var i("i");
+      Var j("j");
+      Var k("k");
+      Var c("c");
+      Func prod("prod");
+      prod(c, k, i, j) = Phi(k, i) * rbf4_in(j, k, c);
+      prod.bound(c, 0, 4);
+      prod.bound(k, 0, nrbfmax);
+      prod.bound(j, 0, npairs);
+      prod.bound(i, 0, npairs);
+      rbf4_o(j, i, c) = Expr((double) 0.0);
+      RDom r(0, ns);
+      rbf4_o(j, i, c) += prod(c, r, i, j);
+
+      rbf4_o.dim(2).set_bounds(0, 4).set_stride(nrbfmax * npairs);
+      rbf4_o.dim(1).set_bounds(0, nrbfmax).set_stride(npairs);
+      rbf4_o.dim(0).set_bounds(0, npairs).set_stride(1);
+
+    }
+};
+
+class poddescAngularBasis : public Halide::Generator<poddescAngularBasis> {
+public:
+
+
+  Input<int> npairs{"npairs", 1};
+  Input<int> k3{"k3", 1};
+  Input<Buffer<int>> pq{"pq", 1};
+  Input<Buffer<double>> rij{"rij", 2};
+  Output<Buffer<double>> abf4{"abf", 3};
+  
+    
+    void generate() {
+      pq.dim(0).set_bounds(0, 3* k3).set_stride(1);
+      rij.dim(0).set_bounds(0, 3).set_stride(1);
+      rij.dim(1).set_bounds(0, npairs).set_stride(3);
+
+      Var c("c");
+      Var pair("pair");
+      Var abfi("abfi");
+      
+      Expr x = rij(0, pair);
+      Expr y = rij(1, pair);
+      Expr z = rij(2, pair);
+      
+      Expr xx = x*x;
+      Expr yy = y*y;
+      Expr zz = z*z;
+      Expr xy = x*y;
+      Expr xz = x*z;
+      Expr yz = y*z;
+
+      Expr dij = sqrt(xx + yy + zz);
+      Expr u = x/dij;
+      Expr v = y/dij;
+      Expr w = z/dij;
+    
+      Expr dij3 = dij*dij*dij;
+      Expr dudx = (yy+zz)/dij3;
+      Expr dudy = -xy/dij3;
+      Expr dudz = -xz/dij3;
+
+      Expr dvdx = -xy/dij3;
+      Expr dvdy = (xx+zz)/dij3;
+      Expr dvdz = -yz/dij3;
+
+      Expr dwdx = -xz/dij3;
+      Expr dwdy = -yz/dij3;
+      Expr dwdz = (xx+yy)/dij3;
+
+      Func tm("tm");
+      Var abfip("abfip");
+      Expr zero = Expr((double) 0.0);
+      tm(pair, abfi, abfip, c) = zero;
+      tm(pair, abfi, 0, 0) = Expr((double) 1.0);
+      RDom rn(1, k3 + 1, 0, 4);
+      Expr m = clamp(pq(rn.x) - 1, 0, 3 * k3 - 1);
+      Expr prev0 = tm(pair, abfi, m, 0);
+      Expr d = pq(rn.x + k3);
+      Expr uvw = select(d == 1, u, select(d==2, v, select(d==3, w, Expr((double) 0.0))));
+      tm(pair, abfi, rn.x, rn.y) = tm(pair, abfi, m, rn.y) * uvw + select(d == rn.y, tm(pair, abfi, m, 0), zero);
+      abf4(pair, abfi, c) = zero;
+      abf4(pair, abfi, 0) = tm(pair, abfi, abfi, 0);
+      abf4(pair, abfi, 1) = tm(pair, abfi, abfi, 1) * dudx + tm(pair, abfi, abfi, 2) * dvdx + tm(pair, abfi, abfi, 3) * dwdx;
+      abf4(pair, abfi, 2) = tm(pair, abfi, abfi, 1) * dudy + tm(pair, abfi, abfi, 2) * dvdy + tm(pair, abfi, abfi, 3) * dwdy;
+      abf4(pair, abfi, 3) = tm(pair, abfi, abfi, 1) * dudz + tm(pair, abfi, abfi, 2) * dvdz + tm(pair, abfi, abfi, 3) * dwdz;
+      
+      
+      abf4.dim(2).set_bounds(0, 4).set_stride(k3* npairs);
+      abf4.dim(1).set_bounds(0, k3).set_stride(npairs);
+      abf4.dim(0).set_bounds(0, npairs).set_stride(1);
+      
+    }
+};
+
 
 HALIDE_REGISTER_GENERATOR(pod1, pod1);
 HALIDE_REGISTER_GENERATOR(snapshot, snapshot);
@@ -1070,3 +1184,5 @@ HALIDE_REGISTER_GENERATOR(poddescRBF, poddescRBF);
 HALIDE_REGISTER_GENERATOR(poddescRadialAngularBasis, poddescRadialAngularBasis);
 HALIDE_REGISTER_GENERATOR(poddescTwoBodyDescDeriv, poddescTwoBodyDescDeriv);
 HALIDE_REGISTER_GENERATOR(poddescTallyTwoBodyLocalForce, poddescTallyTwoBodyLocalForce);
+HALIDE_REGISTER_GENERATOR(poddescFourMult, poddescFourMult);
+HALIDE_REGISTER_GENERATOR(poddescAngularBasis, poddescAngularBasis);
