@@ -1181,7 +1181,7 @@ public:
     }
 };
 
-class poddescTwoBody : public Halide::Generator<poddescTwoBody> {
+class poddescTwoBody: public Halide::Generator<poddescTwoBody> {
 public:
 
     Input<Buffer<double>> rijs{"rijs", 2};
