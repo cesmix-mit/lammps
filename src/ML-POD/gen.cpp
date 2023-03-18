@@ -51,10 +51,10 @@ Expr get_abf_index(Expr original_index, Expr rbf_info_length) {
   return rbf_info_length + original_index;
 }
 
-void buildRBF(Func & rbf_f, Func & rbfx_f, Func & rbfy_f, Func & rbfz_f,
+void buildRBF(Func & rbft,
 	      Func xij, Func besselparams, Expr rin, Expr rmax,
 	      Expr bdegree, Expr adegree, Expr nbparams, Expr npairs,
-	      Var bfi, Var bfp, Var np, Var dim)
+	      Var bfi, Var bfp, Var np, Var dim, Var ns)
 {
 
   Expr one = Expr((double) 1.0);
@@ -133,6 +133,7 @@ void buildRBF(Func & rbf_f, Func & rbfx_f, Func & rbfy_f, Func & rbfz_f,
   RDom r1(0, nbparams, 0, bdegree, 0, npairs);
   RDom r2(0, adegree, 0, npairs);
 
+  Func rbf_f("rbf_f"), rbfx_f("rbfx_f"), rbfy_f("rbfy_f"), rbfz_f("rbfz_f");
   // Set up rbf_info
   rbf_f(rbf_abf_info) = zero;
   // rbf_f(r1.z * (nbparams * bdegree) + r1.y * (nbparams) + r1.x) = rbf(r1.x, r1.y, r1.z);
@@ -148,7 +149,6 @@ void buildRBF(Func & rbf_f, Func & rbfx_f, Func & rbfy_f, Func & rbfz_f,
   rbf_f.bound(rbf_abf_info, 0, nbparams * bdegree * npairs + adegree * npairs);
   
 
-  Func rbfx_f("rbfx_f"), rbfy_f("rbfy_f"), rbfz_f("rbfz_f");
   // Do the same for rbfx_f
   // Set up drbf_dabf_info
   rbfx_f(drbf_dabf_info) = zero;
@@ -186,8 +186,8 @@ void buildRBF(Func & rbf_f, Func & rbfx_f, Func & rbfy_f, Func & rbfz_f,
   rbfz_f.bound(drbf_dabf_info, 0, nbparams * bdegree * npairs + adegree * npairs);
 
 
-  Var np("np"), n("n"), c("c");
-  rbft(np, n, c) = 0;
+  Var nps("np"), n("n"), c1("c");
+  rbft(nps, n, c1) = 0;
   RDom t(0, npairs, 0, ns);
   rbft(t.x, t.y. 0) = rbf_f(t.y + t.x * npairs);
   rbft(t.x, t.y, 1) = rbtx_f(t.y + t.x * npairs);
@@ -769,6 +769,7 @@ void tallyTwoBodyLocalForce(Func & fij, Func & e, Func coeff2, Func rbf, Func tj
     fij.bound(dim, 0, 3);
 }
 
+/*
 class poddescTallyTwoBodyLocalForce : public Halide::Generator<poddescTallyTwoBodyLocalForce> {
 public:
     Output<Buffer<double>> fij_o{"fij_o", 2};
@@ -1181,6 +1182,7 @@ public:
     }
 };
 
+*/
 class poddescTwoBody: public Halide::Generator<poddescTwoBody> {
 public:
 
@@ -1228,7 +1230,7 @@ public:
         Func rbft("rbft");
         buildRBF(rbft, rijs, besselparams, rin, rcut-rin,
                 bdegree, adegree, nbesselparams, npairs,
-                bfi, bfp, np, dim);
+                bfi, bfp, np, dim, ns);
 
         // MatMul
         Phi.dim(0).set_bounds(0, ns).set_stride(1);
