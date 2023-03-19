@@ -190,13 +190,13 @@ void buildRBF(Func & rbft,
   rbft(nps, n, c1) = 0;
   RDom t(0, npairs, 0, ns);
   rbft(t.x, t.y. 0) = rbf_f(t.y + t.x * npairs);
-  rbft(t.x, t.y, 1) = rbtx_f(t.y + t.x * npairs);
-  rbft(t.x, t.y, 2) = rbty_f(t.y + t.x * npairs);
-  rbft(t.x, t.y, 3) = rbtz_f(t.y + t.x * npairs);
+  rbft(t.x, t.y, 1) = rbfx_f(t.y + t.x * npairs);
+  rbft(t.x, t.y, 2) = rbfy_f(t.y + t.x * npairs);
+  rbft(t.x, t.y, 3) = rbfz_f(t.y + t.x * npairs);
 
   rbft.bound(np, 0, npairs);
   rbft.bound(n, 0, ns);
-  rbft.bound(c, 0, 4);
+  rbft.bound(c1, 0, 4);
 
   rbft.compute_root();
 }
@@ -685,9 +685,9 @@ void buildPod1Body_p(Func & eatom, Func & fatom,
 }
 
 
-void radialAngularBasis(Func & sumU, Func & U, Func & Ux, Func & Uy, Func & Uz,
-        Func rbf, Func rbfx, Func rbfy, Func rbfz, Func abf,
-        Func abfx, Func abfy, Func abfz, Func atomtype, Expr N, Expr K, Expr M, Expr Ne)
+void radialAngularBasis(Func & sumU, Func & U,
+        Func rbf, Func abf,
+        Func atomtype, Expr N, Expr K, Expr M, Expr Ne)
 {
     Expr zero = Expr((double) 0.0);
 
@@ -1226,6 +1226,7 @@ public:
         Var np("pairindex");
         Var numOuts("numOuts");
         Var dim("dim");
+        Var ns("ns");
 
         Func rbft("rbft");
         buildRBF(rbft, rijs, besselparams, rin, rcut-rin,
@@ -1236,9 +1237,9 @@ public:
         Phi.dim(0).set_bounds(0, ns).set_stride(1);
         Phi.dim(1).set_bounds(0, ns).set_stride(ns);
 
-        rbft.dim(2).set_bounds(0, 4).set_stride(npairs * ns);
-        rbft.dim(1).set_bounds(0, ns).set_stride(npairs);
-        rbft.dim(0).set_bounds(0, npairs).set_stride(1);
+        //rbft.dim(2).set_bounds(0, 4).set_stride(npairs * ns);
+        //rbft.dim(1).set_bounds(0, ns).set_stride(npairs);
+        //rbft.dim(0).set_bounds(0, npairs).set_stride(1);
         Var i("i");
         Var j("j");
         Var k("k");
@@ -1254,22 +1255,22 @@ public:
         RDom r(0, ns);
         rbf(j, i, c) += prod(c, r, i, j);
 
-        rbf.dim(2).set_bounds(0, 4).set_stride(nrbfmax * npairs);
-        rbf.dim(1).set_bounds(0, nrbfmax).set_stride(npairs);
-        rbf.dim(0).set_bounds(0, npairs).set_stride(1);
+        //rbf.dim(2).set_bounds(0, 4).set_stride(nrbfmax * npairs);
+        //rbf.dim(1).set_bounds(0, nrbfmax).set_stride(npairs);
+        //rbf.dim(0).set_bounds(0, npairs).set_stride(1);
         // end MatMul
 
-        coeff2.dim(0).set_bounds(0, N).set_stride(nbf);
-        coeff2.dim(1).set_bounds(0, nbf).set_stride(1);
+        coeff2.dim(0).set_bounds(0, npairs).set_stride(nrbf2);
+        coeff2.dim(1).set_bounds(0, nrbf2).set_stride(1);
 
         Func fij("fij"), e("e");
-        tallyTwoBodyLocalForce(fij, e, coeff2, rbf, tj, nbf, N);
+        tallyTwoBodyLocalForce(fij, e, coeff2, rbf, tj, nrbf2, npairs);
 
-        Var n("n"), dim("dim");
+        Var n("n");
         fij_o(n, dim) = fij(n, dim);
         e_o() = e();
 
-        fij_o.dim(0).set_bounds(0, N).set_stride(3);
+        fij_o.dim(0).set_bounds(0, npairs).set_stride(3);
         fij_o.dim(1).set_bounds(0, 3).set_stride(1);
         // if nd3 > 0
         pq.dim(0).set_bounds(0, 3* k3).set_stride(1);
@@ -1277,9 +1278,9 @@ public:
         Var pair("pair");
         Var abfi("abfi");
           
-        Expr x = rij(0, pair);
-        Expr y = rij(1, pair);
-        Expr z = rij(2, pair);
+        Expr x = rijs(0, pair);
+        Expr y = rijs(1, pair);
+        Expr z = rijs(2, pair);
         
         Expr xx = x*x;
         Expr yy = y*y;
@@ -1325,45 +1326,44 @@ public:
           abf4(pair, abfi, 3) = tm(pair, abfi, abfi, 1) * dudz + tm(pair, abfi, abfi, 2) * dvdz + tm(pair, abfi, abfi, 3) * dwdz;
           
           
-        abf4.dim(2).set_bounds(0, 4).set_stride(k3* npairs);
-        abf4.dim(1).set_bounds(0, k3).set_stride(npairs);
-        abf4.dim(0).set_bounds(0, npairs).set_stride(1);
+        //abf4.dim(2).set_bounds(0, 4).set_stride(k3* npairs);
+        //abf4.dim(1).set_bounds(0, k3).set_stride(npairs);
+        //abf4.dim(0).set_bounds(0, npairs).set_stride(1);
         // end angular basis
 
         Func sumU("sumU"), U("U");
         radialAngularBasis(sumU, U, rbf, abf4,
-                tj, npairs, K3, nrbf3, nelements);
+                tj, npairs, k3, nrbf3, nelements);
 
-        Var m("m"), k("k"), n("n"), ne("ne");
-
+        Var ne("ne");
         sumU_o(ne, k, m) = sumU(m, k, ne);
         U_o(n, k, m, c) = U(m, k, n, c);
 
         sumU_o.dim(0).set_bounds(0, nelements).set_stride(1);
-        sumU_o.dim(1).set_bounds(0, K3).set_stride(nelements);
-        sumU_o.dim(2).set_bounds(0, nrbf3).set_stride(nelements * K3);
-        U_o.dim(0).set_bounds(0, Nj).set_stride(1);
-        U_o.dim(1).set_bounds(0, K3).set_stride(Nj);
-        U_o.dim(2).set_bounds(0, nrbf3).set_stride(Nj * K3);
-        U_o.dim(3).set_bounds(0, 3).set_stride(Nj * K3 * nrbf3);
+        sumU_o.dim(1).set_bounds(0, k3).set_stride(nelements);
+        sumU_o.dim(2).set_bounds(0, nrbf3).set_stride(nelements * k3);
+        U_o.dim(0).set_bounds(0, npairs).set_stride(1);
+        U_o.dim(1).set_bounds(0, k3).set_stride(npairs);
+        U_o.dim(2).set_bounds(0, nrbf3).set_stride(npairs * k3);
+        U_o.dim(3).set_bounds(0, 3).set_stride(npairs * k3 * nrbf3);
         // if nd23 > 0
         Func d2("d2"), dd2("dd2");
-        twoBodyDescDeriv(d2, dd2, rbf, tj, N, Ne, nrbf2);
+        twoBodyDescDeriv(d2, dd2, rbf, tj, npairs, nelements, nrbf2);
 
-        Var ne("ne"), m("m"), n("n"), dim("dim");
         d2_o(ne, m) = d2(ne, m);
         dd2_o(ne, m, n, dim) = dd2(ne, m, n, dim);
 
-        d2_o.dim(0).set_bounds(0, Ne).set_stride(nrbf2);
+        d2_o.dim(0).set_bounds(0, nelements).set_stride(nrbf2);
         d2_o.dim(1).set_bounds(0, nrbf2).set_stride(1);
 
-        dd2_o.dim(0).set_bounds(0, Ne).set_stride(3 * N * nrbf2);
-        dd2_o.dim(1).set_bounds(0, nrbf2).set_stride(3 * N);
-        dd2_o.dim(2).set_bounds(0, N).set_stride(3);
+        dd2_o.dim(0).set_bounds(0, nelements).set_stride(3 * npairs * nrbf2);
+        dd2_o.dim(1).set_bounds(0, nrbf2).set_stride(3 * npairs);
+        dd2_o.dim(2).set_bounds(0, npairs).set_stride(3);
         dd2_o.dim(3).set_bounds(0, 3).set_stride(1);
     }
-}
+};
 
+/*
 HALIDE_REGISTER_GENERATOR(pod1, pod1);
 HALIDE_REGISTER_GENERATOR(snapshot, snapshot);
 HALIDE_REGISTER_GENERATOR(poddescRBF, poddescRBF);
@@ -1372,4 +1372,5 @@ HALIDE_REGISTER_GENERATOR(poddescTwoBodyDescDeriv, poddescTwoBodyDescDeriv);
 HALIDE_REGISTER_GENERATOR(poddescTallyTwoBodyLocalForce, poddescTallyTwoBodyLocalForce);
 HALIDE_REGISTER_GENERATOR(poddescFourMult, poddescFourMult);
 HALIDE_REGISTER_GENERATOR(poddescAngularBasis, poddescAngularBasis);
+*/
 HALIDE_REGISTER_GENERATOR(poddescTwoBody, poddescTwoBody);
