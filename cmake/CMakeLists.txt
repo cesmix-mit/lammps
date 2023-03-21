@@ -653,13 +653,16 @@ endif()
 if (PKG_ML-POD)
    add_executable(mygen ${LAMMPS_SOURCE_DIR}/ML-POD/gen.cpp)
    target_link_libraries(mygen PRIVATE Halide::Generator)
+   #[[
    add_halide_library(poddescRBF FROM mygen GENERATOR poddescRBF)
    add_halide_library(poddescRadialAngularBasis FROM mygen GENERATOR poddescRadialAngularBasis)
    add_halide_library(poddescTwoBodyDescDeriv FROM mygen GENERATOR poddescTwoBodyDescDeriv)
    add_halide_library(poddescTallyTwoBodyLocalForce FROM mygen GENERATOR poddescTallyTwoBodyLocalForce)
    add_halide_library(poddescFourMult FROM mygen GENERATOR poddescFourMult)
-   add_halide_library(poddescTwoBody FROM mygen GENERATOR poddescTwoBody TARGETS x86-64-linux-avx-avx2-f16c-fma-sse41-profile)
    target_link_libraries(lammps PRIVATE poddescRBF poddescRadialAngularBasis poddescTwoBodyDescDeriv poddescTallyTwoBodyLocalForce poddescFourMult poddescAngularBasis poddescTwoBody)
+   ]]
+   add_halide_library(poddescTwoBody FROM mygen GENERATOR poddescTwoBody TARGETS x86-64-linux-avx-avx2-f16c-fma-sse41-profile)
+   target_link_libraries(lammps PRIVATE poddescTwoBody)
  endif()
 
 if(PKG_AWPMD)

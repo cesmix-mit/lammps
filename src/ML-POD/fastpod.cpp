@@ -27,12 +27,14 @@
 #include "memory.h"
 #include "tokenizer.h"
 #include "poddescTwoBody.h"
+/*
 #include "poddescRBF.h"
 #include "poddescRadialAngularBasis.h"
 #include "poddescTwoBodyDescDeriv.h"
 #include "poddescTallyTwoBodyLocalForce.h"
 #include "poddescFourMult.h"
 #include "poddescAngularBasis.h"
+*/
 #include "HalideBuffer.h"
 
 #include <cmath>
@@ -475,6 +477,7 @@ int FASTPOD::read_coeff_file(std::string coeff_file)
   return ncoeffall;
 }
 
+/*
 void buildRBFHalide (double *rbf_f, double *rbfx_f, double *rbfy_f, double *rbfz_f, double *rijs, double *besselparams, int nbesselpars, int bdegree, int adegree, int npairs, double rin, double rcut) {
     Halide::Runtime::Buffer<double> rbf_buffer(rbf_f, nbesselpars * bdegree * npairs + 
             adegree * npairs);
@@ -561,34 +564,35 @@ void buildradialangularbasis(double *sumU, double *U, double *Ux, double *Uy, do
     poddescRadialAngularBasis(rbf_buffer, rbfx_buffer, rbfy_buffer, rbfz_buffer, abf_buffer, abfx_buffer, abfy_buffer, abfz_buffer, tj_buffer, Nj, K3, nrbf3, nelements, ns, sumU_buffer, U_buffer, Ux_buffer, Uy_buffer, Uz_buffer);
 }
 
+*/
 
-void buildHalideTwoBody(double *fij, double *e2, double *sumU, double *U, double *d2, double *dd2
+void buildHalideTwoBody(double *fij, double *e2, double *sumU, double *U, double *d2, double *dd2,
         double *rijs, double *besselparams,
-        int nbesselpars, int bdegree, int adegree, int npairs, int nrbfmax, double rin, double rcut
+        int nbesselpars, int bdegree, int adegree, int npairs, int nrbfmax, double rin, double rcut,
         double *Phi,
         int ns,
         double *coeff2,
         int *tj, int nrbf2,
         int *pq, int K,
-        int nrbf3, int nelements,
+        int nrbf3, int nelements
         )
 {
     Halide::Runtime::Buffer<double> rijs_buffer(rijs, 3, npairs);
     Halide::Runtime::Buffer<double> besselparams_buffer(besselparams, nbesselpars);
     Halide::Runtime::Buffer<double> phi_buffer(Phi, {{0, ns, 1}, {0, ns, ns}});
-    Halide::Runtime::Buffer<double> fij_buffer(fij, {{0, N, 3}, {0, 3, 1}});
-    Halide::Runtime::Buffer<double> coeff2_buffer(coeff2, {{0, N, nrbf2}, {0, nrbf2, 1}});
+    Halide::Runtime::Buffer<double> fij_buffer(fij, {{0, npairs, 3}, {0, 3, 1}});
+    Halide::Runtime::Buffer<double> coeff2_buffer(coeff2, {{0, npairs, nrbf2}, {0, nrbf2, 1}});
     auto e2_buffer = Halide::Runtime::Buffer<double, 0>::make_scalar(e2);
-    Halide::Runtime::Buffer<int> tj_buffer(tj, N);
+    Halide::Runtime::Buffer<int> tj_buffer(tj, npairs);
     Halide::Runtime::Buffer<int> pq_buffer(pq, K*3);
-    Halide::Runtime::Buffer<double> sumU_buffer(sumU, {{0, nelements, 1}, {0, K3, nelements}, {0, nrbf3, K3 * nelements}});
-    Halide::Runtime::Buffer<double> U_buffer(U, {{0, npairs, 1}, {0, K3, npairs}, {0, nrbf3, K3 * npairs}, {0, 4, K3 * npairs * nrbf3}});
-    Halide::Runtime::Buffer<double> d2_buffer(d2, {{0, Ne, nrbf2}, {0, nrbf2, 1}});
-    Halide::Runtime::Buffer<double> dd2_buffer(dd2, {{0, Ne, 3 * N * nrbf2}, {0, nrbf2, 3 * N}, {0, N, 3}, {0, 3, 1}});
+    Halide::Runtime::Buffer<double> sumU_buffer(sumU, {{0, nelements, 1}, {0, K, nelements}, {0, nrbf3, K * nelements}});
+    Halide::Runtime::Buffer<double> U_buffer(U, {{0, npairs, 1}, {0, K, npairs}, {0, nrbf3, K * npairs}, {0, 4, K * npairs * nrbf3}});
+    Halide::Runtime::Buffer<double> d2_buffer(d2, {{0, nelements, nrbf2}, {0, nrbf2, 1}});
+    Halide::Runtime::Buffer<double> dd2_buffer(dd2, {{0, nelements, 3 * npairs * nrbf2}, {0, nrbf2, 3 * npairs}, {0, npairs, 3}, {0, 3, 1}});
 
     rijs_buffer.transpose(0, 1);
 
-    poddescTwoBody(rijs_buffer, besselparams_buffer, phi_buffer, coeff2_buffer, tj_buffer, pq_buffer, nbesselpars, bedegree, adegree, npairs, nrbfmax, rin, rcut, ns, nrbf2, K, nrbf3, nelements, fij_buffer, e2_buffer, sumU_buffer, U_buffer, d2_buffer, dd2_buffer);
+    poddescTwoBody(rijs_buffer, besselparams_buffer, nbesselpars, bdegree, adegree, npairs, nrbfmax, rin, rcut, phi_buffer, ns, coeff2_buffer, tj_buffer, nrbf2, K, pq_buffer, nrbf3, nelements, fij_buffer, e2_buffer, sumU_buffer, U_buffer, d2_buffer, dd2_buffer);
 }
 
 
@@ -617,10 +621,6 @@ double FASTPOD::peratomenergyforce(double *fij, double *rij, double *temp,
   double *Uz = &temp[3*n1]; // Nj*K3*nrbf3
   double *sumU = &temp[4*n1]; // K3*nrbf3*nelements
 
-  double *rbf = &temp[4*n1 + n5]; // Nj*nrbf2
-  double *rbfx = &temp[4*n1 + n5 + n2]; // Nj*nrbf2
-  double *rbfy = &temp[4*n1 + n5 + 2*n2]; // Nj*nrbf2
-  double *rbfz = &temp[4*n1 + n5 + 3*n2]; // Nj*nrbf2
 
   double *rbft = &temp[4*n1 + n5 + 4*n2]; // Nj*ns
   double *rbfxt = &temp[4*n1 + n5 + 4*n2 + n3]; // Nj*ns
@@ -633,7 +633,7 @@ double FASTPOD::peratomenergyforce(double *fij, double *rij, double *temp,
 
   e1 = coeff1[t0];
 
-  if (nd3 > 0) {
+  if (nd3 > 0 && nd23 > 0) {
     double *abf = &temp[4*n1 + n5 + 4*n2]; // Nj*K3
     double *abfx = &temp[4*n1 + n5 + 4*n2 + n4]; // Nj*K3
     double *abfy = &temp[4*n1 + n5 + 4*n2 + 2*n4]; // Nj*K3
@@ -645,21 +645,25 @@ double FASTPOD::peratomenergyforce(double *fij, double *rij, double *temp,
     double *dd3 = &temp[4*n1 + n5 + 4*n2 + nl2 + 3*Nj*nl2 + nl3]; // 3*Nj*nl3
     double *d4 =  &temp[4*n1 + n5 + 4*n2 + nl2 + 3*Nj*nl2 + nl3 + 3*Nj*nl3]; // nl4
     double *dd4 = &temp[4*n1 + n5 + 4*n2 + nl2 + 3*Nj*nl2 + nl3 + 3*Nj*nl3 + nl4]; // 3*Nj*nl4
-    if (nd23 > 0) {
-      buildHalideTwoBody(fij, &e2, sumU, U, d2, dd2
-            rij, besselparams,
-            nbesselpars, pdegree[0], pdegree[1], Nj, nrbfmax, rin, rcut
-            Phi,
-            ns,
-            &coeff2[nl2*t0],
-            tj, nrbf2,
-            pq3, K3,
-            nrbf3, nelements
-            )
+    buildHalideTwoBody(fij, &e2, sumU, U, d2, dd2,
+	    rij, besselparams,
+	    nbesselpars, pdegree[0], pdegree[1], Nj, nrbfmax, rin, rcut,
+	    Phi,
+	    ns,
+	    &coeff2[nl2*t0],
+	    tj, nrbf2,
+	    pq3, K3,
+	    nrbf3, nelements
+	    );
+  }
+  else {
 
+  double *rbf = &temp[4*n1 + n5]; // Nj*nrbf2
+  double *rbfx = &temp[4*n1 + n5 + n2]; // Nj*nrbf2
+  double *rbfy = &temp[4*n1 + n5 + 2*n2]; // Nj*nrbf2
+  double *rbfz = &temp[4*n1 + n5 + 3*n2]; // Nj*nrbf2
 
-/*
-  buildRBFHalide(rbft, rbfxt, rbfyt, rbfzt, rij, besselparams, nbesselpars, pdegree[0], pdegree[1], Nj, rin, rcut);
+  //buildRBFHalide(rbft, rbfxt, rbfyt, rbfzt, rij, besselparams, nbesselpars, pdegree[0], pdegree[1], Nj, rin, rcut);
 
   // orthogonal radial basis functions
   
@@ -668,21 +672,21 @@ double FASTPOD::peratomenergyforce(double *fij, double *rij, double *temp,
   
   //begin = std::chrono::high_resolution_clock::now(); 
   
-  // radialbasis(rbft, rbfxt, rbfyt, rbfzt, rij, besselparams, rin, rcut-rin, pdegree[0], pdegree[1], nbesselpars, Nj);
+  radialbasis(rbft, rbfxt, rbfyt, rbfzt, rij, besselparams, rin, rcut-rin, pdegree[0], pdegree[1], nbesselpars, Nj);
 
   //end = std::chrono::high_resolution_clock::now();   
   //comptime[0] += std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count()/1e6;        
   
   //begin = std::chrono::high_resolution_clock::now();
       
-  // char chn = 'N';
-  // double alpha = 1.0, beta = 0.0;
-  // DGEMM(&chn, &chn, &Nj, &nrbfmax, &ns, &alpha, rbft, &Nj, Phi, &ns, &beta, rbf, &Nj);
-  // DGEMM(&chn, &chn, &Nj, &nrbfmax, &ns, &alpha, rbfxt, &Nj, Phi, &ns, &beta, rbfx, &Nj);
-  // DGEMM(&chn, &chn, &Nj, &nrbfmax, &ns, &alpha, rbfyt, &Nj, Phi, &ns, &beta, rbfy, &Nj);
-  // DGEMM(&chn, &chn, &Nj, &nrbfmax, &ns, &alpha, rbfzt, &Nj, Phi, &ns, &beta, rbfz, &Nj);
+   char chn = 'N';
+   double alpha = 1.0, beta = 0.0;
+   DGEMM(&chn, &chn, &Nj, &nrbfmax, &ns, &alpha, rbft, &Nj, Phi, &ns, &beta, rbf, &Nj);
+   DGEMM(&chn, &chn, &Nj, &nrbfmax, &ns, &alpha, rbfxt, &Nj, Phi, &ns, &beta, rbfx, &Nj);
+   DGEMM(&chn, &chn, &Nj, &nrbfmax, &ns, &alpha, rbfyt, &Nj, Phi, &ns, &beta, rbfy, &Nj);
+   DGEMM(&chn, &chn, &Nj, &nrbfmax, &ns, &alpha, rbfzt, &Nj, Phi, &ns, &beta, rbfz, &Nj);
 
-  buildHalideFourMult(rbf, rbft, Phi, Nj, nrbfmax, ns);
+  // buildHalideFourMult(rbf, rbft, Phi, Nj, nrbfmax, ns);
   // std::cout << "ugg:" << nrbfmax << ", " << Nj << ", " << ns << "\n";
   // for(int a = 0; a < 4; a++){
   //   for(int b = 0; b < ns; b++){
@@ -699,8 +703,8 @@ double FASTPOD::peratomenergyforce(double *fij, double *rij, double *temp,
 
   //begin = std::chrono::high_resolution_clock::now();
   
-  // e2 = tallytwobodylocalforce(fij, &coeff2[nl2*t0], rbf, rbfx, rbfy, rbfz, tj, nrbf2, Nj);
-  buildtallytwobodylocalforce(fij, &e2, &coeff2[nl2*t0], rbf, rbfx, rbfy, rbfz, tj, nrbf2, Nj, ns);
+  e2 = tallytwobodylocalforce(fij, &coeff2[nl2*t0], rbf, rbfx, rbfy, rbfz, tj, nrbf2, Nj);
+  //buildtallytwobodylocalforce(fij, &e2, &coeff2[nl2*t0], rbf, rbfx, rbfy, rbfz, tj, nrbf2, Nj, ns);
 
   //end = std::chrono::high_resolution_clock::now();   
   //comptime[1] += std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count()/1e6;        
@@ -716,13 +720,15 @@ double FASTPOD::peratomenergyforce(double *fij, double *rij, double *temp,
     
     //    angularbasis(abf, abfx, abfy, abfz, rij, tm, pq3, Nj, K3);
     // std::cout << "Using " << Nj << " and " << K3 << "\n";
-    //angularbasis(abf, abfx, abfy, abfz, rij, tm, pq3, Nj, K3);
+    angularbasis(abf, abfx, abfy, abfz, rij, tm, pq3, Nj, K3);
+    /*
     buildHalideAngularBasis(abf, rij, tm, pq3, Nj, K3);
     for (int p = 0; p < Nj; p++){
       for (int k =0; k < K3; k++){
 	// std::cout << "abf(" << p << ", " << k << ") = " << abf[p + Nj*k] << "\n";
       }
     }
+    */
 
     //end = std::chrono::high_resolution_clock::now();   
     //comptime[2] += std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count()/1e6;        
@@ -730,10 +736,10 @@ double FASTPOD::peratomenergyforce(double *fij, double *rij, double *temp,
     //begin = std::chrono::high_resolution_clock::now(); 
     
     //radialangularbasis(U, Ux, Uy, Uz, rbf, rbfx, rbfy, rbfz, abf, abfx, abfy, abfz, Nj, K3, nrbf3);
-    //radialangularbasis(sumU, U, Ux, Uy, Uz, rbf, rbfx, rbfy, rbfz, 
-    //         abf, abfx, abfy, abfz, tm, tj, Nj, K3, nrbf3, nelements);
-    buildradialangularbasis(sumU, U, Ux, Uy, Uz, rbf, rbfx, rbfy, rbfz, 
-            abf, abfx, abfy, abfz, tj, Nj, K3, nrbf3, nelements, ns);
+    radialangularbasis(sumU, U, Ux, Uy, Uz, rbf, rbfx, rbfy, rbfz, 
+             abf, abfx, abfy, abfz, tm, tj, Nj, K3, nrbf3, nelements);
+    //buildradialangularbasis(sumU, U, Ux, Uy, Uz, rbf, rbfx, rbfy, rbfz, 
+    //        abf, abfx, abfy, abfz, tj, Nj, K3, nrbf3, nelements, ns);
 
     //end = std::chrono::high_resolution_clock::now();   
     //comptime[3] += std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count()/1e6;        
@@ -753,9 +759,8 @@ double FASTPOD::peratomenergyforce(double *fij, double *rij, double *temp,
     double *dd4 = &temp[4*n1 + n5 + 4*n2 + nl2 + 3*Nj*nl2 + nl3 + 3*Nj*nl3 + nl4]; // 3*Nj*nl4
 
     if (nd23>0) {
-      // twobodydescderiv(d2, dd2, rbf, rbfx, rbfy, rbfz, tj, Nj, true);
-      buildtwobodydescderiv(d2, dd2, rbf, rbfx, rbfy, rbfz, tj, Nj, nelements, nrbf2, ns);
-      */
+      twobodydescderiv(d2, dd2, rbf, rbfx, rbfy, rbfz, tj, Nj, true);
+      //buildtwobodydescderiv(d2, dd2, rbf, rbfx, rbfy, rbfz, tj, Nj, nelements, nrbf2, ns);
     }
 
     if ((nd23>0) || (nd33>0) || (nd34>0)) {
@@ -852,6 +857,7 @@ double FASTPOD::peratomenergyforce(double *fij, double *rij, double *temp,
         sevenbodyfij44(fij, temp, &coeff44[nl44*t0], d4, dd4, 3*Nj);
       }
     }
+  }
   }
 
   return (e1+e2+e3+e4+e23+e33+e34+e44);

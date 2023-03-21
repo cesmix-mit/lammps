@@ -54,7 +54,7 @@ Expr get_abf_index(Expr original_index, Expr rbf_info_length) {
 void buildRBF(Func & rbft,
 	      Func xij, Func besselparams, Expr rin, Expr rmax,
 	      Expr bdegree, Expr adegree, Expr nbparams, Expr npairs,
-	      Var bfi, Var bfp, Var np, Var dim, Var ns)
+	      Var bfi, Var bfp, Var np, Var dim, Expr ns)
 {
 
   Expr one = Expr((double) 1.0);
@@ -186,15 +186,15 @@ void buildRBF(Func & rbft,
   rbfz_f.bound(drbf_dabf_info, 0, nbparams * bdegree * npairs + adegree * npairs);
 
 
-  Var nps("np"), n("n"), c1("c");
-  rbft(nps, n, c1) = 0;
+  Var nps("np"), n("n"), c1("c1");
+  rbft(nps, n, c1) = zero;
   RDom t(0, npairs, 0, ns);
-  rbft(t.x, t.y. 0) = rbf_f(t.y + t.x * npairs);
+  rbft(t.x, t.y, 0) = rbf_f(t.y + t.x * npairs);
   rbft(t.x, t.y, 1) = rbfx_f(t.y + t.x * npairs);
   rbft(t.x, t.y, 2) = rbfy_f(t.y + t.x * npairs);
   rbft(t.x, t.y, 3) = rbfz_f(t.y + t.x * npairs);
 
-  rbft.bound(np, 0, npairs);
+  rbft.bound(nps, 0, npairs);
   rbft.bound(n, 0, ns);
   rbft.bound(c1, 0, 4);
 
@@ -687,11 +687,12 @@ void buildPod1Body_p(Func & eatom, Func & fatom,
 
 void radialAngularBasis(Func & sumU, Func & U,
         Func rbf, Func abf,
-        Func atomtype, Expr N, Expr K, Expr M, Expr Ne)
+        Func atomtype, Expr N, Expr K, Expr M, Expr Nen)
 {
     Expr zero = Expr((double) 0.0);
 
-    Var n("n"), k("k"), m("m"), ne("ne"), c("c");
+    Var k("k"), m("m"), n("n"), c("c");
+    Var ne("ne");
     sumU(m, k, ne) = zero;
 
     //Expr c1 = rbf(m, n);
@@ -703,17 +704,16 @@ void radialAngularBasis(Func & sumU, Func & U,
     // Uz(m, k, n) = abfz(k, n) * c1 + c2 * rbfz(m, n);
     U(m, k, n, c) = zero;
 
-    RDom r(0, M, 0, K, 0, N);
-    RDom t(1, 4);
+    RDom r(0, M, 0, K, 0, N, 1, 4);
     Expr in = atomtype(r.z) - 1;
 
     Expr c1 = rbf(r.z, r.x, 0);
     Expr c2 = abf(r.z, r.y, 0);
 
     U(r.x, r.y, r.z, 0) = c1 * c2;
-    U(r.x, r.y, r.z, t.x) = abf(r.z, r.y, t.x) * c1 + c2 * rbf(r.z, r.x, t.x);
+    U(r.x, r.y, r.z, r[3]) = abf(r.z, r.y, r[3]) * c1 + c2 * rbf(r.z, r.x, r[3]);
     // sumU(r.x, r.y, clamp(in, 0, Ne - 1)) += rbf(r.x, r.z) * abf(r.y, r.z);
-    sumU(r.x, r.y, clamp(in, 0, Ne - 1)) += rbf(r.z, r.x, 0) * abf(r.z, r.y, 0);
+    sumU(r.x, r.y, clamp(in, 0, Nen - 1)) += rbf(r.z, r.x, 0) * abf(r.z, r.y, 0);
 
     sumU.bound(m, 0, M);
     U.bound(m, 0, M);
@@ -721,7 +721,7 @@ void radialAngularBasis(Func & sumU, Func & U,
     sumU.bound(k, 0, K);
     U.bound(k, 0, K);
 
-    sumU.bound(ne, 0, Ne);
+    sumU.bound(ne, 0, Nen);
     U.bound(n, 0, N);
 
     U.bound(c, 0, 4);
@@ -1210,8 +1210,8 @@ public:
 
     Input<int> nrbf3{"nrbf3", 1};
     Input<int> nelements{"nelements", 1};
-    Output<Buffer<double>> sumU_o{"sumU", 3};
-    Output<Buffer<double>> U_o{"U", 4};
+    Output<Buffer<double>> sumU_o{"sumU_o", 3};
+    Output<Buffer<double>> U_o{"U_o", 4};
 
     Output<Buffer<double>> d2_o{"d2_o", 2};
     Output<Buffer<double>> dd2_o{"dd2_o", 4};
@@ -1226,7 +1226,6 @@ public:
         Var np("pairindex");
         Var numOuts("numOuts");
         Var dim("dim");
-        Var ns("ns");
 
         Func rbft("rbft");
         buildRBF(rbft, rijs, besselparams, rin, rcut-rin,
@@ -1278,9 +1277,9 @@ public:
         Var pair("pair");
         Var abfi("abfi");
           
-        Expr x = rijs(0, pair);
-        Expr y = rijs(1, pair);
-        Expr z = rijs(2, pair);
+        Expr x = rijs(pair, 0);
+        Expr y = rijs(pair, 0);
+        Expr z = rijs(pair, 0);
         
         Expr xx = x*x;
         Expr yy = y*y;
@@ -1313,11 +1312,11 @@ public:
         tm(pair, abfi, abfip, c) = zero;
         tm(pair, abfi, 0, 0) = Expr((double) 1.0);
         RDom rn(1, k3 + 1, 0, 4);
-        Expr m = clamp(pq(rn.x) - 1, 0, 3 * k3 - 1);
-        Expr prev0 = tm(pair, abfi, m, 0);
+        Expr m1 = clamp(pq(rn.x) - 1, 0, 3 * k3 - 1);
+        Expr prev0 = tm(pair, abfi, m1, 0);
         Expr d = pq(rn.x + k3);
         Expr uvw = select(d == 1, u, select(d==2, v, select(d==3, w, Expr((double) 0.0))));
-        tm(pair, abfi, rn.x, rn.y) = tm(pair, abfi, m, rn.y) * uvw + select(d == rn.y, tm(pair, abfi, m, 0), zero);
+        tm(pair, abfi, rn.x, rn.y) = tm(pair, abfi, m1, rn.y) * uvw + select(d == rn.y, tm(pair, abfi, m1, 0), zero);
         Func abf4("abf4");
         abf4(pair, abfi, c) = zero;
         abf4(pair, abfi, 0) = tm(pair, abfi, abfi, 0);
@@ -1335,7 +1334,7 @@ public:
         radialAngularBasis(sumU, U, rbf, abf4,
                 tj, npairs, k3, nrbf3, nelements);
 
-        Var ne("ne");
+        Var ne("ne"), m("m");
         sumU_o(ne, k, m) = sumU(m, k, ne);
         U_o(n, k, m, c) = U(m, k, n, c);
 
@@ -1345,7 +1344,7 @@ public:
         U_o.dim(0).set_bounds(0, npairs).set_stride(1);
         U_o.dim(1).set_bounds(0, k3).set_stride(npairs);
         U_o.dim(2).set_bounds(0, nrbf3).set_stride(npairs * k3);
-        U_o.dim(3).set_bounds(0, 3).set_stride(npairs * k3 * nrbf3);
+        U_o.dim(3).set_bounds(0, 4).set_stride(npairs * k3 * nrbf3);
         // if nd23 > 0
         Func d2("d2"), dd2("dd2");
         twoBodyDescDeriv(d2, dd2, rbf, tj, npairs, nelements, nrbf2);
