@@ -217,6 +217,10 @@ void PairPOD::compute(int eflag, int vflag)
 
       // get neighbor list for atom i
 
+      //Plan: Halide cum sum: i.e num neigh per atom and then do a cum sum
+      //llamp neigh pair does a binary search to the cum sum and then starts counting to add to array in rij, aiajtitj
+      //build local array based on that search and end.
+
       lammpsNeighborList(x, firstneigh, type, map, numneigh, rcutsq, i);
 
       // compute atomic energy and force for atom i

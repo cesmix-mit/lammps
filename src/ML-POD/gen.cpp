@@ -629,24 +629,13 @@ void buildNeighPairs(Func & outputs, Func & vectors,
   Expr att = clamp(alist(jacc), 0, natom - 1);  //
   Expr att_tt = atomtype(att);
   outputs(r.y, numOuts) = mux(numOuts, {r.x, att, atomtype(r.x), att_tt}); //ai[k], aj[k], ti, tj
-  // outputs(r.y, numOuts) = mux(numOuts, {print(r.x, "<- ai:"), print(att, "<- aj:"), print(atomtype(r.x), "<- ti"), print(att_tt, "<- tj")}); //ai[k], aj[k], ti, tj
-  // vectors(r.y, d) = atompos(print(jacc, "<- jacc", r.y, "<- r.y"), d) - atompos(print(r.x, "<- r.x"), d);
   vectors(r.y, d) = atompos(jacc, d) - atompos(r.x, d);
-  // vectors(r.x, d) = atompos(jacc, d) - atompos(r.y, d);
-  // vectors(r.y, d) = atompos(r.x, d) - atompos(jacc, d);
-  // outputs.trace_stores();
-  // atomtype.trace_loads();
-  // atompos.trace_loads();
-  // vectors.trace_stores();
 
   outputs.compute_root();
   vectors.compute_root();
 
   outputs.update(0).reorder(numOuts, r.y, r.x);
   vectors.update(0).reorder(d, r.y, r.x);
-  
-  //  ou// tputs.update(0).reorder(r.x, r.y, numOuts);
-  //  vectors.update(0).reorder(r.x, r.y, d);
   
 }
 
@@ -1102,6 +1091,62 @@ public:
 
     }
 };
+
+
+void myNeighs(Func & outputs, Func & vectors,
+		     Func pairlist, Func pairnumsum, Func atomtype, Func alist, Func atompos,
+		     Expr nl, Expr natom, Expr dim, Expr nmax, Expr npairs,
+		     Var atom, Var d, Var nm, Var np, Var numOuts){
+  outputs(np, numOuts) = mux(numOuts,{-1, -1, -1, -1});
+  outputs.bound(np, 0, npairs);
+  outputs.bound(numOuts, 0, 4);
+  
+  vectors(np, d) = Expr((double) 0.0);
+  vectors.bound(d, 0, dim).reorder_storage(d, np);
+  vectors.bound(np, 0, npairs);
+
+
+  RDom r(0, natom, 0, npairs);
+  r.where(r.y < pairnumsum(r.x + 1) && r.y >= pairnumsum(r.x));
+
+  // Expr jacc = clamp(print(pairlist(r.y), "<- pairlist"), 0, print(npairs- 1, "<- npair - 1"));
+  Expr jacc = clamp(pairlist(r.y), 0, nl * natom - 1);
+  Expr att = clamp(alist(jacc), 0, natom - 1);  //
+  Expr att_tt = atomtype(att);
+  outputs(r.y, numOuts) = mux(numOuts, {r.x, att, atomtype(r.x), att_tt}); //ai[k], aj[k], ti, tj
+  vectors(r.y, d) = atompos(jacc, d) - atompos(r.x, d);
+
+  outputs.compute_root();
+  vectors.compute_root();
+
+  outputs.update(0).reorder(numOuts, r.y, r.x);
+  vectors.update(0).reorder(d, r.y, r.x);
+  
+}
+
+class poddescMyNeigh : public Halide::Generator<poddescMyNeigh> {
+public:
+  Input<Buffer<int>> x{"x", 1}; //pointer array
+  Input<Buffer<int>> firstneigh{"firstneigh", 1}; //pointer array
+  Input<Buffer<int>> type{"type", 1};
+  Input<Buffer<int>> map{"map", 1};
+
+
+  Input<int> atom{"atom"};
+  Input<double> rcutsq{"rcutsq"};
+
+  Output<Buffer<double>> rij{"rij", 2};
+  Output<Buffer<int>> aiajtitj{"aiajtitj", 2};
+
+  
+  
+
+
+  void generate() {
+    x.dim(0).set_bounds()
+  }
+};
+
 
 class poddescAngularBasis : public Halide::Generator<poddescAngularBasis> {
 public:
