@@ -474,21 +474,12 @@ int FASTPOD::read_coeff_file(std::string coeff_file)
   return ncoeffall;
 }
 
-void buildRBFHalide (double *rbf_f, double *rbfx_f, double *rbfy_f, double *rbfz_f, double *rijs, double *besselparams, int nbesselpars, int bdegree, int adegree, int npairs, double rin, double rcut) {
-    Halide::Runtime::Buffer<double> rbf_buffer(rbf_f, nbesselpars * bdegree * npairs + 
-            adegree * npairs);
-    Halide::Runtime::Buffer<double> rbfx_buffer(rbfx_f, nbesselpars * bdegree * npairs +
-            adegree * npairs);
-    Halide::Runtime::Buffer<double> rbfy_buffer(rbfy_f, nbesselpars * bdegree * npairs +
-            adegree * npairs);
-    Halide::Runtime::Buffer<double> rbfz_buffer(rbfz_f, nbesselpars * bdegree * npairs +
-            adegree * npairs);
-    Halide::Runtime::Buffer<double> rijs_buffer(rijs, 3, npairs);
 
-    rijs_buffer.transpose(0, 1);
-
-    Halide::Runtime::Buffer<double> besselparams_buffer(besselparams, nbesselpars);
-    poddescRBF(rijs_buffer, besselparams_buffer, nbesselpars, bdegree, adegree, npairs, rin, rcut, rbf_buffer, rbfx_buffer, rbfy_buffer, rbfz_buffer);
+void buildRBFHalide (double *rbf, double *rijs, double *besselparams, int nbesselpars, int bdegree, int adegree, int npairs, int ns, double rin, double rcut) {
+  Halide::Runtime::Buffer<double> rbf_buffer(rbf, {{0, npairs, 1}, {0, ns, npairs}, {0, 4, ns *npairs}}); 
+  Halide::Runtime::Buffer<double> rijs_buffer(rijs, {{0, 3, 1}, {0, npairs, 3}});
+  Halide::Runtime::Buffer<double> besselparams_buffer(besselparams, nbesselpars);
+  poddescRBF(rijs_buffer, besselparams_buffer, nbesselpars, bdegree, adegree, npairs, ns, rin, rcut, rbf_buffer);
 }
     
 void buildradialangularbasis(double *sumU, double *U, double *Ux, double *Uy, double *Uz, double *rbf, double *rbfx, double *rbfy, double *rbfz, double *abf, double *abfx, double *abfy, double *abfz, int *tj, int Nj, int K3, int nrbf3, int nelements, int ns) {
@@ -598,7 +589,7 @@ double FASTPOD::peratomenergyforce(double *fij, double *rij, double *temp,
   double *rbfyt = &temp[4*n1 + n5 + 4*n2 + 2*n3]; // Nj*ns
   double *rbfzt = &temp[4*n1 + n5 + 4*n2 + 3*n3]; // Nj*ns
   
-  buildRBFHalide(rbft, rbfxt, rbfyt, rbfzt, rij, besselparams, nbesselpars, pdegree[0], pdegree[1], Nj, rin, rcut);
+  buildRBFHalide(rbft, rij, besselparams, nbesselpars, pdegree[0], pdegree[1], Nj, ns, rin, rcut);
 
   // orthogonal radial basis functions
   
