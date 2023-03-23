@@ -496,35 +496,29 @@ void buildradialangularbasis(double *sumU, double *U, double *rbf, double *abf, 
 }
 
 
-void buildtwobodydescderiv(double *d2, double *dd2, double *rbf, double *rbfx, double *rbfy, double *rbfz, int *tj, int N, int Ne, int nrbf2, int ns)
+void buildtwobodydescderiv(double *d2, double *dd2, double *rbf, double *rbfx, double *rbfy, double *rbfz, int *tj, int N, int Ne, int nrbf2, int ns, int nrbfmax)
 {
     Halide::Runtime::Buffer<double> d2_buffer(d2, {{0, Ne, nrbf2}, {0, nrbf2, 1}});
     Halide::Runtime::Buffer<double> dd2_buffer(dd2, {{0, Ne, 3 * N * nrbf2}, {0, nrbf2, 3 * N}, {0, N, 3}, {0, 3, 1}});
-    
-    Halide::Runtime::Buffer<double> rbf_buffer(rbf, {{0, N, 1}, {0, ns, N}});
-    Halide::Runtime::Buffer<double> rbfx_buffer(rbfx, {{0, N, 1}, {0, ns, N}});
-    Halide::Runtime::Buffer<double> rbfy_buffer(rbfy, {{0, N, 1}, {0, ns, N}});
-    Halide::Runtime::Buffer<double> rbfz_buffer(rbfz, {{0, N, 1}, {0, ns, N}});
+    Halide::Runtime::Buffer<double> rbf_buffer(rbf, {{0, N, 1}, {0, nrbfmax, N}, {0, 4, nrbfmax * N}});
+    //    Halide::Runtime::Buffer<double> rbf_buffer(rbf, {{0, N, 1}, {0, ns, N}, {0, 4, ns * N}});
 
     Halide::Runtime::Buffer<int> tj_buffer(tj, N);
 
-    poddescTwoBodyDescDeriv(rbf_buffer, rbfx_buffer, rbfy_buffer, rbfz_buffer, tj_buffer, N, Ne, nrbf2, ns, d2_buffer, dd2_buffer);
+    poddescTwoBodyDescDeriv(rbf_buffer, tj_buffer, N, Ne, nrbf2, ns, nrbfmax, d2_buffer, dd2_buffer);
 }
 
-void buildtallytwobodylocalforce(double *fij, double *e2, double *coeff2, double *rbf, double *rbfx, double *rbfy, double *rbfz, int *tj, int nbf, int N, int ns)
+void buildtallytwobodylocalforce(double *fij, double *e2, double *coeff2, double *rbf, double *rbfx, double *rbfy, double *rbfz, int *tj, int nbf, int N, int ns, int nrbfmax)
 {
     Halide::Runtime::Buffer<double> fij_buffer(fij, {{0, N, 3}, {0, 3, 1}});
     Halide::Runtime::Buffer<double> coeff2_buffer(coeff2, {{0, N, nbf}, {0, nbf, 1}});
     auto e2_buffer = Halide::Runtime::Buffer<double, 0>::make_scalar(e2);
 
-    Halide::Runtime::Buffer<double> rbf_buffer(rbf, {{0, N, 1}, {0, ns, N}});
-    Halide::Runtime::Buffer<double> rbfx_buffer(rbfx, {{0, N, 1}, {0, ns, N}});
-    Halide::Runtime::Buffer<double> rbfy_buffer(rbfy, {{0, N, 1}, {0, ns, N}});
-    Halide::Runtime::Buffer<double> rbfz_buffer(rbfz, {{0, N, 1}, {0, ns, N}});
+    Halide::Runtime::Buffer<double> rbf_buffer(rbf, {{0, N, 1}, {0, nrbfmax, N}, {0, 4, nrbfmax * N}});
 
     Halide::Runtime::Buffer<int> tj_buffer(tj, N);
 
-    poddescTallyTwoBodyLocalForce(coeff2_buffer, rbf_buffer, rbfx_buffer, rbfy_buffer, rbfz_buffer, tj_buffer, nbf, N, ns, fij_buffer, e2_buffer);
+    poddescTallyTwoBodyLocalForce(coeff2_buffer, rbf_buffer, tj_buffer, nbf, N, ns, nrbfmax, fij_buffer, e2_buffer);
 }
 
 void buildHalideFourMult(double * rbfo_all, double *rbft_all, double * Phi, int npairs, int nrbfmax, int ns){
@@ -626,7 +620,7 @@ double FASTPOD::peratomenergyforce(double *fij, double *rij, double *temp,
   
   e1 = coeff1[t0];
   // e2 = tallytwobodylocalforce(fij, &coeff2[nl2*t0], rbf, rbfx, rbfy, rbfz, tj, nrbf2, Nj);
-  buildtallytwobodylocalforce(fij, &e2, &coeff2[nl2*t0], rbf, rbfx, rbfy, rbfz, tj, nrbf2, Nj, ns);
+  buildtallytwobodylocalforce(fij, &e2, &coeff2[nl2*t0], rbf, rbfx, rbfy, rbfz, tj, nrbf2, Nj, ns, nrbfmax);
 
   //end = std::chrono::high_resolution_clock::now();   
   //comptime[1] += std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count()/1e6;        
@@ -657,17 +651,7 @@ double FASTPOD::peratomenergyforce(double *fij, double *rij, double *temp,
     //		       abf, abfx, abfy, abfz, tm, tj, Nj, K3, nrbf3, nelements);
     buildradialangularbasis (sumU, U, rbf,
 			     abf,  tj, Nj, K3, nrbf3,nrbfmax, nelements, ns);
-       // for (int c =0; c < 4; c ++){
-       // 	 for(int p =0; p < Nj; p++){
-       // 	   for(int k =0; k < K3; k++){
-       // 	     for (int n=0; n < nrbf3; n++){
-       // 	       int acc = c * (nrbf3*K3*Nj) + n * (K3 * Nj) + k * Nj + p;
-       // 	       std::cout << "ugg(" << p << ", " << k << ", " << n << ", " << c << ") = " << U[acc] << "\n";
-       // 	     }
-       // 	   }
-       // 	 }
-       // }
-       // exit(1);
+
        
     //end = std::chrono::high_resolution_clock::now();   
     //comptime[3] += std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count()/1e6;        
@@ -688,7 +672,7 @@ double FASTPOD::peratomenergyforce(double *fij, double *rij, double *temp,
 
     if (nd23>0) {
       // twobodydescderiv(d2, dd2, rbf, rbfx, rbfy, rbfz, tj, Nj, true);
-      buildtwobodydescderiv(d2, dd2, rbf, rbfx, rbfy, rbfz, tj, Nj, nelements, nrbf2, ns);
+      buildtwobodydescderiv(d2, dd2, rbf, rbfx, rbfy, rbfz, tj, Nj, nelements, nrbf2, ns, nrbfmax);
     }
 
     if ((nd23>0) || (nd33>0) || (nd34>0)) {
