@@ -37,6 +37,7 @@
 #include <cmath>
 #include <chrono>
 #include <iostream>
+#include <stdlib.h>     /* exit, EXIT_FAILURE */
 
 using namespace LAMMPS_NS;
 using MathConst::MY_PI;
@@ -482,25 +483,16 @@ void buildRBFHalide (double *rbf, double *rijs, double *besselparams, int nbesse
   poddescRBF(rijs_buffer, besselparams_buffer, nbesselpars, bdegree, adegree, npairs, ns, rin, rcut, rbf_buffer);
 }
     
-void buildradialangularbasis(double *sumU, double *U, double *Ux, double *Uy, double *Uz, double *rbf, double *rbfx, double *rbfy, double *rbfz, double *abf, double *abfx, double *abfy, double *abfz, int *tj, int Nj, int K3, int nrbf3, int nelements, int ns) {
+void buildradialangularbasis(double *sumU, double *U, double *rbf, double *abf, int *tj,
+			     int Nj, int K3, int nrbf3, int nrbfmax, int nelements, int ns) {
     Halide::Runtime::Buffer<double> sumU_buffer(sumU, {{0, nelements, 1}, {0, K3, nelements}, {0, nrbf3, K3 * nelements}});
-    Halide::Runtime::Buffer<double> U_buffer(U, {{0, Nj, 1}, {0, K3, Nj}, {0, nrbf3, K3 * Nj}});
-    Halide::Runtime::Buffer<double> Ux_buffer(Ux, {{0, Nj, 1}, {0, K3, Nj}, {0, nrbf3, K3 * Nj}});
-    Halide::Runtime::Buffer<double> Uy_buffer(Uy, {{0, Nj, 1}, {0, K3, Nj}, {0, nrbf3, K3 * Nj}});
-    Halide::Runtime::Buffer<double> Uz_buffer(Uz, {{0, Nj, 1}, {0, K3, Nj}, {0, nrbf3, K3 * Nj}});
-
-    Halide::Runtime::Buffer<double> rbf_buffer(rbf, {{0, Nj, 1}, {0, ns, Nj}});
-    Halide::Runtime::Buffer<double> rbfx_buffer(rbfx, {{0, Nj, 1}, {0, ns, Nj}});
-    Halide::Runtime::Buffer<double> rbfy_buffer(rbfy, {{0, Nj, 1}, {0, ns, Nj}});
-    Halide::Runtime::Buffer<double> rbfz_buffer(rbfz, {{0, Nj, 1}, {0, ns, Nj}});
-    Halide::Runtime::Buffer<double> abf_buffer(abf, {{0, Nj, 1}, {0, K3, Nj}});
-    Halide::Runtime::Buffer<double> abfx_buffer(abfx, {{0, Nj, 1}, {0, K3, Nj}});
-    Halide::Runtime::Buffer<double> abfy_buffer(abfy, {{0, Nj, 1}, {0, K3, Nj}});
-    Halide::Runtime::Buffer<double> abfz_buffer(abfz, {{0, Nj, 1}, {0, K3, Nj}});
+    Halide::Runtime::Buffer<double> U_buffer(U, {{0, Nj, 1}, {0, K3, Nj}, {0, nrbf3, K3 * Nj}, {0, 4, nrbf3 * K3 * Nj}});
+    Halide::Runtime::Buffer<double> rbf_buffer(rbf, {{0, Nj, 1}, {0, nrbfmax, Nj}, {0, 4, nrbfmax * Nj}});
+    Halide::Runtime::Buffer<double> abf_buffer(abf, {{0, Nj, 1}, {0, K3, Nj}, {0, 4, K3 * Nj}});
 
     Halide::Runtime::Buffer<int> tj_buffer(tj, Nj);
 
-    poddescRadialAngularBasis(rbf_buffer, rbfx_buffer, rbfy_buffer, rbfz_buffer, abf_buffer, abfx_buffer, abfy_buffer, abfz_buffer, tj_buffer, Nj, K3, nrbf3, nelements, ns, sumU_buffer, U_buffer, Ux_buffer, Uy_buffer, Uz_buffer);
+    poddescRadialAngularBasis(rbf_buffer, abf_buffer, tj_buffer, Nj, K3, nrbf3, nrbfmax, nelements, ns, sumU_buffer, U_buffer);
 }
 
 
@@ -652,11 +644,8 @@ double FASTPOD::peratomenergyforce(double *fij, double *rij, double *temp,
     // std::cout << "Using " << Nj << " and " << K3 << "\n";
     //angularbasis(abf, abfx, abfy, abfz, rij, tm, pq3, Nj, K3);
     buildHalideAngularBasis(abf, rij, tm, pq3, Nj, K3);
-    for (int p = 0; p < Nj; p++){
-      for (int k =0; k < K3; k++){
-	// std::cout << "abf(" << p << ", " << k << ") = " << abf[p + Nj*k] << "\n";
-      }
-    }
+
+
 
     //end = std::chrono::high_resolution_clock::now();   
     //comptime[2] += std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count()/1e6;        
@@ -664,17 +653,28 @@ double FASTPOD::peratomenergyforce(double *fij, double *rij, double *temp,
     //begin = std::chrono::high_resolution_clock::now(); 
     
     //radialangularbasis(U, Ux, Uy, Uz, rbf, rbfx, rbfy, rbfz, abf, abfx, abfy, abfz, Nj, K3, nrbf3);
-    //radialangularbasis(sumU, U, Ux, Uy, Uz, rbf, rbfx, rbfy, rbfz, 
-    //         abf, abfx, abfy, abfz, tm, tj, Nj, K3, nrbf3, nelements);
-    buildradialangularbasis(sumU, U, Ux, Uy, Uz, rbf, rbfx, rbfy, rbfz, 
-            abf, abfx, abfy, abfz, tj, Nj, K3, nrbf3, nelements, ns);
-
+    //       radialangularbasis(sumU, U, Ux, Uy, Uz, rbf, rbfx, rbfy, rbfz, 
+    //		       abf, abfx, abfy, abfz, tm, tj, Nj, K3, nrbf3, nelements);
+    buildradialangularbasis (sumU, U, rbf,
+			     abf,  tj, Nj, K3, nrbf3,nrbfmax, nelements, ns);
+       // for (int c =0; c < 4; c ++){
+       // 	 for(int p =0; p < Nj; p++){
+       // 	   for(int k =0; k < K3; k++){
+       // 	     for (int n=0; n < nrbf3; n++){
+       // 	       int acc = c * (nrbf3*K3*Nj) + n * (K3 * Nj) + k * Nj + p;
+       // 	       std::cout << "ugg(" << p << ", " << k << ", " << n << ", " << c << ") = " << U[acc] << "\n";
+       // 	     }
+       // 	   }
+       // 	 }
+       // }
+       // exit(1);
+       
     //end = std::chrono::high_resolution_clock::now();   
     //comptime[3] += std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count()/1e6;        
     
 //     //begin = std::chrono::high_resolution_clock::now();
 //     
-//     sumradialangularfunctions(sumU, U, tj, Nj, K3, nrbf3, nelements);
+//    sumradialangularfunctions(sumU, U, tj, Nj, K3, nrbf3, nelements);
 // 
 //     //end = std::chrono::high_resolution_clock::now();   
 //     //comptime[4] += std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count()/1e6;        

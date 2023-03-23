@@ -112,52 +112,51 @@ void buildRBF( Func & rbfall,
 }
 
 
-void radialAngularBasis(Func & sumU, Func & U, Func & Ux, Func & Uy, Func & Uz,
-        Func rbf, Func rbfx, Func rbfy, Func rbfz, Func abf,
-        Func abfx, Func abfy, Func abfz, Func atomtype, Expr N, Expr K, Expr M, Expr Ne)
+void radialAngularBasis(Func & sumU, Func & U,
+
+			Func rbf, Func abf,  Func atomtype,
+			Expr N, Expr K, Expr M, Expr Ne)
 {
     Expr zero = Expr((double) 0.0);
 
-    Var n("n"), k("k"), m("m"), ne("ne");
-    sumU(m, k, ne) = zero;
+    Var n("n"), k("k"), m("m"), ne("ne"), c("crab");
+    sumU(ne, k, m) = zero;
 
     //Expr c1 = rbf(m, n);
     //Expr c2 = abf(k, n);
-    Expr c1 = rbf(n, m);
-    Expr c2 = abf(n, k);
+    Expr c1 = rbf(n, m, 0);
+    Expr c2 = abf(n, k, 0);
     
     // U(m, k, n) = c1 * c2;
     // Ux(m, k, n) = abfx(k, n) * c1 + c2 * rbfx(m, n);
     // Uy(m, k, n) = abfy(k, n) * c1 + c2 * rbfy(m, n);
     // Uz(m, k, n) = abfz(k, n) * c1 + c2 * rbfz(m, n);
-    U(m, k, n) = c1 * c2;
-    Ux(m, k, n) = abfx(n, k) * c1 + c2 * rbfx(n, m);
-    Uy(m, k, n) = abfy(n, k) * c1 + c2 * rbfy(n, m);
-    Uz(m, k, n) = abfz(n, k) * c1 + c2 * rbfz(n, m);
+    U(n, k, m, c) = select(c == 0, c1 * c2,
+			   select(c == 1, abf(n, k, 1) * c1 + c2 * rbf(n, m, 1),
+				  select(c== 2, abf(n, k, 2) * c1 + c2 * rbf(n, m, 2) ,
+					 select(c==3, abf(n, k, 3) * c1+ c2 * rbf(n, m, 3), Expr((double) 0.0)))));
+    // Ux(m, k, n) = abfx(n, k) * c1 + c2 * rbfx(n, m);
+    
+    // Uy(m, k, n) = abfy(n, k) * c1 + c2 * rbfy(n, m);
+    // Uz(m, k, n) = abfz(n, k) * c1 + c2 * rbfz(n, m);
 
     RDom r(0, M, 0, K, 0, N);
     Expr in = atomtype(r.z) - 1;
 
     // sumU(r.x, r.y, clamp(in, 0, Ne - 1)) += rbf(r.x, r.z) * abf(r.y, r.z);
-    sumU(r.x, r.y, clamp(in, 0, Ne - 1)) += rbf(r.z, r.x) * abf(r.z, r.y);
+    sumU(clamp(in, 0, Ne - 1), r.y, r.x) += rbf(r.z, r.x, 0) * abf(r.z, r.y, 0);
 
     sumU.bound(m, 0, M);
     U.bound(m, 0, M);
-    Ux.bound(m, 0, M);
-    Uy.bound(m, 0, M);
-    Uz.bound(m, 0, M);
 
     sumU.bound(k, 0, K);
     U.bound(k, 0, K);
-    Ux.bound(k, 0, K);
-    Uy.bound(k, 0, K);
-    Uz.bound(k, 0, K);
 
     sumU.bound(ne, 0, Ne);
     U.bound(n, 0, N);
-    Ux.bound(n, 0, N);
-    Uy.bound(n, 0, N);
-    Uz.bound(n, 0, N);
+
+    U.bound(c, 0, 4);
+    U.compute_root();
 
 }
 
@@ -297,82 +296,44 @@ public:
 class poddescRadialAngularBasis : public Halide::Generator<poddescRadialAngularBasis> {
 public:
 
-    Output<Buffer<double>> sumU_o{"sumU", 3};
-    Output<Buffer<double>> U_o{"U", 3};
-    Output<Buffer<double>> Ux_o{"Ux", 3};
-    Output<Buffer<double>> Uy_o{"Uy", 3};
-    Output<Buffer<double>> Uz_o{"Uz", 3};
 
-    Input<Buffer<double>> rbf{"rbf", 2};
-    Input<Buffer<double>> rbfx{"rbfx", 2};
-    Input<Buffer<double>> rbfy{"rbfy", 2};
-    Input<Buffer<double>> rbfz{"rbfz", 2};
-    Input<Buffer<double>> abf{"abf", 2};
-    Input<Buffer<double>> abfx{"abfx", 2};
-    Input<Buffer<double>> abfy{"abfy", 2};
-    Input<Buffer<double>> abfz{"abfz", 2};
-    Input<Buffer<int>> tj{"tj", 1};
-
-    Input<int> Nj{"Nj", 1};
-    Input<int> K3{"K3", 1};
-    Input<int> nrbf3{"nrbf3", 1};
-    Input<int> nelements{"nelements", 1};
-    Input<int> ns{"ns", 1};
+  Output<Buffer<double>> sumU_o{"sumU", 3};
+  Output<Buffer<double>> U_o{"U", 4};
+  
+  Input<Buffer<double>> rbf{"rbf", 3};
+  Input<Buffer<double>> abf4{"abf", 3};
+  Input<Buffer<int>> tj{"tj", 1};
+  Input<int> npairs{"npairs", 1};
+  Input<int> k3{"k3", 1};
+  Input<int> nrbf3{"nrbf3", 1};
+  Input<int> nrbfmax{"nrbfmax", 1};
+  Input<int> nelements{"nelements", 1};
+  Input<int> ns{"ns", 1};
 
     void generate() {
-        rbf.dim(0).set_bounds(0, Nj).set_stride(1);
-        rbf.dim(1).set_bounds(0, ns).set_stride(Nj);
-        rbfx.dim(0).set_bounds(0, Nj).set_stride(1);
-        rbfx.dim(1).set_bounds(0, ns).set_stride(Nj);
-        rbfy.dim(0).set_bounds(0, Nj).set_stride(1);
-        rbfy.dim(1).set_bounds(0, ns).set_stride(Nj);
-        rbfz.dim(0).set_bounds(0, Nj).set_stride(1);
-        rbfz.dim(1).set_bounds(0, ns).set_stride(Nj);
-
-        abf.dim(0).set_bounds(0, Nj).set_stride(1);
-        abf.dim(1).set_bounds(0, K3).set_stride(Nj);
-        abfx.dim(0).set_bounds(0, Nj).set_stride(1);
-        abfx.dim(1).set_bounds(0, K3).set_stride(Nj);
-        abfy.dim(0).set_bounds(0, Nj).set_stride(1);
-        abfy.dim(1).set_bounds(0, K3).set_stride(Nj);
-        abfz.dim(0).set_bounds(0, Nj).set_stride(1);
-        abfz.dim(1).set_bounds(0, K3).set_stride(Nj);
+      rbf.dim(2).set_bounds(0, 4).set_stride(nrbfmax * npairs);
+      rbf.dim(1).set_bounds(0, nrbfmax).set_stride(npairs);
+      rbf.dim(0).set_bounds(0, npairs).set_stride(1);
+      abf4.dim(2).set_bounds(0, 4).set_stride(k3* npairs);
+      abf4.dim(1).set_bounds(0, k3).set_stride(npairs);
+      abf4.dim(0).set_bounds(0, npairs).set_stride(1);
 
 
-        Func sumU("sumU"), U("U"), Ux("Ux"), Uy("Uy"), Uz("Uz");
-        radialAngularBasis(sumU, U, Ux, Uy, Uz,
-                rbf, rbfx, rbfy, rbfz,
-                abf, abfx, abfy, abfz,
-                tj, Nj, K3, nrbf3, nelements);
 
-        Var m("m"), k("k"), n("n"), ne("ne");
+      Func sumU("sumU"), U("U");
+      radialAngularBasis(sumU, U,rbf,abf4,
+			 tj, npairs, k3, nrbf3, nelements);
 
-        //sumU_o(m, k, ne) = sumU(m, k, ne);
-        //U_o(m, k, n) = U(m, k, n);
-        //Ux_o(m, k, n) = Ux(m, k, n);
-        //Uy_o(m, k, n) = Uy(m, k, n);
-        //Uz_o(m, k, n) = Uz(m, k, n);
-        sumU_o(ne, k, m) = sumU(m, k, ne);
-        U_o(n, k, m) = U(m, k, n);
-        Ux_o(n, k, m) = Ux(m, k, n);
-        Uy_o(n, k, m) = Uy(m, k, n);
-        Uz_o(n, k, m) = Uz(m, k, n);
-
-        sumU_o.dim(0).set_bounds(0, nelements).set_stride(1);
-        sumU_o.dim(1).set_bounds(0, K3).set_stride(nelements);
-        sumU_o.dim(2).set_bounds(0, nrbf3).set_stride(nelements * K3);
-        U_o.dim(0).set_bounds(0, Nj).set_stride(1);
-        U_o.dim(1).set_bounds(0, K3).set_stride(Nj);
-        U_o.dim(2).set_bounds(0, nrbf3).set_stride(Nj * K3);
-        Ux_o.dim(0).set_bounds(0, Nj).set_stride(1);
-        Ux_o.dim(1).set_bounds(0, K3).set_stride(Nj);
-        Ux_o.dim(2).set_bounds(0, nrbf3).set_stride(Nj * K3);
-        Uy_o.dim(0).set_bounds(0, Nj).set_stride(1);
-        Uy_o.dim(1).set_bounds(0, K3).set_stride(Nj);
-        Uy_o.dim(2).set_bounds(0, nrbf3).set_stride(Nj * K3);
-        Uz_o.dim(0).set_bounds(0, Nj).set_stride(1);
-        Uz_o.dim(1).set_bounds(0, K3).set_stride(Nj);
-        Uz_o.dim(2).set_bounds(0, nrbf3).set_stride(Nj * K3);
+      Var m("m"), k("k"), n("n"), ne("ne"), c("c");
+      sumU_o(ne, k, m) = sumU(ne, k, m);
+      U_o(n, k, m, c) = U(n, k, m, c);
+      sumU_o.dim(0).set_bounds(0, nelements).set_stride(1);
+      sumU_o.dim(1).set_bounds(0, k3).set_stride(nelements);
+      sumU_o.dim(2).set_bounds(0, nrbf3).set_stride(nelements * k3);
+      U_o.dim(0).set_bounds(0, npairs).set_stride(1);
+      U_o.dim(1).set_bounds(0, k3).set_stride(npairs);
+      U_o.dim(2).set_bounds(0, nrbf3).set_stride(npairs * k3);
+      U_o.dim(3).set_bounds(0, 4).set_stride(npairs * k3 * nrbf3);
     }
 };
 
@@ -424,47 +385,6 @@ public:
 
 
 
-class pod1 : public Halide::Generator<pod1> {
-public:
-  //Func pairnumsum, Func pairlist,
-  //				       Expr NPairs, Expr NAtoms, Expr NMax, Expr dim,
-  //				       Func atomtype, Func alist, Func atompos
-
-  Input<Buffer<int>> pairlist{"pairlist", 1};
-  Input<Buffer<int>> pairnumsum{"pairnumsum", 1};
-  Input<Buffer<int>> atomtype{"atomptype", 1};
-  Input<Buffer<int>> alist{"alist", 1};
-  Input<Buffer<double>> atompos{"atompos", 2};
-
-  Output<Buffer<double>> rij{"rij", 2};
-  Output<Buffer<int>> meta{"meta", 2};
-
-  Pipeline pipeline;
-
-  GeneratorParam<int> NMax{"NMax", 100};
-  GeneratorParam<int> NTypes{"NTypes", 3};
-  //  GeneratorParam<int> M{"M", 50};
-  //  GeneratorParam<int> I{"I", 5000};
-
-
-
-  void generate (){
-
-    Expr NPairs = pairlist.dim(0).max();
-    Expr NAtoms = atomtype.dim(0).max();
-    alist.dim(0).set_bounds(0, NAtoms);
-    atompos.dim(0).set_bounds(0, NAtoms);
-    atompos.dim(1).set_bounds(0, 3);
-    Func np1_data, np1_vecs;
-
-    Var i("i"), j("j");
-
-    //    rij(i, j)= np1_vecs(i, j);
-    //    meta(i, j) = np1_data(i, j);
-
-  }
-
-};
 
 class poddescFourMult : public Halide::Generator<poddescFourMult> {
 public:
@@ -505,6 +425,56 @@ public:
 
     }
 };
+
+
+void buildAngularBasis(Expr k3, Expr npairs, Func pq, Func rij,
+		       Func & abf4, Func & tm,
+		       Var c, Var pair, Var abfi,Var abfip){
+      
+      Expr x = rij(0, pair);
+      Expr y = rij(1, pair);
+      Expr z = rij(2, pair);
+      
+      Expr xx = x*x;
+      Expr yy = y*y;
+      Expr zz = z*z;
+      Expr xy = x*y;
+      Expr xz = x*z;
+      Expr yz = y*z;
+
+      Expr dij = sqrt(xx + yy + zz);
+      Expr u = x/dij;
+      Expr v = y/dij;
+      Expr w = z/dij;
+    
+      Expr dij3 = dij*dij*dij;
+      Expr dudx = (yy+zz)/dij3;
+      Expr dudy = -xy/dij3;
+      Expr dudz = -xz/dij3;
+
+      Expr dvdx = -xy/dij3;
+      Expr dvdy = (xx+zz)/dij3;
+      Expr dvdz = -yz/dij3;
+
+      Expr dwdx = -xz/dij3;
+      Expr dwdy = -yz/dij3;
+      Expr dwdz = (xx+yy)/dij3;
+
+      Expr zero = Expr((double) 0.0);
+      tm(pair, abfi, abfip, c) = zero;
+      tm(pair, abfi, 0, 0) = Expr((double) 1.0);
+      RDom rn(1, k3 + 1, 0, 4);
+      Expr m = clamp(pq(rn.x) - 1, 0, 3 * k3 - 1);
+      Expr prev0 = tm(pair, abfi, m, 0);
+      Expr d = pq(rn.x + k3);
+      Expr uvw = select(d == 1, u, select(d==2, v, select(d==3, w, Expr((double) 0.0))));
+      tm(pair, abfi, rn.x, rn.y) = tm(pair, abfi, m, rn.y) * uvw + select(d == rn.y, tm(pair, abfi, m, 0), zero);
+      abf4(pair, abfi, c) = zero;
+      abf4(pair, abfi, 0) = tm(pair, abfi, abfi, 0);
+      abf4(pair, abfi, 1) = tm(pair, abfi, abfi, 1) * dudx + tm(pair, abfi, abfi, 2) * dvdx + tm(pair, abfi, abfi, 3) * dwdx;
+      abf4(pair, abfi, 2) = tm(pair, abfi, abfi, 1) * dudy + tm(pair, abfi, abfi, 2) * dvdy + tm(pair, abfi, abfi, 3) * dwdy;
+      abf4(pair, abfi, 3) = tm(pair, abfi, abfi, 1) * dudz + tm(pair, abfi, abfi, 2) * dvdz + tm(pair, abfi, abfi, 3) * dwdz;  
+}
 
 class poddescAngularBasis : public Halide::Generator<poddescAngularBasis> {
 public:
@@ -617,6 +587,10 @@ public:
     // rijs.dim(1).set_bounds(0, npairs).set_stride(3);
     // rijs.dim(0).set_bounds(0, 3).set_stride(1);
     // besselparams.dim(0).set_bounds(0, nbesselparams);
+    // Phi.dim(0).set_bounds(0, ns).set_stride(1);
+    // Phi.dim(1).set_bounds(0, ns).set_stride(ns);
+    // pq.dim(0).set_bounds(0, 3* k3).set_stride(1);
+
     
     // Var bfi("basis function index");
     // Var bfp("basis function param");
@@ -627,15 +601,70 @@ public:
     // Func rbft_temp("rbf_f");
     // buildRBF(rbft_temp,
     //          rijs, besselparams, rin, rcut-rin,
-    //          bdegree, adegree, nbesselparams, npairs,
+    //          bdegree, adegree, nbesselparams, npairs, ns,
     //          bfi, bfp, np, dim);
 
-    // Var rbf_output("rbf_output");
-    // Var rbf_outputp("rbf_outputp");
+    // Var i("i");
+    // Var j("j");
+    // Var k("k");
+    // Var c("c");
+    // Func prod("prod");
+    // prod(c, k, i, j) = Phi(k, i) * rbf4_in(j, k, c);
+    // prod.bound(c, 0, 4);
+    // prod.bound(k, 0, nrbfmax);
+    // prod.bound(j, 0, npairs);
+    // prod.bound(i, 0, npairs);
+    // Func rbf4("rbf4");
+    // rbf4(j, i, c) = Expr((double) 0.0);
+    // RDom r(0, ns);
+    // rbf4(j, i, c) += prod(c, r, i, j);
+    // rbf4.compute_root();
 
-    // rbf_o(rbf_outputp, rbf_output) = rbf_f(rbf_outputp, rbf_output);
-    // rbf_o.dim(0).set_bounds(0, 4).set_stride(ns * npairs);
-    // rbf_o.dim(1).set_bounds(0, ns * npairs).set_stride(1);
+
+    // Func abf4("abf4");
+    // Func tm("tm");
+    // Var abfi("abfi");
+    // Var abfip("abfip");
+    // buildAngularBasis(k3, npairs, pq, rij,
+    // 		      abf4, tm,
+    // 		      c, np,  abfi, abfip
+    // 		      );
+    // abf4.compute_root();
+
+    // Func sumU("sumU"), U("U");
+    // radialAngularBasis(sumU, U, rbf4, abf4,
+    // 		       tj, npairs, k3, nrbf3, nelements);
+    // //     abf4.dim(2).set_bounds(0, 4).set_stride(k3* npairs);
+    // // abf4.dim(1).set_bounds(0, k3).set_stride(npairs);
+    // // abf4.dim(0).set_bounds(0, npairs).set_stride(1);
+
+    // Var ne("ne"), m("m");
+    // sumU_o(ne, k, m) = sumU(m, k, ne);
+    // U_o(n, k, m, c) = U(m, k, n, c);
+
+    // sumU_o.dim(0).set_bounds(0, nelements).set_stride(1);
+    // sumU_o.dim(1).set_bounds(0, k3).set_stride(nelements);
+    // sumU_o.dim(2).set_bounds(0, nrbf3).set_stride(nelements * k3);
+    // U_o.dim(0).set_bounds(0, npairs).set_stride(1);
+    // U_o.dim(1).set_bounds(0, k3).set_stride(npairs);
+    // U_o.dim(2).set_bounds(0, nrbf3).set_stride(npairs * k3);
+    // U_o.dim(3).set_bounds(0, 4).set_stride(npairs * k3 * nrbf3);
+    // // if nd23 > 0
+    // Func d2("d2"), dd2("dd2");
+    // twoBodyDescDeriv(d2, dd2, rbf4, tj, npairs, nelements, nrbf2);
+    // d2.compute_root();
+    // dd2.compute_root();
+
+    // d2_o(ne, m) = d2(ne, m);
+    // dd2_o(ne, m, n, dim) = dd2(ne, m, n, dim);
+
+    // d2_o.dim(0).set_bounds(0, nelements).set_stride(nrbf2);
+    // d2_o.dim(1).set_bounds(0, nrbf2).set_stride(1);
+
+    // dd2_o.dim(0).set_bounds(0, nelements).set_stride(3 * npairs * nrbf2);
+    // dd2_o.dim(1).set_bounds(0, nrbf2).set_stride(3 * npairs);
+    // dd2_o.dim(2).set_bounds(0, npairs).set_stride(3);
+    // dd2_o.dim(3).set_bounds(0, 3).set_stride(1);
 
     
   }
