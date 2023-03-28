@@ -558,8 +558,8 @@ public:
     Output<Buffer<double>> dd2_o{"dd2_o", 4};
 
     void generate() {
-        rijs.dim(0).set_bounds(0, npairs).set_stride(3);
-        rijs.dim(1).set_bounds(0, 3).set_stride(1);
+        rijs.dim(0).set_bounds(0, 3).set_stride(1);
+        rijs.dim(1).set_bounds(0, npairs).set_stride(3);
 
         besselparams.dim(0).set_bounds(0, nbesselparams);
         Var bfi("basis function index");
