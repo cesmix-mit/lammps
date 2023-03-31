@@ -76,11 +76,14 @@ void buildRBF( Func & rbfall,
 
   rbf.compute_root();
 
-  drbf.compute_root();
+  drbf.compute_root(); // .021 ms (10%)
+  //drbf.compute_at(xij, np); // .022 ms (11%)
+  // nothing ? // Runtime looks like increases slightly and info gets pushed into `rbft`
 
   abf.compute_root();
   
   dabf.compute_root();
+
   // rbf.size() = nbparams * bdegree * npairs
   // drbf[x].size() = nbparams * bdegree * npairs
   // abf.size() = adegree * npairs 
@@ -108,7 +111,10 @@ void buildRBF( Func & rbfall,
   rbfall(r1.z, r1.y + r1.x * bdegree, 3) = drbf(r1.x, r1.y, r1.z, 2);
   rbfall(r2.x, get_abf_index(r2.y, rbf_info_length), 3) = dabf(r2.y, r2.x, 2);
 
-  rbfall.compute_root();
+// This seems like it was the most important thing that needed to be changed 
+  // rbfall.compute_root();  // 19353.844 ms .001 ms 0%
+  rbfall.store_root().compute_root();  // 19247.139 ms .001 ms 0%
+  // nothing? TERRIBLE TERRIBLE TERRIBLE, possibly bottleneck from earlier? 295 seconds total! with rbft taking 2.378 ms (77%)
 }
 
 
@@ -156,7 +162,11 @@ void radialAngularBasis(Func & sumU, Func & U,
   U.bound(n, 0, N);
 
   U.bound(c, 0, 4);
-  U.compute_root();
+
+  //U.compute_root();
+  //nothing?  18736.008 ms -- .011 ms 5%
+  // U.compute_at(U, n);
+  sumU.compute_root();
 
 }
 
@@ -183,6 +193,8 @@ void twoBodyDescDeriv(Func & d2, Func & dd2, Func rbf,  Func tj, Expr N, Expr Ne
   dd2.bound(n, 0, N);
   dd2.bound(dim, 0, 3);
     
+  d2.compute_root();
+  dd2.compute_root();
 }
 
 
@@ -198,12 +210,13 @@ void tallyTwoBodyLocalForce(Func & fij, Func & e, Func coeff2, Func rbf, Func tj
 
   Expr c = coeff2(clamp(tj(r.x), 1, N - 1) - 1, r.y);
   e() += c * rbf(r.x, r.y, 0);
-  fij(r.x, 0) += c * rbf(r.x, r.y, 1);
-  fij(r.x, 1) += c * rbf(r.x, r.y, 2);
-  fij(r.x, 2) += c * rbf(r.x, r.y, 3);
+  fij(r.x, dim) += c * rbf(r.x, r.y, dim);
 
   fij.bound(n, 0, N);
   fij.bound(dim, 0, 3);
+
+  fij.compute_root();
+  e.compute_root();
 }
 
 class poddescTallyTwoBodyLocalForce : public Halide::Generator<poddescTallyTwoBodyLocalForce> {
@@ -422,6 +435,12 @@ void buildAngularBasis(Expr k3, Expr npairs, Func pq, Func rij,
   abf4(pair, abfi, 1) = tm(pair, abfi, abfi, 1) * dudx + tm(pair, abfi, abfi, 2) * dvdx + tm(pair, abfi, abfi, 3) * dwdx;
   abf4(pair, abfi, 2) = tm(pair, abfi, abfi, 1) * dudy + tm(pair, abfi, abfi, 2) * dvdy + tm(pair, abfi, abfi, 3) * dwdy;
   abf4(pair, abfi, 3) = tm(pair, abfi, abfi, 1) * dudz + tm(pair, abfi, abfi, 2) * dvdz + tm(pair, abfi, abfi, 3) * dwdz;  
+
+  // tm.compute_root(); // 21697.324 ms total -- .119 ms tm -- 52%
+  tm.store_root().compute_root(); abf4.compute_root(); // 21753.123 ms total -- .118 ms tm -- 52%
+  // tm.store_root().compute_at(abf4, pair); // 66554 ms total
+  // abf4.compute_root();
+  tm.store_root().compute_root(); abf4.store_root().compute_root(); // 21646.010 ms total -- .119 ms tm -- 52%
 }
 
 class poddescFourMult : public Halide::Generator<poddescFourMult> {
@@ -595,6 +614,10 @@ public:
         RDom r(0, ns);
         rbf(j, i, c) += prod(c, r, i, j);
 
+	    // rbf.compute_root(); // 19410.314 ms -- .004 ms 2%
+        rbf.store_root().compute_root(); // 19353.843750 ms -- .003 ms 1%
+        // Nothing? 36 seconds .004 ms 1%
+
         //rbf.dim(2).set_bounds(0, 4).set_stride(nrbfmax * npairs);
         //rbf.dim(1).set_bounds(0, nrbfmax).set_stride(npairs);
         //rbf.dim(0).set_bounds(0, npairs).set_stride(1);
@@ -620,7 +643,7 @@ public:
 			  abf4, tm,
 			  c, np,  abfi, abfip
 			  );
-	abf4.compute_root();
+	// abf4.compute_root();
 
 	Func sumU("sumU"), U("U");
 	Var copy1, copy2, copy3, copy4;
@@ -636,6 +659,9 @@ public:
 	U_o.dim(2).set_bounds(0, nrbf3).set_stride(npairs * k3);
 	U_o.dim(3).set_bounds(0, 4).set_stride(npairs * k3 * nrbf3);
 
+    //U_o.compute_root();
+    sumU_o.compute_root();
+
     //     abf4.dim(2).set_bounds(0, 4).set_stride(k3* npairs);
     // abf4.dim(1).set_bounds(0, k3).set_stride(npairs);
     // abf4.dim(0).set_bounds(0, npairs).set_stride(1);
@@ -650,7 +676,7 @@ public:
     // // if nd23 > 0
     Func d2("d2"), dd2("dd2");
     twoBodyDescDeriv(d2, dd2, rbf, tj, npairs, nelements, nrbf2);
-    d2.compute_root();
+    // d2.compute_root();
     dd2.compute_root();
 
 

@@ -2,8 +2,13 @@
 LAMMPS (3 Nov 2022)
 OMP_NUM_THREADS environment is not set. Defaulting to 1 thread. (src/comm.cpp:98)
   using 1 OpenMP thread(s) per MPI task
+Lattice spacing in x,y,z = 3.316 3.316 3.316
+Created orthogonal box = (0 0 0) to (66.32 66.32 66.32)
+  1 by 1 by 1 MPI processor grid
+Created 16000 atoms
+  using lattice units in orthogonal box = (0 0 0) to (66.32 66.32 66.32)
+  create_atoms CPU = 0.004 seconds
 Reading potential file Ta_param.pod with DATE: 2022-11-30
-Fast POD descriptors are used for this potential.
 Reading potential file Ta_param.pod with DATE: 2022-11-30
 **************** Begin of POD Potentials ****************
 species: Ta 
@@ -34,84 +39,80 @@ number of descriptors for seven-body potential: 136
 total number of descriptors for all potentials: 933
 **************** End of POD Potentials ****************
 
-**************** Begin of Data File ****************
-file format: extxyz
-file extension: xyz
-path to training data set: ../Ta/XYZ
-path to test data set: ../Ta/XYZ
-training fraction: 1
-test fraction: 1
-randomize training data set: 1
-randomize test data set: 1
-error analysis for training data set: 1
-error analysis for test data set: 0
-energy/force calculation for training data set: 0
-energy/force calculation for test data set: 0
-fitting weight for energy: 100
-fitting weight for force: 1
-fitting weight for stress: 0
-fitting regularization parameter: 1e-12
-**************** End of Data File ****************
-**************** Begin of Training Data Set ****************
+**************** Begin of POD Coefficients ****************
+total number of coefficients for POD potential: 933
+**************** End of POD Potentials ****************
+
+Neighbor list info ...
+  update: every = 1 steps, delay = 0 steps, check = yes
+  max neighbors/atom: 2000, page size: 100000
+  master list distance cutoff = 5.5
+  ghost atom cutoff = 5.5
+  binsize = 2.75, bins = 25 25 25
+  1 neighbor lists, perpetual/occasional/extra = 1 0 0
+  (1) pair pod, perpetual
+      attributes: full, newton on
+      pair build: full/bin/atomonly
+      stencil: full/bin/3d
+      bin: standard
+Setting up Verlet run ...
+  Unit style    : metal
+  Current step  : 0
+  Time step     : 0.0005
+Per MPI rank memory allocation (min/avg/max) = 8.929 | 8.929 | 8.929 Mbytes
+   Step          Temp          E_pair         E_mol          TotEng         Press     
+         0   300           -11.84513       0             -11.806354      1905242.7    
+         5   302.81786     -11.845031      0             -11.805891      1905291      
+Loop time of 17.7001 on 1 procs for 5 steps with 16000 atoms
+
+Performance: 0.012 ns/day, 1966.677 hours/ns, 0.282 timesteps/s, 4.520 katom-step/s
+99.9% CPU use with 1 MPI tasks x 1 OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
 ---------------------------------------------------------------
-     data file     | number of configurations | number of atoms
----------------------------------------------------------------
- Displaced_A15.xyz |                 9        |         576
- Displaced_BCC.xyz |                 9        |         486
- Displaced_FCC.xyz |                 9        |         432
- Elastic_BCC.xyz   |               100        |         200
- Elastic_FCC.xyz   |               100        |         400
- GSF_110.xyz       |                22        |         528
- GSF_112.xyz       |                22        |         660
- Liquid.xyz        |                 3        |         300
- Surface.xyz       |                 7        |         236
- Volume_A15.xyz    |                30        |         240
- Volume_BCC.xyz    |                21        |          42
- Volume_FCC.xyz    |                31        |         124
----------------------------------------------------------------
-number of files: 12
-number of configurations in all files: 363
-number of atoms in all files: 4224
-minimum number of atoms: 2
-maximum number of atoms: 100
-**************** End of Training Data Set ****************
-**************** Begin of Memory Allocation ****************
-maximum number of atoms in periodic domain: 100
-maximum number of atoms in extended domain: 2700
-maximum number of neighbors in extended domain: 270000
-size of descriptor derivative matrix: 4998 x 933
-size of descriptor matrix: 933 x 933
-**************** End of Memory Allocation ****************
-**************** Begin of Least-Squares Fitting ****************
-Configuration: # 1
-Configuration: # 101
-Configuration: # 201
-Configuration: # 301
-**************** End of Least-Squares Fitting ****************
-**************** Begin of Error Calculation ****************
-Configuration: # 1
-Configuration: # 101
-Configuration: # 201
-Configuration: # 301
-**************** End of Error Calculation ****************
-**************** Begin of Error Analysis for the Training Data Set ****************
----------------------------------------------------------------------------------------------------
-        File         | # configs |  # atoms  | MAE energy  | RMSE energy | MAE force  | RMSE force
----------------------------------------------------------------------------------------------------
-Displaced_A15.xyz            9         576     0.000309      0.000366      0.038184      0.048544  
-Displaced_BCC.xyz            9         486     0.000561      0.000617      0.071097      0.089313  
-Displaced_FCC.xyz            9         432     0.000222      0.000252      0.033116      0.042244  
-Elastic_BCC.xyz            100         200     0.000098      0.000124      0.000030      0.000041  
-Elastic_FCC.xyz            100         400     0.000223      0.000273      0.000112      0.000161  
-GSF_110.xyz                 22         528     0.000647      0.000752      0.015760      0.025317  
-GSF_112.xyz                 22         660     0.001155      0.001478      0.025805      0.044122  
-Liquid.xyz                   3         300     0.001480      0.001901      0.123655      0.154391  
-Surface.xyz                  7         236     0.001229      0.002511      0.016569      0.037093  
-Volume_A15.xyz              30         240     0.000260      0.000320      0.000000      0.000000  
-Volume_BCC.xyz              21          42     0.000743      0.001867      0.000000      0.000000  
-Volume_FCC.xyz              31         124     0.000548      0.000862      0.000000      0.000000  
----------------------------------------------------------------------------------------------------
-All files                  363        4224     0.000372      0.000794      0.032496      0.059798  
----------------------------------------------------------------------------------------------------
-**************** End of Error Analysis for the Training Data Set ****************
-Total wall time: 0:00:16
+Pair    | 17.697     | 17.697     | 17.697     |   0.0 | 99.98
+Neigh   | 0          | 0          | 0          |   0.0 |  0.00
+Comm    | 0.00040228 | 0.00040228 | 0.00040228 |   0.0 |  0.00
+Output  | 6.0322e-05 | 6.0322e-05 | 6.0322e-05 |   0.0 |  0.00
+Modify  | 0.0014078  | 0.0014078  | 0.0014078  |   0.0 |  0.01
+Other   |            | 0.0009582  |            |       |  0.01
+
+Nlocal:          16000 ave       16000 max       16000 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Nghost:           9991 ave        9991 max        9991 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Neighs:              0 ave           0 max           0 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+FullNghs:       800000 ave      800000 max      800000 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+
+Total # of neighbors = 800000
+Ave neighs/atom = 50
+Neighbor list builds = 0
+Dangerous builds = 0
+Total wall time: 0:00:21
+poddescTwoBody
+ total time: 18665.494141 ms  samples: 17730  runs: 96000  time/run: 0.194432 ms
+ heap allocations: 1152000  peak heap usage: 550144 bytes
+  halide_malloc:         0.001ms   (0%)    
+  halide_free:           0.000ms   (0%)    
+  abf_f:                 0.004ms   (2%)     peak: 672      num: 96000     avg: 672
+  dabf_f:                0.015ms   (7%)     peak: 2016     num: 96000     avg: 2016
+  drbf_f:                0.021ms   (11%)    peak: 1344     num: 96000     avg: 1344
+  rbf:                   0.005ms   (2%)     peak: 448      num: 96000     avg: 448
+  rbft:                  0.000ms   (0%)     peak: 4480     num: 96000     avg: 4480
+  rbf$1:                 0.002ms   (1%)     peak: 3584     num: 96000     avg: 3584
+  fij:                   0.000ms   (0%)     peak: 336      num: 96000     avg: 336
+  fij_o:                 0.000ms   (0%)    
+  e:                     0.000ms   (0%)     stack: 8
+  e_o:                   0.000ms   (0%)    
+  tm:                    0.118ms   (60%)    peak: 537600   num: 96000     avg: 537600
+  abf4:                  0.007ms   (3%)     peak: 8960     num: 96000     avg: 8960
+  sumU:                  0.001ms   (0%)     peak: 960      num: 96000     avg: 960
+  sumU_o:                0.000ms   (0%)    
+  U_o:                   0.010ms   (5%)    
+  d2$0:                  0.000ms   (0%)     peak: 64       num: 96000     avg: 64
+  d2_o:                  0.000ms   (0%)    
+  dd2:                   0.001ms   (0%)     peak: 2688     num: 96000     avg: 2688
+  dd2_o:                 0.000ms   (0%)    
