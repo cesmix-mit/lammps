@@ -163,7 +163,7 @@ void radialAngularBasis(Func & sumU, Func & U,
 
   U.bound(c, 0, 4);
 
-  //U.compute_root();
+  U.compute_root();
   //nothing?  18736.008 ms -- .011 ms 5%
   // U.compute_at(U, n);
   sumU.compute_root();
@@ -431,16 +431,48 @@ void buildAngularBasis(Expr k3, Expr npairs, Func pq, Func rij,
   Expr uvw = select(d == 1, u, select(d==2, v, select(d==3, w, Expr((double) 0.0))));
   tm(pair, abfi, rn.x, rn.y) = tm(pair, abfi, m, rn.y) * uvw + select(d == rn.y, tm(pair, abfi, m, 0), zero);
   abf4(pair, abfi, c) = zero;
+
+  /*
   abf4(pair, abfi, 0) = tm(pair, abfi, abfi, 0);
   abf4(pair, abfi, 1) = tm(pair, abfi, abfi, 1) * dudx + tm(pair, abfi, abfi, 2) * dvdx + tm(pair, abfi, abfi, 3) * dwdx;
   abf4(pair, abfi, 2) = tm(pair, abfi, abfi, 1) * dudy + tm(pair, abfi, abfi, 2) * dvdy + tm(pair, abfi, abfi, 3) * dwdy;
   abf4(pair, abfi, 3) = tm(pair, abfi, abfi, 1) * dudz + tm(pair, abfi, abfi, 2) * dvdz + tm(pair, abfi, abfi, 3) * dwdz;  
+  */
+
+
+  Func jacobian("jacobian");
+  Var dim("dim"), dim_p("dim_p");
+  jacobian(pair, dim, dim_p) =
+      select(dim == 0,
+          select(dim_p == 0,
+              dudx,
+          select(dim_p == 1,
+              dvdx,
+          select(dim_p == 2,
+              dwdx, zero))), 
+      select(dim == 1,
+          select(dim_p == 0,
+              dudy,
+          select(dim_p == 1,
+              dvdy,
+          select(dim_p == 2,
+              dwdy, zero))),
+      select(dim == 2,
+          select(dim_p == 0,
+              dudz,
+          select(dim_p == 1,
+              dvdz,
+          select(dim_p == 2,
+              dwdz, zero))), zero)));
+  abf4(pair, abfi, c) = select(c == 0, tm(pair, abfi, abfi, 0),
+                        tm(pair, abfi, abfi, 1) * jacobian(pair, c-1, 0) + tm(pair, abfi, abfi, 2) * jacobian(pair, c-1, 1) + tm(pair, abfi, abfi, 3) * jacobian(pair, c-1, 2));   
 
   // tm.compute_root(); // 21697.324 ms total -- .119 ms tm -- 52%
-  tm.store_root().compute_root(); abf4.compute_root(); // 21753.123 ms total -- .118 ms tm -- 52%
+  // tm.store_root().compute_root(); abf4.compute_root(); // 21753.123 ms total -- .118 ms tm -- 52%
   // tm.store_root().compute_at(abf4, pair); // 66554 ms total
-  // abf4.compute_root();
-  tm.store_root().compute_root(); abf4.store_root().compute_root(); // 21646.010 ms total -- .119 ms tm -- 52%
+  abf4.compute_root();
+
+  // tm.store_root().compute_root(); abf4.store_root().compute_root(); // 21646.010 ms total -- .119 ms tm -- 52%
 }
 
 class poddescFourMult : public Halide::Generator<poddescFourMult> {
