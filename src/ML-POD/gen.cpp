@@ -160,6 +160,35 @@ void radialAngularBasis(Func & sumU, Func & U,
 
 }
 
+void threeBodyDesc(Func & d3, Func sumU, Func pn3, Func pc3, Expr npairs, Expr nelements, Expr nrbf3, Expr nabf3, Expr k3)
+{
+  Expr zero = Expr((double) 0.0);
+  Expr me = nelements * (nelements + 1)/2;
+
+  Var abf3("abf3");
+  Var rbf3("rbf3");
+  var kme("kme");
+
+  d3(abf3, rbf3, me) = zero;
+
+  RDom r(0, nabf3, 0, k3 + 1, nelements, 0, nelements);
+  Expr n1 = pn3(r.x);
+  Expr n2 = pn3(r.x + 1);
+  r.where(n1 <= r.y);
+  r.where(r.y < n2);
+
+  Expr t1 = pc3(r.y) * sumU(r.y)
+    //k is a trian
+    //(n*(n-1)/2) - (n-i)*((n-i)-1)/2 + j - i - 1
+    //Formula for indexing
+    //https://stackoverflow.com/questions/27086195/linear-index-upper-triangular-matrix
+  
+    
+  
+  //  r.where(pn3())
+
+}
+
 void twoBodyDescDeriv(Func & d2, Func & dd2, Func rbf,  Func tj, Expr N, Expr Ne, Expr nrbf2)
 {
   Expr zero = Expr((double) 0.0);
@@ -543,98 +572,106 @@ public:
     Input<Buffer<double>> coeff2{"coeff2", 2};
     Input<Buffer<int>> tj{"tj", 1};
     Input<int> nrbf2{"nrbf2", 1};
-    Output<Buffer<double>> fij_o{"fij_o", 2};
+
     Output<double> e_o{"e_o"};
 
     Input<int> k3{"k3", 1};
     Input<Buffer<int>> pq{"pq", 1};
 
-    Input<int> nrbf3{"nrbf3", 1};
-    Input<int> nelements{"nelements", 1};
-    Output<Buffer<double>> sumU_o{"sumU_o", 3};
-    Output<Buffer<double>> U_o{"U_o", 4};
+  Input<int> nrbf3{"nrbf3", 1};
+  Input<int> nelements{"nelements", 1};
+  Input<int> nd23{"nd23", 1};
+  Input<int> nd33{"nd33", 1};
+  Input<int> nd34{"nd34", 1};
+  Input<int> nabf4{"nabf4", 1};
 
-    Output<Buffer<double>> d2_o{"d2_o", 2};
-    Output<Buffer<double>> dd2_o{"dd2_o", 4};
+  Input<Buffer<int>> pn3{"pn3", 1};
 
-    void generate() {
-        rijs.dim(0).set_bounds(0, 3).set_stride(1);
-        rijs.dim(1).set_bounds(0, npairs).set_stride(3);
+  Output<Buffer<double>> d3_o{"d3", 3};
+  Output<Buffer<double>> fij_o{"fij_o", 2};
+  Output<Buffer<double>> sumU_o{"sumU_o", 3};
+  Output<Buffer<double>> U_o{"U_o", 4};
+  Output<Buffer<double>> d2_o{"d2_o", 2};
+  Output<Buffer<double>> dd2_o{"dd2_o", 4};
 
-        besselparams.dim(0).set_bounds(0, nbesselparams);
-        Var bfi("basis function index");
-        Var bfp("basis function param");
-        Var np("pairindex");
-        Var numOuts("numOuts");
-        Var dim("dim");
+  void generate() {
+    rijs.dim(0).set_bounds(0, 3).set_stride(1);
+    rijs.dim(1).set_bounds(0, npairs).set_stride(3);
 
-        Func rbft("rbft");
-        buildRBF(rbft, rijs, besselparams, rin, rcut-rin,
-		 bdegree, adegree, nbesselparams, npairs, ns,
-		 bfi, bfp, np, dim);
+    besselparams.dim(0).set_bounds(0, nbesselparams);
+    Var bfi("basis function index");
+    Var bfp("basis function param");
+    Var np("pairindex");
+    Var numOuts("numOuts");
+    Var dim("dim");
 
-        // MatMul
-        Phi.dim(0).set_bounds(0, ns).set_stride(1);
-        Phi.dim(1).set_bounds(0, ns).set_stride(ns);
+    Func rbft("rbft");
+    buildRBF(rbft, rijs, besselparams, rin, rcut-rin,
+	     bdegree, adegree, nbesselparams, npairs, ns,
+	     bfi, bfp, np, dim);
 
-        //rbft.dim(2).set_bounds(0, 4).set_stride(npairs * ns);
-        //rbft.dim(1).set_bounds(0, ns).set_stride(npairs);
-        //rbft.dim(0).set_bounds(0, npairs).set_stride(1);
-        Var i("i");
-        Var j("j");
-        Var k("k");
-        Var c("c");
-        Func prod("prod");
-        prod(c, k, i, j) = Phi(k, i) * rbft(j, k, c);
-        prod.bound(c, 0, 4);
-        prod.bound(k, 0, nrbfmax);
-        prod.bound(j, 0, npairs);
-        prod.bound(i, 0, npairs);
-        Func rbf("rbf");
-        rbf(j, i, c) = Expr((double) 0.0);
-        RDom r(0, ns);
-        rbf(j, i, c) += prod(c, r, i, j);
+    // MatMul
+    Phi.dim(0).set_bounds(0, ns).set_stride(1);
+    Phi.dim(1).set_bounds(0, ns).set_stride(ns);
 
-        //rbf.dim(2).set_bounds(0, 4).set_stride(nrbfmax * npairs);
-        //rbf.dim(1).set_bounds(0, nrbfmax).set_stride(npairs);
-        //rbf.dim(0).set_bounds(0, npairs).set_stride(1);
-        // end MatMul
+    //rbft.dim(2).set_bounds(0, 4).set_stride(npairs * ns);
+    //rbft.dim(1).set_bounds(0, ns).set_stride(npairs);
+    //rbft.dim(0).set_bounds(0, npairs).set_stride(1);
+    Var i("i");
+    Var j("j");
+    Var k("k");
+    Var c("c");
+    Func prod("prod");
+    prod(c, k, i, j) = Phi(k, i) * rbft(j, k, c);
+    prod.bound(c, 0, 4);
+    prod.bound(k, 0, nrbfmax);
+    prod.bound(j, 0, npairs);
+    prod.bound(i, 0, npairs);
+    Func rbf("rbf");
+    rbf(j, i, c) = Expr((double) 0.0);
+    RDom r(0, ns);
+    rbf(j, i, c) += prod(c, r, i, j);
 
-        coeff2.dim(0).set_bounds(0, npairs).set_stride(nrbf2);
-        coeff2.dim(1).set_bounds(0, nrbf2).set_stride(1);
+    //rbf.dim(2).set_bounds(0, 4).set_stride(nrbfmax * npairs);
+    //rbf.dim(1).set_bounds(0, nrbfmax).set_stride(npairs);
+    //rbf.dim(0).set_bounds(0, npairs).set_stride(1);
+    // end MatMul
 
-        Func fij("fij"), e("e");
-        tallyTwoBodyLocalForce(fij, e, coeff2, rbf, tj, nrbf2, npairs);
+    coeff2.dim(0).set_bounds(0, npairs).set_stride(nrbf2);
+    coeff2.dim(1).set_bounds(0, nrbf2).set_stride(1);
 
-        Var n("n");
-        fij_o(n, dim) = fij(n, dim);
-        e_o() = e();
-        fij_o.dim(0).set_bounds(0, npairs).set_stride(3);
-        fij_o.dim(1).set_bounds(0, 3).set_stride(1);
+    Func fij("fij"), e("e");
+    tallyTwoBodyLocalForce(fij, e, coeff2, rbf, tj, nrbf2, npairs);
 
-	Func abf4("abf4");
-	Func tm("tm");
-	Var abfi("abfi");
-	Var abfip("abfip");
-	buildAngularBasis(k3, npairs, pq, rijs,
-			  abf4, tm,
-			  c, np,  abfi, abfip
-			  );
-	abf4.compute_root();
+    Var n("n");
+    fij_o(n, dim) = fij(n, dim);
+    e_o() = e();
+    fij_o.dim(0).set_bounds(0, npairs).set_stride(3);
+    fij_o.dim(1).set_bounds(0, 3).set_stride(1);
 
-	Func sumU("sumU"), U("U");
-	Var copy1, copy2, copy3, copy4;
-	radialAngularBasis(sumU, U, rbf, abf4,
-			   tj, npairs, k3, nrbf3, nelements);
-	sumU_o(copy1, copy2, copy3) = sumU(copy1, copy2, copy3);
-	U_o(copy1, copy2, copy3, copy4)= U(copy1, copy2, copy3, copy4);
-	sumU_o.dim(0).set_bounds(0, nelements).set_stride(1);
-	sumU_o.dim(1).set_bounds(0, k3).set_stride(nelements);
-	sumU_o.dim(2).set_bounds(0, nrbf3).set_stride(nelements * k3);
-	U_o.dim(0).set_bounds(0, npairs).set_stride(1);
-	U_o.dim(1).set_bounds(0, k3).set_stride(npairs);
-	U_o.dim(2).set_bounds(0, nrbf3).set_stride(npairs * k3);
-	U_o.dim(3).set_bounds(0, 4).set_stride(npairs * k3 * nrbf3);
+    Func abf4("abf4");
+    Func tm("tm");
+    Var abfi("abfi");
+    Var abfip("abfip");
+    buildAngularBasis(k3, npairs, pq, rijs,
+		      abf4, tm,
+		      c, np,  abfi, abfip
+		      );
+    abf4.compute_root();
+
+    Func sumU("sumU"), U("U");
+    Var copy1, copy2, copy3, copy4;
+    radialAngularBasis(sumU, U, rbf, abf4,
+		       tj, npairs, k3, nrbf3, nelements);
+    sumU_o(copy1, copy2, copy3) = sumU(copy1, copy2, copy3);
+    U_o(copy1, copy2, copy3, copy4)= U(copy1, copy2, copy3, copy4);
+    sumU_o.dim(0).set_bounds(0, nelements).set_stride(1);
+    sumU_o.dim(1).set_bounds(0, k3).set_stride(nelements);
+    sumU_o.dim(2).set_bounds(0, nrbf3).set_stride(nelements * k3);
+    U_o.dim(0).set_bounds(0, npairs).set_stride(1);
+    U_o.dim(1).set_bounds(0, k3).set_stride(npairs);
+    U_o.dim(2).set_bounds(0, nrbf3).set_stride(npairs * k3);
+    U_o.dim(3).set_bounds(0, 4).set_stride(npairs * k3 * nrbf3);
 
     //     abf4.dim(2).set_bounds(0, 4).set_stride(k3* npairs);
     // abf4.dim(1).set_bounds(0, k3).set_stride(npairs);
@@ -653,6 +690,12 @@ public:
     d2.compute_root();
     dd2.compute_root();
 
+    Func d3("d3");
+    threeBodyDesc(d3, sumU, pn3, pnc3,
+		  npairs, nelements, nabf3, nrbf3);
+
+    d3_o(copy1, copy2, copy3) = d3(copy1, copy2, copy3);
+
 
 
     d2_o(copy1, copy2) = d2(copy1, copy2);
@@ -667,8 +710,14 @@ public:
     dd2_o.dim(2).set_bounds(0, npairs).set_stride(3);
     dd2_o.dim(3).set_bounds(0, 3).set_stride(1);
 
+
+    d3_o.dim(0).set_bounds(0, nabf3).set_stride(1);
+    d3_o.dim(1).set_bounds(0, nrbf3).set_stride(nabf3);
     
-    }
+    d3_o.dim(2).set_bounds(0, nelements * (nelements+1)/2).set_stride(nabf3 * nrbf3);
+
+    
+  }
 };
 
 HALIDE_REGISTER_GENERATOR(poddescTwoBody, poddescTwoBody);
