@@ -422,16 +422,34 @@ void buildAngularBasis(Expr k3, Expr npairs, Func pq, Func rij,
   Expr dwdz = (xx+yy)/dij3;
 
   Expr zero = Expr((double) 0.0);
+  Func abf4tm("abf4tm");
+  Var tmp("tmp");
+  abf4tm(pair, abfi, abfip, c, tmp) = zero;
+  abf4tm(pair, abfi, 0, 0, 1) = Expr((double) 1.0);
+  RDom rn(1, k3 + 1, 0, 4);
+  Expr m = clamp(pq(rn.x) - 1, 0, 3 * k3 - 1);
+  Expr prev0 = abf4tm(pair, abfi, m, 0, 1);
+  Expr d = clamp(pq(rn.x + k3), 1, 3);
+  Var selected("selected");
+  Func uvw("uvw");
+  uvw(pair, selected) = select(selected == 1, u, select(selected==2, v, select(selected==3, w, Expr((double) 0.0))));
+  abf4tm(pair, abfi, rn.x, rn.y, 1) = abf4tm(pair, abfi, m, rn.y, 1) * uvw(pair, d) + select(d == rn.y, abf4tm(pair, abfi, m, 0, 1), zero);
+  
+  /*
   tm(pair, abfi, abfip, c) = zero;
   tm(pair, abfi, 0, 0) = Expr((double) 1.0);
   RDom rn(1, k3 + 1, 0, 4);
   Expr m = clamp(pq(rn.x) - 1, 0, 3 * k3 - 1);
   Expr prev0 = tm(pair, abfi, m, 0);
-  Expr d = pq(rn.x + k3);
-  Expr uvw = select(d == 1, u, select(d==2, v, select(d==3, w, Expr((double) 0.0))));
-  tm(pair, abfi, rn.x, rn.y) = tm(pair, abfi, m, rn.y) * uvw + select(d == rn.y, tm(pair, abfi, m, 0), zero);
+  Expr d = clamp(pq(rn.x + k3), 1, 3);
+  Var selected("selected");
+  Func uvw("uvw");
+  uvw(pair, selected) = select(selected == 1, u, select(selected==2, v, select(selected==3, w, Expr((double) 0.0))));
+  tm(pair, abfi, rn.x, rn.y) = tm(pair, abfi, m, rn.y) * uvw(pair, d) + select(d == rn.y, tm(pair, abfi, m, 0), zero);
   abf4(pair, abfi, c) = zero;
+  */
 
+  uvw.bound(selected, 1, 3);
   /*
   abf4(pair, abfi, 0) = tm(pair, abfi, abfi, 0);
   abf4(pair, abfi, 1) = tm(pair, abfi, abfi, 1) * dudx + tm(pair, abfi, abfi, 2) * dvdx + tm(pair, abfi, abfi, 3) * dwdx;
@@ -464,15 +482,24 @@ void buildAngularBasis(Expr k3, Expr npairs, Func pq, Func rij,
               dvdz,
           select(dim_p == 2,
               dwdz, zero))), zero)));
-  abf4(pair, abfi, c) = select(c == 0, tm(pair, abfi, abfi, 0),
-                        tm(pair, abfi, abfi, 1) * jacobian(pair, c-1, 0) + tm(pair, abfi, abfi, 2) * jacobian(pair, c-1, 1) + tm(pair, abfi, abfi, 3) * jacobian(pair, c-1, 2));   
+  //abf4(pair, abfi, c) = select(c == 0, tm(pair, abfi, abfi, 0),
+  //                      tm(pair, abfi, abfi, 1) * jacobian(pair, c-1, 0) + tm(pair, abfi, abfi, 2) * jacobian(pair, c-1, 1) + tm(pair, abfi, abfi, 3) * jacobian(pair, c-1, 2));   
+  abf4tm(pair, abfi, 0, c, 0) = select(c == 0, abf4tm(pair, abfi, abfi, 0, 1),
+                        abf4tm(pair, abfi, abfi, 1, 1) * jacobian(pair, c-1, 0) + abf4tm(pair, abfi, abfi, 2, 1) * jacobian(pair, c-1, 1) + abf4tm(pair, abfi, abfi, 3, 1) * jacobian(pair, c-1, 2));   
 
   // tm.compute_root(); // 21697.324 ms total -- .119 ms tm -- 52%
   // tm.store_root().compute_root(); abf4.compute_root(); // 21753.123 ms total -- .118 ms tm -- 52%
   // tm.store_root().compute_at(abf4, pair); // 66554 ms total
-  abf4.compute_root();
+  // abf4.compute_root();
 
-  // tm.store_root().compute_root(); abf4.store_root().compute_root(); // 21646.010 ms total -- .119 ms tm -- 52%
+  abf4(pair, abfi, c) = abf4tm(pair, abfi, 0, c, 0);
+
+  uvw.compute_at(tm, pair);
+  tm.update(0).reorder(abfi, pair);
+  tm.compute_at(abf4, pair);
+  abf4.reorder(c, abfi, pair);
+  abf4.store_root().compute_root();
+  //abf4.store_root().compute_root();
 }
 
 class poddescFourMult : public Halide::Generator<poddescFourMult> {
