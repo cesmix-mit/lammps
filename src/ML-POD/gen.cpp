@@ -484,21 +484,38 @@ void buildAngularBasis(Expr k3, Expr npairs, Func pq, Func rij,
               dwdz, zero))), zero)));
   //abf4(pair, abfi, c) = select(c == 0, tm(pair, abfi, abfi, 0),
   //                      tm(pair, abfi, abfi, 1) * jacobian(pair, c-1, 0) + tm(pair, abfi, abfi, 2) * jacobian(pair, c-1, 1) + tm(pair, abfi, abfi, 3) * jacobian(pair, c-1, 2));   
+  /*
   abf4tm(pair, abfi, 0, c, 0) = select(c == 0, abf4tm(pair, abfi, abfi, 0, 1),
                         abf4tm(pair, abfi, abfi, 1, 1) * jacobian(pair, c-1, 0) + abf4tm(pair, abfi, abfi, 2, 1) * jacobian(pair, c-1, 1) + abf4tm(pair, abfi, abfi, 3, 1) * jacobian(pair, c-1, 2));   
+  */
 
+  abf4tm(pair, abfi, 0, 0, 0) = abf4tm(pair, abfi, abfi, 0, 1);
+  abf4tm(pair, abfi, 0, 1, 0) = abf4tm(pair, abfi, abfi, 1, 1) * jacobian(pair, 0, 0) +
+      abf4tm(pair, abfi, abfi, 2, 1) + jacobian(pair, 0, 1) + abf4tm(pair, abfi, abfi, 3, 1) * jacobian(pair, 0, 2);
+  abf4tm(pair, abfi, 0, 2, 0) = abf4tm(pair, abfi, abfi, 1, 1) * jacobian(pair, 1, 0) +
+      abf4tm(pair, abfi, abfi, 2, 1) * jacobian(pair, 1, 1) + abf4tm(pair, abfi, abfi, 3, 1) * jacobian(pair, 1, 2);
+  abf4tm(pair, abfi, 0, 3, 0) = abf4tm(pair, abfi, abfi, 1, 1) * jacobian(pair, 2, 0) +
+      abf4tm(pair, abfi, abfi, 2, 1) + jacobian(pair, 2, 1) + abf4tm(pair, abfi, abfi, 3, 1) * jacobian(pair, 2, 2);
+                       
+    
   // tm.compute_root(); // 21697.324 ms total -- .119 ms tm -- 52%
   // tm.store_root().compute_root(); abf4.compute_root(); // 21753.123 ms total -- .118 ms tm -- 52%
   // tm.store_root().compute_at(abf4, pair); // 66554 ms total
   // abf4.compute_root();
 
   abf4(pair, abfi, c) = abf4tm(pair, abfi, 0, c, 0);
+  //abf4.store_root().compute_root(); 	//70+ seconds
+  abf4tm.reorder(c, abfi, pair);
+  abf4tm.store_root().compute_at(abf4, abfi);
+  abf4.store_root().compute_root();;
 
+  /*
   uvw.compute_at(tm, pair);
   tm.update(0).reorder(abfi, pair);
   tm.compute_at(abf4, pair);
   abf4.reorder(c, abfi, pair);
   abf4.store_root().compute_root();
+  */
   //abf4.store_root().compute_root();
 }
 
