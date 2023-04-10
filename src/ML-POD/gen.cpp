@@ -210,7 +210,7 @@ void tallyTwoBodyLocalForce(Func & fij, Func & e, Func coeff2, Func rbf, Func tj
 
   Expr c = coeff2(clamp(tj(r.x), 1, N - 1) - 1, r.y);
   e() += c * rbf(r.x, r.y, 0);
-  fij(r.x, dim) += c * rbf(r.x, r.y, dim);
+  fij(r.x, dim) += c * rbf(r.x, r.y, dim + 1);
 
   fij.bound(n, 0, N);
   fij.bound(dim, 0, 3);
