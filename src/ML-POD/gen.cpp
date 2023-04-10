@@ -438,7 +438,6 @@ void buildAngularBasis(Expr k3, Expr npairs, Func pq, Func rij,
   abf4tm(pair, abfi, rn.x, rn.y, 1) = abf4tm(pair, abfi, m, rn.y, 1) * uvw(pair, d) + select(d == rn.y, abf4tm(pair, abfi, m, 0, 1), zero);
   */
 
-  /*
   tm(pair, abfip, c) = zero;
   tm(pair, 0, 0) = Expr((double) 1.0);
   RDom rn(1, k3 + 1, 0, 4);
@@ -450,8 +449,8 @@ void buildAngularBasis(Expr k3, Expr npairs, Func pq, Func rij,
   uvw(pair, selected) = select(selected == 1, u, select(selected==2, v, select(selected==3, w, Expr((double) 0.0))));
   tm(pair, rn.x, rn.y) = tm(pair, m, rn.y) * uvw(pair, d) + select(d == rn.y, tm(pair, m, 0), zero);
   abf4(pair, abfi, c) = zero;
-  */
 
+  /*
   tm(pair, abfi, abfip, c) = zero;
   tm(pair, abfi, 0, 0) = Expr((double) 1.0);
   RDom rn(1, k3 + 1, 0, 4);
@@ -468,10 +467,9 @@ void buildAngularBasis(Expr k3, Expr npairs, Func pq, Func rij,
   abf4(pair, abfi, 0) = tm(pair, abfi, abfi, 0);
   abf4(pair, abfi, 1) = tm(pair, abfi, abfi, 1) * dudx + tm(pair, abfi, abfi, 2) * dvdx + tm(pair, abfi, abfi, 3) * dwdx;
   abf4(pair, abfi, 2) = tm(pair, abfi, abfi, 1) * dudy + tm(pair, abfi, abfi, 2) * dvdy + tm(pair, abfi, abfi, 3) * dwdy;
-  abf4(pair, abfi, 3) = tm(pair, abfi, abfi, 1) * dudz + tm(pair, abfi, abfi, 2) * dvdz + tm(pair, abfi, abfi, 3) * dwdz;  
+  abf4(pair, abfi, 3) = tm(pair, abfi, abfi, 1) * dudz + tm(pair, abfi, abfi, 2) * dvdz + tm(pair, abfi, abfi, 3) * dwdz;  */
 
 
-  /*
   Func jacobian("jacobian");
   Var dim("dim"), dim_p("dim_p");
   jacobian(pair, dim, dim_p) =
@@ -496,11 +494,10 @@ void buildAngularBasis(Expr k3, Expr npairs, Func pq, Func rij,
               dvdz,
           select(dim_p == 2,
               dwdz, zero))), zero)));
-  abf4(pair, abfi, c) = select(c == 0, tm(pair, abfi, abfi, 0),
-                        tm(pair, abfi, abfi, 1) * jacobian(pair, c-1, 0) + tm(pair, abfi, abfi, 2) * jacobian(pair, c-1, 1) + tm(pair, abfi, abfi, 3) * jacobian(pair, c-1, 2));   
-    */
-  //abf4(pair, abfi, c) = select(c == 0, tm(pair, abfi, 0),
-  //                      tm(pair, abfi, 1) * jacobian(pair, c-1, 0) + tm(pair, abfi, 2) * jacobian(pair, c-1, 1) + tm(pair, abfi, 3) * jacobian(pair, c-1, 2));   
+  //abf4(pair, abfi, c) = select(c == 0, tm(pair, abfi, abfi, 0),
+  //                      tm(pair, abfi, abfi, 1) * jacobian(pair, c-1, 0) + tm(pair, abfi, abfi, 2) * jacobian(pair, c-1, 1) + tm(pair, abfi, abfi, 3) * jacobian(pair, c-1, 2));   
+  abf4(pair, abfi, c) = select(c == 0, tm(pair, abfi, 0),
+                        tm(pair, abfi, 1) * jacobian(pair, c-1, 0) + tm(pair, abfi, 2) * jacobian(pair, c-1, 1) + tm(pair, abfi, 3) * jacobian(pair, c-1, 2));   
   /*
   abf4tm(pair, abfi, 0, c, 0) = select(c == 0, abf4tm(pair, abfi, abfi, 0, 1),
                         abf4tm(pair, abfi, abfi, 1, 1) * jacobian(pair, c-1, 0) + abf4tm(pair, abfi, abfi, 2, 1) * jacobian(pair, c-1, 1) + abf4tm(pair, abfi, abfi, 3, 1) * jacobian(pair, c-1, 2));   
