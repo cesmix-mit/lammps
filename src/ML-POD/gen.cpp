@@ -637,6 +637,48 @@ public:
     }
 };
 
+void threeBodyDesc(Func & d3,
+		   Func sumU, Func pn3, Func pc3,
+		   Expr npairs, Expr nelements, Expr nrbf3, Expr nabf3, Expr k3,
+		   Var abf3, Var rbf3, Var kme)
+{
+  Expr zero = Expr((double) 0.0);
+  Expr me = nelements * (nelements + 1)/2;
+  Expr mem = nelements * (nelements - 1)/2;
+  // Var abf3("abf3");
+  // Var rbf3("rbf3");
+  // var kme("kme");
+
+  d3(abf3, rbf3, kme) = zero;
+
+  d3.bound(abf3, 0, nabf3);
+  d3.bound(rbf3, 0, nrbf3);
+  d3.bound(kme, 0, me);
+
+  RDom r(0, nabf3, 0, k3, 0, nelements, 0, nelements);
+  Expr n1 = pn3(r.x);
+  Expr n2 = pn3(r.x + 1);
+  r.where(n1 <= r.y);
+  r.where(r.y < n2);
+  RVar rx = r.x;
+  RVar ry = r.y;
+  RVar rz = r.z;
+  RVar rzz = r[3];
+  r.where(rzz <= rz);
+
+  Expr t1 = pc3(r.y) * sumU(rz, r.y, rbf3);
+  //  Expr ki = (nelements - rz) * ((nelements - rz) - 1)/2;
+  //  Expr kij = rzz - rz - 1;
+  Expr k = (2 * nelements - 3 - rz) * (rz/ 2) + rzz - 1; //mem  - ki + kij;
+  Expr t2 = sumU(rzz, r.y, rbf3);
+  d3(r.x, rbf3, clamp(k, 0, me -1)) += t1 * t2;
+    //k is a trian
+    //(n*(n-1)/2) - (n-i)*((n-i)-1)/2 + j - i - 1
+    //Formula for indexing
+    //https://stackoverflow.com/questions/27086195/linear-index-upper-triangular-matrix
+
+}
+
 class poddescTwoBody : public Halide::Generator<poddescTwoBody> {
 public:
 
@@ -661,14 +703,25 @@ public:
 
     Input<int> k3{"k3", 1};
     Input<Buffer<int>> pq{"pq", 1};
+    Input<Buffer<int>> pn3{"pn3", 1};
+  Input<Buffer<int>> pc3{"pc3", 1};
+
 
     Input<int> nrbf3{"nrbf3", 1};
     Input<int> nelements{"nelements", 1};
+
+  Input<int> nd23{"nd23", 1};
+  Input<int> nd33{"nd33", 1};
+  Input<int> nd34{"nd34", 1};
+  Input<int> nabf3{"nabf3", 1};
+  
     Output<Buffer<double>> sumU_o{"sumU_o", 3};
     Output<Buffer<double>> U_o{"U_o", 4};
 
     Output<Buffer<double>> d2_o{"d2_o", 2};
     Output<Buffer<double>> dd2_o{"dd2_o", 4};
+
+  Output<Buffer<double>> d3_o{"d3_o", 3};
 
     void generate() {
         rijs.dim(0).set_bounds(0, 3).set_stride(1);
@@ -786,6 +839,22 @@ public:
     dd2_o.dim(1).set_bounds(0, nrbf2).set_stride(3 * npairs);
     dd2_o.dim(2).set_bounds(0, npairs).set_stride(3);
     dd2_o.dim(3).set_bounds(0, 3).set_stride(1);
+
+
+    Func d3("d3");
+    Var abfThree("abfThree");
+    Var rbfThree("rbfThree");
+    Var kme("kme");
+    threeBodyDesc(d3, sumU, pn3, pc3,
+		  npairs, nelements, nrbf3, nabf3, k3,
+		  abfThree, rbfThree, kme);
+
+    Expr me = nelements * (nelements + 1)/2;
+    d3_o(copy1, copy2, copy3) = d3(copy1, copy2, copy3);
+    d3_o.dim(0).set_bounds(0, nabf3).set_stride(1);
+    d3_o.dim(1).set_bounds(0, nrbf3).set_stride(nabf3);
+    d3_o.dim(2).set_bounds(0, me).set_stride(nabf3 * nrbf3);
+    
 
     
     }
