@@ -160,32 +160,45 @@ void radialAngularBasis(Func & sumU, Func & U,
 
 }
 
-void threeBodyDesc(Func & d3, Func sumU, Func pn3, Func pc3, Expr npairs, Expr nelements, Expr nrbf3, Expr nabf3, Expr k3)
+void threeBodyDesc(Func & d3,
+		   Func sumU, Func pn3, Func pc3,
+		   Expr npairs, Expr nelements, Expr nrbf3, Expr nabf3, Expr k3,
+		   Var abf3, Var rbf3, Var kme)
 {
   Expr zero = Expr((double) 0.0);
   Expr me = nelements * (nelements + 1)/2;
+  Expr mem = nelements * (nelements - 1)/2;
+  // Var abf3("abf3");
+  // Var rbf3("rbf3");
+  // var kme("kme");
 
-  Var abf3("abf3");
-  Var rbf3("rbf3");
-  var kme("kme");
+  d3(abf3, rbf3, kme) = zero;
 
-  d3(abf3, rbf3, me) = zero;
+  d3.bound(abf3, 0, nabf3);
+  d3.bound(rbf3, 0, nrbf3);
+  d3.bound(kme, 0, me);
 
-  RDom r(0, nabf3, 0, k3 + 1, nelements, 0, nelements);
+  RDom r(0, nabf3, 0, k3 + 1, 0, nelements, 0, nelements);
   Expr n1 = pn3(r.x);
   Expr n2 = pn3(r.x + 1);
   r.where(n1 <= r.y);
   r.where(r.y < n2);
+  RVar rx = r.x;
+  RVar ry = r.y;
+  RVar rz = r.z;
+  RVar rzz = r[3];
+  r.where(rzz <= rz);
 
-  Expr t1 = pc3(r.y) * sumU(r.y)
+  Expr t1 = pc3(r.y) * sumU(rz, r.y, rbf3);
+  //  Expr ki = (nelements - rz) * ((nelements - rz) - 1)/2;
+  //  Expr kij = rzz - rz - 1;
+  Expr k = (2 * nelements - 3 - rz) * (rz/ 2) + rzz - 1; //mem  - ki + kij;
+  Expr t2 = sumU(rzz, r.y, rbf3);
+  d3(r.x, rbf3, clamp(k, 0, me -1)) += t1 * t2;
     //k is a trian
     //(n*(n-1)/2) - (n-i)*((n-i)-1)/2 + j - i - 1
     //Formula for indexing
     //https://stackoverflow.com/questions/27086195/linear-index-upper-triangular-matrix
-  
-    
-  
-  //  r.where(pn3())
 
 }
 
@@ -227,9 +240,7 @@ void tallyTwoBodyLocalForce(Func & fij, Func & e, Func coeff2, Func rbf, Func tj
 
   Expr c = coeff2(clamp(tj(r.x), 1, N - 1) - 1, r.y);
   e() += c * rbf(r.x, r.y, 0);
-  fij(r.x, 0) += c * rbf(r.x, r.y, 1);
-  fij(r.x, 1) += c * rbf(r.x, r.y, 2);
-  fij(r.x, 2) += c * rbf(r.x, r.y, 3);
+  fij(r.x, dim) += c * rbf(r.x, r.y, dim + 1);
 
   fij.bound(n, 0, N);
   fij.bound(dim, 0, 3);
@@ -583,9 +594,10 @@ public:
   Input<int> nd23{"nd23", 1};
   Input<int> nd33{"nd33", 1};
   Input<int> nd34{"nd34", 1};
-  Input<int> nabf4{"nabf4", 1};
+  Input<int> nabf3{"nabf3", 1};
 
   Input<Buffer<int>> pn3{"pn3", 1};
+  Input<Buffer<int>> pnc3{"pnc3", 1};
 
   Output<Buffer<double>> d3_o{"d3", 3};
   Output<Buffer<double>> fij_o{"fij_o", 2};
@@ -691,10 +703,20 @@ public:
     dd2.compute_root();
 
     Func d3("d3");
+    Var abfThree("abfThree");
+    Var rbfThree("rbfThree");
+    Var kme("kme");
     threeBodyDesc(d3, sumU, pn3, pnc3,
-		  npairs, nelements, nabf3, nrbf3);
-
+		  npairs, nelements, nrbf3, nabf3, k3,
+		  abfThree, rbfThree, kme);
+    //  nl3 = nabf3*nrbf3*Ne*(Ne+1)/2;
+    Expr me = nelements * (nelements + 1)/2;
     d3_o(copy1, copy2, copy3) = d3(copy1, copy2, copy3);
+    d3_o.dim(0).set_bounds(0, nabf3).set_stride(1);
+    d3_o.dim(1).set_bounds(0, nrbf3).set_stride(nabf3);
+    d3_o.dim(2).set_bounds(0, me).set_stride(nabf3 * nrbf3);
+    
+    
 
 
 

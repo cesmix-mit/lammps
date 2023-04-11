@@ -539,7 +539,7 @@ void buildHalideAngularBasis(double *abf, double *rij, double * tm, int *pq, int
   poddescAngularBasis(N, K, tm_buffer, rij_buffer, abf_buffer);
 }
 
-void buildTwoBody(double *rijs, double *besselparams, int nbesselpars, int bdegree, int adegree, int npairs, int nrbfmax, double rin, double rcut, double *phi, int ns, double *coeff2, int *tj, int *pq, int nrbf2, int k3, int nrbf3, int nelements, double *fij, double *e2, double *sumU, double *U, double *d2, double *d3, double *dd2, int nd23, int nd33, int nd34, int nabf4, int * pn3) {
+void buildTwoBody(double *rijs, double *besselparams, int nbesselpars, int bdegree, int adegree, int npairs, int nrbfmax, double rin, double rcut, double *phi, int ns, double *coeff2, int *tj, int *pq, int nrbf2, int k3, int nrbf3, int nelements, double *fij, double *e2, double *sumU, double *U, double *d2, double *d3, double *dd2, int nd23, int nd33, int nd34, int nabf3, int * pn3, int *pc3) {
   // rijs is different now
   Halide::Runtime::Buffer<double> rijs_buffer(rijs, {{0, 3, 1}, {0, npairs, 3}});
   Halide::Runtime::Buffer<double> besselparams_buffer(besselparams, nbesselpars);
@@ -555,11 +555,22 @@ void buildTwoBody(double *rijs, double *besselparams, int nbesselpars, int bdegr
   Halide::Runtime::Buffer<double> dd2_buffer(dd2, {{0, nelements, 3 * npairs * nrbf2}, {0, nrbf2, 3 * npairs}, {0, npairs, 3}, {0, 3, 1}});
   int me = nelements * (nelements + 1)/2;
 
-  Halide::Runtime::Buffer<double> d3_buffer(d3, {0, nabf3, 1}, {0, nrbf3, nabf3}, {0, me, nabf3 * nrbf3});
+  Halide::Runtime::Buffer<double> d3_buffer(d3, {{0, nabf3, 1}, {0, nrbf3, nabf3}, {0, me, nabf3 * nrbf3}});
 
-  Halide::Runtime::Buffer<int> pn3_buffer(pn3, {0, nabf3+1, 1});
+  Halide::Runtime::Buffer<int> pn3_buffer(pn3, nabf3 + 1);
+  Halide::Runtime::Buffer<int> pnc3_buffer(pc3, k3 + 1);
   
-  poddescTwoBody(rijs_buffer, besselparams_buffer, nbesselpars, bdegree, adegree, npairs, nrbfmax, rin, rcut, phi_buffer, ns, coeff2_buffer, tj_buffer, nrbf2, k3, pq_buffer, nrbf3, nelements, nd23, nd33, nd34, nabf4, pn3_buffer, d3_buffer, fij_buffer, e2_buffer, sumU_buffer, U_buffer, d2_buffer, dd2_buffer);
+  poddescTwoBody(rijs_buffer, besselparams_buffer, nbesselpars,
+		 bdegree, adegree, npairs,
+		 nrbfmax, rin, rcut,
+		 phi_buffer, ns, coeff2_buffer,
+		 tj_buffer, nrbf2, k3,
+		 pq_buffer, nrbf3, nelements,
+		 nd23, nd33, nd34,
+		 nabf3, pn3_buffer, pnc3_buffer,
+		 e2_buffer, d3_buffer, fij_buffer,
+		 sumU_buffer, U_buffer, d2_buffer,
+		 dd2_buffer);
 }
 
 double FASTPOD::peratomenergyforce(double *fij, double *rij, double *temp,
@@ -621,7 +632,7 @@ double FASTPOD::peratomenergyforce(double *fij, double *rij, double *temp,
     double *d4 =  &temp[4*n1 + n5 + 4*n2 + nl2 + 3*Nj*nl2 + nl3 + 3*Nj*nl3]; // nl4
     double *dd4 = &temp[4*n1 + n5 + 4*n2 + nl2 + 3*Nj*nl2 + nl3 + 3*Nj*nl3 + nl4]; // 3*Nj*nl4
 
-    buildTwoBody(rij, besselparams, nbesselpars, pdegree[0], pdegree[1], Nj, nrbfmax, rin, rcut, Phi, ns, &coeff2[nl2*t0], tj, pq3, nrbf2, K3, nrbf3, nelements, fij, &e2, sumU, U, d2, dd2, d3, nd23, nd33, nd34, nabf3, pn3);
+    buildTwoBody(rij, besselparams, nbesselpars, pdegree[0], pdegree[1], Nj, nrbfmax, rin, rcut, Phi, ns, &coeff2[nl2*t0], tj, pq3, nrbf2, K3, nrbf3, nelements, fij, &e2, sumU, U, d2, dd2, d3, nd23, nd33, nd34, nabf3, pn3, pc3);
 
     if ((nd23>0) || (nd33>0) || (nd34>0)) {
       
@@ -737,7 +748,7 @@ double FASTPOD::peratomenergyforce(double *fij, double *rij, double *temp,
     }
 
     if ((nd23>0) || (nd33>0) || (nd34>0)) {
-      threebodydesc(d3, sumU, Nj);
+      //      threebodydesc(d3, sumU, Nj);
       threebodydescderiv(dd3, sumU, Ux, Uy, Uz, tj, Nj);
     }
 
@@ -1898,7 +1909,7 @@ void FASTPOD::angularbasis(double *abf, double *abfx, double *abfy, double *abfz
         tmu[n] = tmu[m]*v;
         tmv[n] = tmv[m]*v + tm[m];
         tmw[n] = tmw[m]*v;
-      }
+      } 
       else if (d==3) {
         tm[n] = tm[m]*w;
         tmu[n] = tmu[m]*w;
