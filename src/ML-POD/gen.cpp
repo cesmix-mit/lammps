@@ -637,6 +637,31 @@ public:
     }
 };
 
+void threeBodyCoeff(Func & cU, Func & e, Func coeff3, Func sumU, Expr npairs, Var ne, Var k3, Var nrbf3,
+		Expr nelements, Expr K3, Expr nrbf3, )
+{
+    Expr zero = Expr((double) 0.0);
+
+    e() = zero;
+    cU(ne, k3, rbf3) = zero;
+
+    cU.bound(ne, 0, nelements);
+    cU.bound(k3, 0, K3);
+    cU.bound(rbf3, 0, nrbf3);
+
+    RDom r(0, nabf3, 0, q, 0, nelements, 0, nelements);
+    Expr n1 = pn3(r.x);
+    Expr n2 = pn3(r.x + 1);
+    r.where(n1 <= r.y);
+    r.where(r.y < n2);
+    r.where(r[3] >=  r.z);
+    
+    Expr k = (2 * nelements - 3 - r.z) * (r.z/ 2) + r[3] - 1; //mem  - ki + kij;
+    Expr t1 = pc3(r.y) * sumU(r.z, r.y, rbf3);
+    Expr c2 = sumU(r[3], r.y, rbf3);
+    Expr c3 = coeff3(r.x, rbf3, clamp(k, 0, me - 1));
+}
+
 void threeBodyDescDeriv(Func & dd3, Func sumU, Func U, Func atomtype, Func pn3, Func pc3,
         Func elemindex, Expr npairs, Expr q, Expr nelements, Var dim, Var nj, Var abf3, Expr nabf3, 
         Var rbf3, Expr nrbf3, Var kme, Expr me)
