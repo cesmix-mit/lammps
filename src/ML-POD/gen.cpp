@@ -667,7 +667,7 @@ void threeBodyDescDeriv(Func & dd3, Func sumU, Func U, Func atomtype, Func pn3, 
     Expr k = elemindex(clamp(i2, 0, nelements - 1), rz);
     Expr f = select(rz == i2, 2 * t1, t1);
     
-    dd3(dim, rzz, rx, rbfTres, clamp(k, 0, me - 1)) += f * U(rzz, ry, rx, dim);
+    dd3(dim, rzz, rx, rbfTres, clamp(k, 0, me - 1)) += f * U(rzz, ry, rbfTres, dim + 1);
 }
 
 void threeBodyDesc(Func & d3,
@@ -895,7 +895,7 @@ public:
     threeBodyDescDeriv(dd3, sumU, U, tj, pn3, pc3,
         elemindex, npairs, k3, nelements, dim, nj, abfThree, nabf3, 
         rbfThree, nrbf3, kme, me);
-    dd3_o(dim, nj, copy1, copy2, kme) = dd3(dim, nj, copy1, copy2, kme);
+    dd3_o(dim, nj, copy1, copy2, copy3) = dd3(dim, nj, copy1, copy2, copy3);
     dd3_o.dim(0).set_bounds(0, 3).set_stride(1);
     dd3_o.dim(1).set_bounds(0, npairs).set_stride(3);
     dd3_o.dim(2).set_bounds(0, nabf3).set_stride(3 * npairs);

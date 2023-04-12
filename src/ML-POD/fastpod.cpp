@@ -557,6 +557,7 @@ void buildTwoBody(double *rijs, double *besselparams, int nbesselpars, int bdegr
   int me = nelements * (nelements + 1)/2;
 
   Halide::Runtime::Buffer<double> d3_buffer(d3, {{0, nabf3, 1}, {0, nrbf3, nabf3}, {0, me, nabf3 * nrbf3}});
+  //Halide::Runtime::Buffer<double> dd3_buffer(dd3, {{0, 3, 1}, {0, npairs, 3}, {0, nabf3, 3 * npairs}, {0, nrbf3, 3 * npairs * nabf3}});
   Halide::Runtime::Buffer<double> dd3_buffer(dd3, {{0, 3, 1}, {0, npairs, 3}, {0, nabf3, 3 * npairs}, {0, nrbf3, 3 * npairs * nabf3}, {0, me, 3 * npairs * nabf3 * nrbf3}});
 
   Halide::Runtime::Buffer<int> pn3_buffer(pn3, nabf3 + 1);
