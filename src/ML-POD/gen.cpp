@@ -448,7 +448,7 @@ void buildAngularBasis(Expr k3, Expr npairs, Func pq, Func rij,
   Func uvw("uvw");
   uvw(pair, selected) = select(selected == 1, u, select(selected==2, v, select(selected==3, w, Expr((double) 0.0))));
   tm(pair, rn.x, rn.y) = tm(pair, m, rn.y) * uvw(pair, d) + select(d == rn.y, tm(pair, m, 0), zero);
-  abf4(pair, abfi, c) = zero;
+  //abf4(pair, abfi, c) = zero;
 
   /*
   tm(pair, abfi, abfip, c) = zero;
@@ -637,6 +637,39 @@ public:
     }
 };
 
+void threeBodyDescDeriv(Func & dd3, Func sumU, Func U, Func atomtype, Func pn3, Func pc3,
+        Func elemindex, Expr npairs, Expr q, Expr nelements, Var dim, Var nj, Var abf3, Expr nabf3, 
+        Var rbf3, Expr nrbf3, Var kme, Expr me)
+{
+    Expr zero = Expr((double) 0.0);
+    
+    Var rbfTres("rbftres");
+    dd3(dim, nj, abf3, rbfTres, kme) = zero;
+    
+    dd3.bound(dim, 0, 3);
+    dd3.bound(nj, 0, npairs);
+    dd3.bound(abf3, 0, nabf3);
+    dd3.bound(rbfTres, 0, nrbf3);
+    dd3.bound(kme, 0, me);
+    
+    RDom r(0, nabf3, 0, q, 0, nelements, 0, npairs);
+    Expr n1 = pn3(r.x);
+    Expr n2 = pn3(r.x + 1);
+    r.where(n1 <= r.y); 
+    r.where(r.y < n2);
+    RVar rx = r.x;
+    RVar ry = r.y;
+    RVar rz = r.z;
+    RVar rzz = r[3];
+    
+    Expr t1 = pc3(ry) * sumU(rz, ry, rbfTres);
+    Expr i2 = atomtype(rzz) - 1;
+    Expr k = elemindex(clamp(i2, 0, nelements - 1), rz);
+    Expr f = select(rz == i2, 2 * t1, t1);
+    
+    dd3(dim, rzz, rx, rbfTres, clamp(k, 0, me - 1)) += f * U(rzz, ry, rx, dim);
+}
+
 void threeBodyDesc(Func & d3,
 		   Func sumU, Func pn3, Func pc3,
 		   Expr npairs, Expr nelements, Expr nrbf3, Expr nabf3, Expr k3,
@@ -704,7 +737,8 @@ public:
     Input<int> k3{"k3", 1};
     Input<Buffer<int>> pq{"pq", 1};
     Input<Buffer<int>> pn3{"pn3", 1};
-  Input<Buffer<int>> pc3{"pc3", 1};
+    Input<Buffer<int>> pc3{"pc3", 1};
+    Input<Buffer<int>> elemindex{"elemindex", 2};
 
 
     Input<int> nrbf3{"nrbf3", 1};
@@ -722,6 +756,7 @@ public:
     Output<Buffer<double>> dd2_o{"dd2_o", 4};
 
   Output<Buffer<double>> d3_o{"d3_o", 3};
+  Output<Buffer<double>> dd3_o{"dd3_o", 5};
 
     void generate() {
         rijs.dim(0).set_bounds(0, 3).set_stride(1);
@@ -855,7 +890,17 @@ public:
     d3_o.dim(1).set_bounds(0, nrbf3).set_stride(nabf3);
     d3_o.dim(2).set_bounds(0, me).set_stride(nabf3 * nrbf3);
     
-
+    Func dd3("dd3");
+    Var nj("nj");    
+    threeBodyDescDeriv(dd3, sumU, U, tj, pn3, pc3,
+        elemindex, npairs, k3, nelements, dim, nj, abfThree, nabf3, 
+        rbfThree, nrbf3, kme, me);
+    dd3_o(dim, nj, copy1, copy2, kme) = dd3(dim, nj, copy1, copy2, kme);
+    dd3_o.dim(0).set_bounds(0, 3).set_stride(1);
+    dd3_o.dim(1).set_bounds(0, npairs).set_stride(3);
+    dd3_o.dim(2).set_bounds(0, nabf3).set_stride(3 * npairs);
+    dd3_o.dim(3).set_bounds(0, nrbf3).set_stride(3 * npairs * nabf3);
+    dd3_o.dim(4).set_bounds(0, me).set_stride(3 * npairs * nabf3 * nrbf3);
     
     }
 };
