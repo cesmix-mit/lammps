@@ -638,7 +638,7 @@ double FASTPOD::peratomenergyforce(double *fij, double *rij, double *temp,
     }
 
     // e3 = threebodycoeff(cU, &coeff3[nl3*t0], sumU, Nj);
-    tallylocalforce(fij, cU, Ux, Uy, Uz, tj, Nj, K3, nrbf3, nelements);
+    // tallylocalforce(fij, cU, Ux, Uy, Uz, tj, Nj, K3, nrbf3, nelements);
     
     if (nd23>0) {
       double *d23 = &temp[0];

@@ -637,24 +637,13 @@ public:
     }
 };
 
-/*
-    for (int m=0; m<M; m++)
-      for (int k=0; k<K; k++)
-        for (int j=0; j<N; j++) {
-          int i2 = atomtype[j]-1;
-          int ii = 3*j;
-          int jj = j + N*k + N*K*m;
-          double c = cU[i2 + Ne*k + Ne*K*m];
-          fij[0 + ii] += c*Ux[jj];
-          fij[1 + ii] += c*Uy[jj];
-          fij[2 + ii] += c*Uz[jj];
-        }
-
-void tallyLocalForce()
+void tallyLocalForce(Func & fij, Func atomtype, Func cU, Func U, Expr nrbf3, Expr K3, Expr npairs, Expr nelements, Var dim)
 {
     RDom r(0, nrbf3, 0, K3, 0, npairs);
+    Expr i2 = atomtype(r.z) - 1;
+    Expr c = cU(clamp(i2, 0, nelements - 1), r.y, r.x);
+    fij(r.z, dim) += c * U(r.z, r.y, r.x, dim + 1);
 }
-        */
 
 void threeBodyCoeff(Func & cU, Func & e, Func coeff3, Func sumU, Func pn3, Func pc3, Expr npairs, Var ne, Var k3, Var rbf3,
 		Expr nelements, Expr K3, Expr nrbf3, Expr nabf3, Expr me)
@@ -863,10 +852,7 @@ public:
         tallyTwoBodyLocalForce(fij, e, coeff2, rbf, tj, nrbf2, npairs);
 
         Var n("n");
-        fij_o(n, dim) = fij(n, dim);
         e_o() = e();
-        fij_o.dim(0).set_bounds(0, npairs).set_stride(3);
-        fij_o.dim(1).set_bounds(0, 3).set_stride(1);
 
 	Func abf4("abf4");
 	Func tm("tm");
@@ -965,6 +951,11 @@ public:
     cU_o.dim(1).set_bounds(0, k3).set_stride(nelements);
     cU_o.dim(2).set_bounds(0, nrbf3).set_stride(nelements * k3);
     e3_o() = e3();
+
+    tallyLocalForce(fij, tj, cU, U, nrbf3, k3, npairs, nelements, dim);
+    fij_o(n, dim) = fij(n, dim);
+    fij_o.dim(0).set_bounds(0, npairs).set_stride(3);
+    fij_o.dim(1).set_bounds(0, 3).set_stride(1);
     }
 };
 
