@@ -539,7 +539,7 @@ void buildHalideAngularBasis(double *abf, double *rij, double * tm, int *pq, int
   poddescAngularBasis(N, K, tm_buffer, rij_buffer, abf_buffer);
 }
 
-void buildTwoBody(double *rijs, double *besselparams, int nbesselpars, int bdegree, int adegree, int npairs, int nrbfmax, double rin, double rcut, double *phi, int ns, double *coeff2, int *tj, int *pq, int * pn3, int * pc3, int * elemindex, int nrbf2, int k3, int nrbf3, int nelements, int nd23, int nd33, int nd34, int nabf3, double *fij, double *e2, double *sumU, double *U, double *d2, double *dd2, double * d3, double * dd3) {
+void buildTwoBody(double *rijs, double *besselparams, int nbesselpars, int bdegree, int adegree, int npairs, int nrbfmax, double rin, double rcut, double *phi, int ns, double *coeff2, double *coeff3, int *tj, int *pq, int * pn3, int * pc3, int * elemindex, int nrbf2, int k3, int nrbf3, int nelements, int nd23, int nd33, int nd34, int nabf3, double *fij, double *e2, double *e3, double *sumU, double *U, double *d2, double *dd2, double * d3, double * dd3, double * cU) {
   // rijs is different now
   Halide::Runtime::Buffer<double> rijs_buffer(rijs, {{0, 3, 1}, {0, npairs, 3}});
   Halide::Runtime::Buffer<double> besselparams_buffer(besselparams, nbesselpars);
@@ -557,14 +557,16 @@ void buildTwoBody(double *rijs, double *besselparams, int nbesselpars, int bdegr
   int me = nelements * (nelements + 1)/2;
 
   Halide::Runtime::Buffer<double> d3_buffer(d3, {{0, nabf3, 1}, {0, nrbf3, nabf3}, {0, me, nabf3 * nrbf3}});
-  //Halide::Runtime::Buffer<double> dd3_buffer(dd3, {{0, 3, 1}, {0, npairs, 3}, {0, nabf3, 3 * npairs}, {0, nrbf3, 3 * npairs * nabf3}});
   Halide::Runtime::Buffer<double> dd3_buffer(dd3, {{0, 3, 1}, {0, npairs, 3}, {0, nabf3, 3 * npairs}, {0, nrbf3, 3 * npairs * nabf3}, {0, me, 3 * npairs * nabf3 * nrbf3}});
+  Halide::Runtime::Buffer<double> coeff3_buffer(coeff3, {{0, nabf3, 1}, {0, nrbf3, nabf3}, {0, me, nabf3 * nrbf3}});
+  auto e3_buffer = Halide::Runtime::Buffer<double, 0>::make_scalar(e3);
+  Halide::Runtime::Buffer<double> cU_buffer(cU, {{0, nelements, 1}, {0, k3, nelements}, {0, nrbf3, nelements * k3}});
 
   Halide::Runtime::Buffer<int> pn3_buffer(pn3, nabf3 + 1);
   Halide::Runtime::Buffer<int> pc3_buffer(pc3, k3 + 1);
   Halide::Runtime::Buffer<int> elemindex_buffer(elemindex, {{0, nelements, 1}, {0, nelements, nelements}});
   
-  poddescTwoBody(rijs_buffer, besselparams_buffer, nbesselpars, bdegree, adegree, npairs, nrbfmax, rin, rcut, phi_buffer, ns, coeff2_buffer, tj_buffer, nrbf2, k3, pq_buffer, pn3_buffer, pc3_buffer, elemindex_buffer, nrbf3, nelements, nd23, nd33, nd34, nabf3, fij_buffer, e2_buffer, sumU_buffer, U_buffer, d2_buffer, dd2_buffer, d3_buffer, dd3_buffer);
+  poddescTwoBody(rijs_buffer, besselparams_buffer, nbesselpars, bdegree, adegree, npairs, nrbfmax, rin, rcut, phi_buffer, ns, coeff2_buffer, tj_buffer, nrbf2, k3, pq_buffer, pn3_buffer, pc3_buffer, elemindex_buffer, nrbf3, nelements, nd23, nd33, nd34, nabf3, coeff3_buffer, fij_buffer, e2_buffer, sumU_buffer, U_buffer, d2_buffer, dd2_buffer, d3_buffer, dd3_buffer, cU_buffer, e3_buffer);
 }
 
 double FASTPOD::peratomenergyforce(double *fij, double *rij, double *temp,
@@ -625,8 +627,9 @@ double FASTPOD::peratomenergyforce(double *fij, double *rij, double *temp,
     double *dd3 = &temp[4*n1 + n5 + 4*n2 + nl2 + 3*Nj*nl2 + nl3]; // 3*Nj*nl3
     double *d4 =  &temp[4*n1 + n5 + 4*n2 + nl2 + 3*Nj*nl2 + nl3 + 3*Nj*nl3]; // nl4
     double *dd4 = &temp[4*n1 + n5 + 4*n2 + nl2 + 3*Nj*nl2 + nl3 + 3*Nj*nl3 + nl4]; // 3*Nj*nl4
+    double *cU = &temp[4*n1 + n5 + 4*n2 + nl2 + 3*Nj*nl2 + nl3 + 3*Nj*nl3 + nl4 + 3*Nj*nl4];
 
-    buildTwoBody(rij, besselparams, nbesselpars, pdegree[0], pdegree[1], Nj, nrbfmax, rin, rcut, Phi, ns, &coeff2[nl2*t0], tj, pq3, pn3, pc3, elemindex, nrbf2, K3, nrbf3, nelements, nd23, nd33, nd34, nabf3, fij, &e2, sumU, U, d2, dd2, d3, dd3);
+    buildTwoBody(rij, besselparams, nbesselpars, pdegree[0], pdegree[1], Nj, nrbfmax, rin, rcut, Phi, ns, &coeff2[nl2*t0], &coeff3[nl3*t0], tj, pq3, pn3, pc3, elemindex, nrbf2, K3, nrbf3, nelements, nd23, nd33, nd34, nabf3, fij, &e2, &e3, sumU, U, d2, dd2, d3, dd3, cU);
 
     if ((nd23>0) || (nd33>0) || (nd34>0)) {
       
@@ -634,8 +637,7 @@ double FASTPOD::peratomenergyforce(double *fij, double *rij, double *temp,
       // threebodydescderiv(dd3, sumU, Ux, Uy, Uz, tj, Nj);
     }
 
-    double *cU = &temp[4*n1 + n5 + 4*n2 + nl2 + 3*Nj*nl2 + nl3 + 3*Nj*nl3 + nl4 + 3*Nj*nl4];
-    e3 = threebodycoeff(cU, &coeff3[nl3*t0], sumU, Nj);
+    // e3 = threebodycoeff(cU, &coeff3[nl3*t0], sumU, Nj);
     tallylocalforce(fij, cU, Ux, Uy, Uz, tj, Nj, K3, nrbf3, nelements);
     
     if (nd23>0) {

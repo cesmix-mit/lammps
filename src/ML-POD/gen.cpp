@@ -637,19 +637,37 @@ public:
     }
 };
 
-void threeBodyCoeff(Func & cU, Func & e, Func coeff3, Func sumU, Expr npairs, Var ne, Var k3, Var nrbf3,
-		Expr nelements, Expr K3, Expr nrbf3, )
+/*
+    for (int m=0; m<M; m++)
+      for (int k=0; k<K; k++)
+        for (int j=0; j<N; j++) {
+          int i2 = atomtype[j]-1;
+          int ii = 3*j;
+          int jj = j + N*k + N*K*m;
+          double c = cU[i2 + Ne*k + Ne*K*m];
+          fij[0 + ii] += c*Ux[jj];
+          fij[1 + ii] += c*Uy[jj];
+          fij[2 + ii] += c*Uz[jj];
+        }
+
+void tallyLocalForce()
+{
+    RDom r(0, nrbf3, 0, K3, 0, npairs);
+}
+        */
+
+void threeBodyCoeff(Func & cU, Func & e, Func coeff3, Func sumU, Func pn3, Func pc3, Expr npairs, Var ne, Var k3, Var rbf3,
+		Expr nelements, Expr K3, Expr nrbf3, Expr nabf3, Expr me)
 {
     Expr zero = Expr((double) 0.0);
 
-    e() = zero;
     cU(ne, k3, rbf3) = zero;
 
     cU.bound(ne, 0, nelements);
     cU.bound(k3, 0, K3);
     cU.bound(rbf3, 0, nrbf3);
 
-    RDom r(0, nabf3, 0, q, 0, nelements, 0, nelements);
+    RDom r(0, nabf3, 0, K3, 0, nelements, 0, nelements, 0, nrbf3);
     Expr n1 = pn3(r.x);
     Expr n2 = pn3(r.x + 1);
     r.where(n1 <= r.y);
@@ -657,9 +675,13 @@ void threeBodyCoeff(Func & cU, Func & e, Func coeff3, Func sumU, Expr npairs, Va
     r.where(r[3] >=  r.z);
     
     Expr k = (2 * nelements - 3 - r.z) * (r.z/ 2) + r[3] - 1; //mem  - ki + kij;
-    Expr t1 = pc3(r.y) * sumU(r.z, r.y, rbf3);
-    Expr c2 = sumU(r[3], r.y, rbf3);
-    Expr c3 = coeff3(r.x, rbf3, clamp(k, 0, me - 1));
+    Expr t1 = pc3(r.y) * sumU(r.z, r.y, r[4]);
+    Expr c2 = sumU(r[3], r.y, r[4]);
+    Expr c3 = coeff3(r.x, r[4], clamp(k, 0, me - 1));
+    Expr t2 = c3 * t1;
+    e() += t2 * c2;
+    cU(r[3], r.y, r[4]) += t2;
+    cU(r.z, r.y, r[4]) += pc3(r.y) * c2 * c3;
 }
 
 void threeBodyDescDeriv(Func & dd3, Func sumU, Func U, Func atomtype, Func pn3, Func pc3,
@@ -774,6 +796,8 @@ public:
   Input<int> nd34{"nd34", 1};
   Input<int> nabf3{"nabf3", 1};
   
+  Input<Buffer<double>> coeff3{"coeff3", 3};
+  
     Output<Buffer<double>> sumU_o{"sumU_o", 3};
     Output<Buffer<double>> U_o{"U_o", 4};
 
@@ -782,6 +806,8 @@ public:
 
   Output<Buffer<double>> d3_o{"d3_o", 3};
   Output<Buffer<double>> dd3_o{"dd3_o", 5};
+    Output<Buffer<double>> cU_o{"cU_o", 3};
+    Output<double> e3_o{"e3_o"};
 
     void generate() {
         rijs.dim(0).set_bounds(0, 3).set_stride(1);
@@ -926,7 +952,19 @@ public:
     dd3_o.dim(2).set_bounds(0, nabf3).set_stride(3 * npairs);
     dd3_o.dim(3).set_bounds(0, nrbf3).set_stride(3 * npairs * nabf3);
     dd3_o.dim(4).set_bounds(0, me).set_stride(3 * npairs * nabf3 * nrbf3);
-    
+
+ 
+    Func cU("cU");
+    Func e3("e3");
+    Var ne("ne"), k3var("k3var");
+   
+    threeBodyCoeff(cU, e3, coeff3, sumU, pn3, pc3, nj, ne, k3var, rbfThree,
+		nelements, k3, nrbf3, nabf3, me);
+    cU_o(copy1, copy2, copy3) = cU(copy1, copy2, copy3);
+    cU_o.dim(0).set_bounds(0, nelements).set_stride(1);
+    cU_o.dim(1).set_bounds(0, k3).set_stride(nelements);
+    cU_o.dim(2).set_bounds(0, nrbf3).set_stride(nelements * k3);
+    e3_o() = e3();
     }
 };
 
