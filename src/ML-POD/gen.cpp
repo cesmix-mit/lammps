@@ -215,7 +215,7 @@ void tallyTwoBodyLocalForce(Func & fij, Func & e, Func coeff2, Func rbf, Func tj
   fij.bound(n, 0, N);
   fij.bound(dim, 0, 3);
 
-  fij.compute_root();
+  // fij.compute_root();
   e.compute_root();
 }
 
@@ -656,54 +656,60 @@ void threeBodyCoeff(Func & cU, Func & e, Func coeff3, Func sumU, Func pn3, Func 
     cU.bound(k3, 0, K3);
     cU.bound(rbf3, 0, nrbf3);
 
-    RDom r(0, nabf3, 0, K3, 0, nelements, 0, nelements, 0, nrbf3);
-    Expr n1 = pn3(r.x);
-    Expr n2 = pn3(r.x + 1);
-    r.where(n1 <= r.y);
-    r.where(r.y < n2);
+    //RDom r(0, nabf3, 0, K3, 0, nelements, 0, nelements, 0, nrbf3);
+    RDom r(0, K3, 0, nabf3, 0, nelements, 0, nelements, 0, nrbf3);
+    Expr n1 = pn3(r.y);
+    Expr n2 = pn3(r.y + 1);
+    r.where(n1 <= r.x);
+    r.where(r.x < n2);
     r.where(r[3] >=  r.z);
     
     Expr k = (2 * nelements - 3 - r.z) * (r.z/ 2) + r[3] - 1; //mem  - ki + kij;
-    Expr t1 = pc3(r.y) * sumU(r.z, r.y, r[4]);
-    Expr c2 = sumU(r[3], r.y, r[4]);
-    Expr c3 = coeff3(r.x, r[4], clamp(k, 0, me - 1));
+    Expr t1 = pc3(r.x) * sumU(r.z, r.x, r[4]);
+    Expr c2 = sumU(r[3], r.x, r[4]);
+    Expr c3 = coeff3(r.y, r[4], clamp(k, 0, me - 1));
     Expr t2 = c3 * t1;
     e() += t2 * c2;
-    cU(r[3], r.y, r[4]) += t2;
-    cU(r.z, r.y, r[4]) += pc3(r.y) * c2 * c3;
+    cU(r[3], r.x, r[4]) += t2;
+    cU(r.z, r.x, r[4]) += pc3(r.x) * c2 * c3;
 }
 
 void threeBodyDescDeriv(Func & dd3, Func sumU, Func U, Func atomtype, Func pn3, Func pc3,
         Func elemindex, Expr npairs, Expr q, Expr nelements, Var dim, Var nj, Var abf3, Expr nabf3, 
-        Var rbf3, Expr nrbf3, Var kme, Expr me)
+        Var rbf3, Expr nrbf3, Var kme, Expr me, RDom r)
 {
     Expr zero = Expr((double) 0.0);
     
-    Var rbfTres("rbftres");
-    dd3(dim, nj, abf3, rbfTres, kme) = zero;
+    //Var rbfTres("rbftres");
+    //dd3(dim, nj, abf3, rbfTres, kme) = zero;
+    dd3(dim, nj, abf3, rbf3, kme) = zero;
     
     dd3.bound(dim, 0, 3);
     dd3.bound(nj, 0, npairs);
     dd3.bound(abf3, 0, nabf3);
-    dd3.bound(rbfTres, 0, nrbf3);
+    //dd3.bound(rbfTres, 0, nrbf3);
+    dd3.bound(rbf3, 0, nrbf3);
     dd3.bound(kme, 0, me);
     
-    RDom r(0, nabf3, 0, q, 0, nelements, 0, npairs);
-    Expr n1 = pn3(r.x);
-    Expr n2 = pn3(r.x + 1);
-    r.where(n1 <= r.y); 
-    r.where(r.y < n2);
-    RVar rx = r.x;
+    //RDom r(0, nabf3, 0, q, 0, nelements, 0, npairs);
+    //RDom r(0, q, 0, nabf3, 0, nelements, 0, npairs);
+    Expr n1 = pn3(r.y);
+    Expr n2 = pn3(r.y + 1);
+    r.where(n1 <= r.x); 
+    r.where(r.x < n2);
     RVar ry = r.y;
+    RVar rx = r.x;
     RVar rz = r.z;
     RVar rzz = r[3];
     
-    Expr t1 = pc3(ry) * sumU(rz, ry, rbfTres);
+    //Expr t1 = pc3(rx) * sumU(rz, rx, rbfTres);
+    Expr t1 = pc3(rx) * sumU(rz, rx, rbf3);
     Expr i2 = atomtype(rzz) - 1;
     Expr k = elemindex(clamp(i2, 0, nelements - 1), rz);
     Expr f = select(rz == i2, 2 * t1, t1);
     
-    dd3(dim, rzz, rx, rbfTres, clamp(k, 0, me - 1)) += f * U(rzz, ry, rbfTres, dim + 1);
+    //dd3(dim, rzz, ry, rbfTres, clamp(k, 0, me - 1)) += f * U(rzz, rx, rbfTres, dim + 1);
+    dd3(dim, rzz, ry, rbf3, clamp(k, 0, me - 1)) += f * U(rzz, rx, rbf3, dim + 1);
 }
 
 void threeBodyDesc(Func & d3,
@@ -724,23 +730,24 @@ void threeBodyDesc(Func & d3,
   d3.bound(rbf3, 0, nrbf3);
   d3.bound(kme, 0, me);
 
-  RDom r(0, nabf3, 0, k3, 0, nelements, 0, nelements);
-  Expr n1 = pn3(r.x);
-  Expr n2 = pn3(r.x + 1);
-  r.where(n1 <= r.y);
-  r.where(r.y < n2);
-  RVar rx = r.x;
+  //RDom r(0, nabf3, 0, k3, 0, nelements, 0, nelements);
+  RDom r(0, k3, 0, nabf3, 0, nelements, 0, nelements);
+  Expr n1 = pn3(r.y);
+  Expr n2 = pn3(r.y + 1);
+  r.where(n1 <= r.x);
+  r.where(r.x < n2);
   RVar ry = r.y;
+  RVar rx = r.x;
   RVar rz = r.z;
   RVar rzz = r[3];
   r.where(rzz <= rz);
 
-  Expr t1 = pc3(r.y) * sumU(rz, r.y, rbf3);
+  Expr t1 = pc3(rx) * sumU(rz, rx, rbf3);
   //  Expr ki = (nelements - rz) * ((nelements - rz) - 1)/2;
   //  Expr kij = rzz - rz - 1;
   Expr k = (2 * nelements - 3 - rz) * (rz/ 2) + rzz - 1; //mem  - ki + kij;
-  Expr t2 = sumU(rzz, r.y, rbf3);
-  d3(r.x, rbf3, clamp(k, 0, me -1)) += t1 * t2;
+  Expr t2 = sumU(rzz, rx, rbf3);
+  d3(ry, rbf3, clamp(k, 0, me -1)) += t1 * t2;
     //k is a trian
     //(n*(n-1)/2) - (n-i)*((n-i)-1)/2 + j - i - 1
     //Formula for indexing
@@ -896,7 +903,7 @@ public:
     Func d2("d2"), dd2("dd2");
     twoBodyDescDeriv(d2, dd2, rbf, tj, npairs, nelements, nrbf2);
     // d2.compute_root();
-    dd2.compute_root();
+    // dd2.compute_root();
 
 
 
@@ -921,6 +928,7 @@ public:
 		  npairs, nelements, nrbf3, nabf3, k3,
 		  abfThree, rbfThree, kme);
 
+    d3.compute_root();
     Expr me = nelements * (nelements + 1)/2;
     d3_o(copy1, copy2, copy3) = d3(copy1, copy2, copy3);
     d3_o.dim(0).set_bounds(0, nabf3).set_stride(1);
@@ -929,15 +937,20 @@ public:
     
     Func dd3("dd3");
     Var nj("nj");    
+    RDom r3body(0, k3, 0, nabf3, 0, nelements, 0, npairs);
     threeBodyDescDeriv(dd3, sumU, U, tj, pn3, pc3,
         elemindex, npairs, k3, nelements, dim, nj, abfThree, nabf3, 
-        rbfThree, nrbf3, kme, me);
+        rbfThree, nrbf3, kme, me, r3body);
+    //dd3.update(0).reorder(rbfThree, r3body.y, r3body.x, r3body[3], dim);
+    dd3.update(0).reorder(dim, r3body[3], r3body.x, r3body.y, rbfThree);
+    dd3.compute_root();
     dd3_o(dim, nj, copy1, copy2, copy3) = dd3(dim, nj, copy1, copy2, copy3);
     dd3_o.dim(0).set_bounds(0, 3).set_stride(1);
     dd3_o.dim(1).set_bounds(0, npairs).set_stride(3);
     dd3_o.dim(2).set_bounds(0, nabf3).set_stride(3 * npairs);
     dd3_o.dim(3).set_bounds(0, nrbf3).set_stride(3 * npairs * nabf3);
     dd3_o.dim(4).set_bounds(0, me).set_stride(3 * npairs * nabf3 * nrbf3);
+
 
  
     Func cU("cU");
@@ -946,6 +959,8 @@ public:
    
     threeBodyCoeff(cU, e3, coeff3, sumU, pn3, pc3, nj, ne, k3var, rbfThree,
 		nelements, k3, nrbf3, nabf3, me);
+    cU.compute_root();
+    e3.compute_root();
     cU_o(copy1, copy2, copy3) = cU(copy1, copy2, copy3);
     cU_o.dim(0).set_bounds(0, nelements).set_stride(1);
     cU_o.dim(1).set_bounds(0, k3).set_stride(nelements);
@@ -953,6 +968,7 @@ public:
     e3_o() = e3();
 
     tallyLocalForce(fij, tj, cU, U, nrbf3, k3, npairs, nelements, dim);
+    fij.compute_root();
     fij_o(n, dim) = fij(n, dim);
     fij_o.dim(0).set_bounds(0, npairs).set_stride(3);
     fij_o.dim(1).set_bounds(0, 3).set_stride(1);
