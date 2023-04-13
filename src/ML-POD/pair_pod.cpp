@@ -436,6 +436,28 @@ void PairPOD::allocate_tempmemory_fastpod(int nmem)
   memory->create(tmpmem, nmem, "fastpod::tmpmem");
 }
 
+void PairPOD::free_tempmemory_fastpod_big()
+{
+  memory->destroy(rij);
+  memory->destroy(fij);
+  memory->destroy(ai);
+  memory->destroy(aj);
+  memory->destroy(ti);
+  memory->destroy(tj);
+  memory->destroy(tmpmem);
+}
+
+void PairPOD::allocate_tempmemory_fastpod_big(int nmem)
+{
+  memory->create(rij, dim * nijmax, "pair:rij");
+  memory->create(fij, dim * nijmax, "pair:fij");
+  memory->create(ai, nijmax, "pair:ai");
+  memory->create(aj, nijmax, "pair:aj");
+  memory->create(ti, nijmax, "pair:ti");
+  memory->create(tj, nijmax, "pair:tj");
+  memory->create(tmpmem, nmem, "fastpod::tmpmem");
+}
+
 void PairPOD::lammpsNeighPairs(double **x, int **firstneigh, int *atomtypes, int *map,
                                int *numneigh, double rcutsq, int gi)
 {

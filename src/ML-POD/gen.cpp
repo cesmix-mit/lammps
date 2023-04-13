@@ -22,12 +22,16 @@ void buildRBF( Func & rbfall,
   Expr xij2 = xij(1, np);
   Expr xij3 = xij(2, np);
 
+  // All of these.
   Expr s = xij1*xij1 + xij2*xij2 + xij3*xij3;
   Expr dij = sqrt(s);
+  //Has a dim var.
   Expr dr1 = xij1/dij;    
   Expr dr2 = xij2/dij;    
   Expr dr3 = xij3/dij;    
 
+  // Some of these.
+  // Are any used anywhere else - okay - precompute
   Expr r = dij - rin;        
   Expr y = r/rmax;    
   Expr y2 = y*y;
@@ -40,21 +44,26 @@ void buildRBF( Func & rbfall,
   Expr dfcut = (((3 * one)/(rmax*exp(-one)))*(y2)*y6*(y*y2 - one))/y7;
 
   Expr alpha = max(Expr((double)1e-3), besselparams(bfp));
+  //x,dx -> bfp, np  -- maybe a sub expression
   Expr x =  (one - exp(-alpha*r/rmax))/(one-exp(-alpha));
   Expr dx = (alpha/rmax)*exp(-(alpha*r/rmax))/(one - exp(-alpha));
 
   Expr a = (bfi + 1) * PI;
+  //B and C
   Expr b = sqrt(2 * one/rmax)/(bfi + 1);
+  //C - like tm  - be careful about bounds
+  //
   Expr c = pow(dij, bfi + 1);
 
   Func rbf("rbf"), drbf("drbf_f"), abf("abf_f"), dabf("dabf_f");
-
+  //Repeating of sin(a*x)/r ->bfp, np
   rbf(bfp, bfi, np) = b * fcut * sin(a*x)/r;
   // rbf.trace_stores();
   rbf.bound(bfp, 0, nbparams);
   rbf.bound(bfi, 0, bdegree);
   rbf.bound(np, 0, npairs);
   Expr drbfdr = b*(dfcut*sin(a*x)/r - fcut*sin(a*x)/(r*r) + a*cos(a*x)*fcut*dx/r);
+  //normalization
   drbf(bfp, bfi, np, dim) = (xij(dim, np)/dij) * drbfdr;
   // drbf.trace_stores();
   drbf.bound(dim, 0, 3);
@@ -67,6 +76,7 @@ void buildRBF( Func & rbfall,
   // abf.trace_stores();
   abf.bound(bfi, 0, adegree);
   abf.bound(np, 0, npairs);
+  //negative power -> 1/dij ->
   Expr drbfdr_a = dfcut/c - (bfi+one)*fcut/(c*dij);
   dabf(bfi, np, dim) = (xij(dim, np)/dij) * drbfdr_a;
   // dabf.trace_stores();
@@ -847,8 +857,8 @@ public:
         prod(c, k, i, j) = Phi(k, i) * rbft(j, k, c);
         prod.bound(c, 0, 4);
         prod.bound(k, 0, nrbfmax);
-        prod.bound(j, 0, npairs);
-        prod.bound(i, 0, npairs);
+	prod.bound(j, 0, npairs);
+        prod.bound(i, 0, ns); //Note I changed this
         Func rbf("rbf");
         rbf(j, i, c) = Expr((double) 0.0);
         RDom r(0, ns);
@@ -987,9 +997,3 @@ public:
 };
 
 HALIDE_REGISTER_GENERATOR(poddescTwoBody, poddescTwoBody);
-HALIDE_REGISTER_GENERATOR(poddescRBF, poddescRBF);
-HALIDE_REGISTER_GENERATOR(poddescRadialAngularBasis, poddescRadialAngularBasis);
-HALIDE_REGISTER_GENERATOR(poddescTwoBodyDescDeriv, poddescTwoBodyDescDeriv);
-HALIDE_REGISTER_GENERATOR(poddescTallyTwoBodyLocalForce, poddescTallyTwoBodyLocalForce);
-HALIDE_REGISTER_GENERATOR(poddescFourMult, poddescFourMult);
-HALIDE_REGISTER_GENERATOR(poddescAngularBasis, poddescAngularBasis);
