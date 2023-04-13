@@ -712,6 +712,59 @@ void threeBodyDesc(Func & d3,
 
 }
 
+void indexMap3(Func & indexmap, Expr n1, Expr n2, Expr n3, Expr N1, Expr N2){
+  Var v1("v1");
+  Var v2("v2");
+  Var v3("v3");
+  Var k("k");
+  Var c("c");
+
+  Expr i3 =  k / (N1 * N2);
+  Expr kp = (k - i3 * N1 * N2);
+  Expr i2 = kp/ N1;
+  Expr i3 = kp % N1;
+
+  indexmap(k, c) = mux(c, {i1, i2, i3});
+  indexmap.bound(k, 0, n1 * n2 * n3);
+  indexmap.bound(c, 0, 3);
+}
+
+
+void fourbodyfij23(Func & fij,
+		   Func ind23, Func ind32, Func coeff23, Func d2, Func dd3,
+		   Expr npairs, Expr n23, Expr n32,
+		   Var pairindex)
+{
+
+  Expr zero = Expr((double) 0.0);
+  Func cf1("cf1");
+  Var j("j");
+  Var dim("dim");
+  Rdom r1(0, n23);
+  cf1(j) = zero;
+  cf1(j) += d2(ind23(r1.x,1), ind23(r1.x,2)) * coeff23(r.x, j);
+
+  Rdom r2(0, n32);
+  fij(pairindex, dim) += cf1(r2.x) * dd3(dim, ind32(r2.x,0), ind32(r2.x,1), ind32(r2.x,2));
+
+  Func cf2("c2");
+  Var i("i");
+  cf2(i) = zero;
+  cf2(i) += d3(dim, ind32(r2.x,0), ind32(r2.x,1), ind32(r2.x,2)) * coeff23(i, r2.x);
+
+  fij(pairindex, dim) += cf2(r1.x) * dd2(dim, ind23(r1.x, 1), ind23(r1.x, 2));
+    
+
+
+  
+  
+
+    
+    
+    
+  
+}
+
 class poddescTwoBody : public Halide::Generator<poddescTwoBody> {
 public:
 
