@@ -1,0 +1,1495 @@
+module name=poddescTwoBody, target=x86-64-linux-sse41
+external_plus_metadata func poddescTwoBody (rijs, besselparams, nbesselpars, bdegree, adegree, npairs, nrbfmax, rin, rcut, Phi, ns, coeff2, tj, nrbf2, k3, pq, pn3, pc3, elemindex, nrbf3, nelements, nd23, nd33, nd34, nabf3, coeff3, fij_o, e_o, sumU_o, U_o, d2_o, dd2_o, d3_o, dd3_o, cU_o, e3_o) {
+assert((uint64)reinterpret((halide_buffer_t *)tj.buffer) != (uint64)0, halide_error_buffer_argument_is_null("tj"))
+assert((uint64)reinterpret((halide_buffer_t *)sumU_o.buffer) != (uint64)0, halide_error_buffer_argument_is_null("sumU_o"))
+assert((uint64)reinterpret((halide_buffer_t *)rijs.buffer) != (uint64)0, halide_error_buffer_argument_is_null("rijs"))
+assert((uint64)reinterpret((halide_buffer_t *)pq.buffer) != (uint64)0, halide_error_buffer_argument_is_null("pq"))
+assert((uint64)reinterpret((halide_buffer_t *)pn3.buffer) != (uint64)0, halide_error_buffer_argument_is_null("pn3"))
+assert((uint64)reinterpret((halide_buffer_t *)pc3.buffer) != (uint64)0, halide_error_buffer_argument_is_null("pc3"))
+assert((uint64)reinterpret((halide_buffer_t *)fij_o.buffer) != (uint64)0, halide_error_buffer_argument_is_null("fij_o"))
+assert((uint64)reinterpret((halide_buffer_t *)elemindex.buffer) != (uint64)0, halide_error_buffer_argument_is_null("elemindex"))
+assert((uint64)reinterpret((halide_buffer_t *)e_o.buffer) != (uint64)0, halide_error_buffer_argument_is_null("e_o"))
+assert((uint64)reinterpret((halide_buffer_t *)e3_o.buffer) != (uint64)0, halide_error_buffer_argument_is_null("e3_o"))
+assert((uint64)reinterpret((halide_buffer_t *)dd3_o.buffer) != (uint64)0, halide_error_buffer_argument_is_null("dd3_o"))
+assert((uint64)reinterpret((halide_buffer_t *)dd2_o.buffer) != (uint64)0, halide_error_buffer_argument_is_null("dd2_o"))
+assert((uint64)reinterpret((halide_buffer_t *)d3_o.buffer) != (uint64)0, halide_error_buffer_argument_is_null("d3_o"))
+assert((uint64)reinterpret((halide_buffer_t *)d2_o.buffer) != (uint64)0, halide_error_buffer_argument_is_null("d2_o"))
+assert((uint64)reinterpret((halide_buffer_t *)coeff3.buffer) != (uint64)0, halide_error_buffer_argument_is_null("coeff3"))
+assert((uint64)reinterpret((halide_buffer_t *)coeff2.buffer) != (uint64)0, halide_error_buffer_argument_is_null("coeff2"))
+assert((uint64)reinterpret((halide_buffer_t *)cU_o.buffer) != (uint64)0, halide_error_buffer_argument_is_null("cU_o"))
+assert((uint64)reinterpret((halide_buffer_t *)besselparams.buffer) != (uint64)0, halide_error_buffer_argument_is_null("besselparams"))
+assert((uint64)reinterpret((halide_buffer_t *)U_o.buffer) != (uint64)0, halide_error_buffer_argument_is_null("U_o"))
+assert((uint64)reinterpret((halide_buffer_t *)Phi.buffer) != (uint64)0, halide_error_buffer_argument_is_null("Phi"))
+let Phi = (void *)_halide_buffer_get_host((halide_buffer_t *)Phi.buffer)
+let Phi.type = (uint32)_halide_buffer_get_type((halide_buffer_t *)Phi.buffer)
+let Phi.device_dirty = (uint1)_halide_buffer_get_device_dirty((halide_buffer_t *)Phi.buffer)
+let Phi.dimensions = _halide_buffer_get_dimensions((halide_buffer_t *)Phi.buffer)
+let Phi.min.0 = _halide_buffer_get_min((halide_buffer_t *)Phi.buffer, 0)
+let Phi.extent.0 = _halide_buffer_get_extent((halide_buffer_t *)Phi.buffer, 0)
+let Phi.stride.0 = _halide_buffer_get_stride((halide_buffer_t *)Phi.buffer, 0)
+let Phi.min.1 = _halide_buffer_get_min((halide_buffer_t *)Phi.buffer, 1)
+let Phi.extent.1 = _halide_buffer_get_extent((halide_buffer_t *)Phi.buffer, 1)
+let Phi.stride.1 = _halide_buffer_get_stride((halide_buffer_t *)Phi.buffer, 1)
+let U_o = (void *)_halide_buffer_get_host((halide_buffer_t *)U_o.buffer)
+let U_o.type = (uint32)_halide_buffer_get_type((halide_buffer_t *)U_o.buffer)
+let U_o.device_dirty = (uint1)_halide_buffer_get_device_dirty((halide_buffer_t *)U_o.buffer)
+let U_o.dimensions = _halide_buffer_get_dimensions((halide_buffer_t *)U_o.buffer)
+let U_o.min.0 = _halide_buffer_get_min((halide_buffer_t *)U_o.buffer, 0)
+let U_o.extent.0 = _halide_buffer_get_extent((halide_buffer_t *)U_o.buffer, 0)
+let U_o.stride.0 = _halide_buffer_get_stride((halide_buffer_t *)U_o.buffer, 0)
+let U_o.min.1 = _halide_buffer_get_min((halide_buffer_t *)U_o.buffer, 1)
+let U_o.extent.1 = _halide_buffer_get_extent((halide_buffer_t *)U_o.buffer, 1)
+let U_o.stride.1 = _halide_buffer_get_stride((halide_buffer_t *)U_o.buffer, 1)
+let U_o.min.2 = _halide_buffer_get_min((halide_buffer_t *)U_o.buffer, 2)
+let U_o.extent.2 = _halide_buffer_get_extent((halide_buffer_t *)U_o.buffer, 2)
+let U_o.stride.2 = _halide_buffer_get_stride((halide_buffer_t *)U_o.buffer, 2)
+let U_o.min.3 = _halide_buffer_get_min((halide_buffer_t *)U_o.buffer, 3)
+let U_o.extent.3 = _halide_buffer_get_extent((halide_buffer_t *)U_o.buffer, 3)
+let U_o.stride.3 = _halide_buffer_get_stride((halide_buffer_t *)U_o.buffer, 3)
+let besselparams = (void *)_halide_buffer_get_host((halide_buffer_t *)besselparams.buffer)
+let besselparams.type = (uint32)_halide_buffer_get_type((halide_buffer_t *)besselparams.buffer)
+let besselparams.device_dirty = (uint1)_halide_buffer_get_device_dirty((halide_buffer_t *)besselparams.buffer)
+let besselparams.dimensions = _halide_buffer_get_dimensions((halide_buffer_t *)besselparams.buffer)
+let besselparams.min.0 = _halide_buffer_get_min((halide_buffer_t *)besselparams.buffer, 0)
+let besselparams.extent.0 = _halide_buffer_get_extent((halide_buffer_t *)besselparams.buffer, 0)
+let besselparams.stride.0 = _halide_buffer_get_stride((halide_buffer_t *)besselparams.buffer, 0)
+let cU_o = (void *)_halide_buffer_get_host((halide_buffer_t *)cU_o.buffer)
+let cU_o.type = (uint32)_halide_buffer_get_type((halide_buffer_t *)cU_o.buffer)
+let cU_o.device_dirty = (uint1)_halide_buffer_get_device_dirty((halide_buffer_t *)cU_o.buffer)
+let cU_o.dimensions = _halide_buffer_get_dimensions((halide_buffer_t *)cU_o.buffer)
+let cU_o.min.0 = _halide_buffer_get_min((halide_buffer_t *)cU_o.buffer, 0)
+let cU_o.extent.0 = _halide_buffer_get_extent((halide_buffer_t *)cU_o.buffer, 0)
+let cU_o.stride.0 = _halide_buffer_get_stride((halide_buffer_t *)cU_o.buffer, 0)
+let cU_o.min.1 = _halide_buffer_get_min((halide_buffer_t *)cU_o.buffer, 1)
+let cU_o.extent.1 = _halide_buffer_get_extent((halide_buffer_t *)cU_o.buffer, 1)
+let cU_o.stride.1 = _halide_buffer_get_stride((halide_buffer_t *)cU_o.buffer, 1)
+let cU_o.min.2 = _halide_buffer_get_min((halide_buffer_t *)cU_o.buffer, 2)
+let cU_o.extent.2 = _halide_buffer_get_extent((halide_buffer_t *)cU_o.buffer, 2)
+let cU_o.stride.2 = _halide_buffer_get_stride((halide_buffer_t *)cU_o.buffer, 2)
+let coeff2 = (void *)_halide_buffer_get_host((halide_buffer_t *)coeff2.buffer)
+let coeff2.type = (uint32)_halide_buffer_get_type((halide_buffer_t *)coeff2.buffer)
+let coeff2.device_dirty = (uint1)_halide_buffer_get_device_dirty((halide_buffer_t *)coeff2.buffer)
+let coeff2.dimensions = _halide_buffer_get_dimensions((halide_buffer_t *)coeff2.buffer)
+let coeff2.min.0 = _halide_buffer_get_min((halide_buffer_t *)coeff2.buffer, 0)
+let coeff2.extent.0 = _halide_buffer_get_extent((halide_buffer_t *)coeff2.buffer, 0)
+let coeff2.stride.0 = _halide_buffer_get_stride((halide_buffer_t *)coeff2.buffer, 0)
+let coeff2.min.1 = _halide_buffer_get_min((halide_buffer_t *)coeff2.buffer, 1)
+let coeff2.extent.1 = _halide_buffer_get_extent((halide_buffer_t *)coeff2.buffer, 1)
+let coeff2.stride.1 = _halide_buffer_get_stride((halide_buffer_t *)coeff2.buffer, 1)
+let coeff3 = (void *)_halide_buffer_get_host((halide_buffer_t *)coeff3.buffer)
+let coeff3.type = (uint32)_halide_buffer_get_type((halide_buffer_t *)coeff3.buffer)
+let coeff3.device_dirty = (uint1)_halide_buffer_get_device_dirty((halide_buffer_t *)coeff3.buffer)
+let coeff3.dimensions = _halide_buffer_get_dimensions((halide_buffer_t *)coeff3.buffer)
+let coeff3.min.0 = _halide_buffer_get_min((halide_buffer_t *)coeff3.buffer, 0)
+let coeff3.extent.0 = _halide_buffer_get_extent((halide_buffer_t *)coeff3.buffer, 0)
+let coeff3.stride.0 = _halide_buffer_get_stride((halide_buffer_t *)coeff3.buffer, 0)
+let coeff3.min.1 = _halide_buffer_get_min((halide_buffer_t *)coeff3.buffer, 1)
+let coeff3.extent.1 = _halide_buffer_get_extent((halide_buffer_t *)coeff3.buffer, 1)
+let coeff3.stride.1 = _halide_buffer_get_stride((halide_buffer_t *)coeff3.buffer, 1)
+let coeff3.min.2 = _halide_buffer_get_min((halide_buffer_t *)coeff3.buffer, 2)
+let coeff3.extent.2 = _halide_buffer_get_extent((halide_buffer_t *)coeff3.buffer, 2)
+let coeff3.stride.2 = _halide_buffer_get_stride((halide_buffer_t *)coeff3.buffer, 2)
+let d2_o = (void *)_halide_buffer_get_host((halide_buffer_t *)d2_o.buffer)
+let d2_o.type = (uint32)_halide_buffer_get_type((halide_buffer_t *)d2_o.buffer)
+let d2_o.device_dirty = (uint1)_halide_buffer_get_device_dirty((halide_buffer_t *)d2_o.buffer)
+let d2_o.dimensions = _halide_buffer_get_dimensions((halide_buffer_t *)d2_o.buffer)
+let d2_o.min.0 = _halide_buffer_get_min((halide_buffer_t *)d2_o.buffer, 0)
+let d2_o.extent.0 = _halide_buffer_get_extent((halide_buffer_t *)d2_o.buffer, 0)
+let d2_o.stride.0 = _halide_buffer_get_stride((halide_buffer_t *)d2_o.buffer, 0)
+let d2_o.min.1 = _halide_buffer_get_min((halide_buffer_t *)d2_o.buffer, 1)
+let d2_o.extent.1 = _halide_buffer_get_extent((halide_buffer_t *)d2_o.buffer, 1)
+let d2_o.stride.1 = _halide_buffer_get_stride((halide_buffer_t *)d2_o.buffer, 1)
+let d3_o = (void *)_halide_buffer_get_host((halide_buffer_t *)d3_o.buffer)
+let d3_o.type = (uint32)_halide_buffer_get_type((halide_buffer_t *)d3_o.buffer)
+let d3_o.device_dirty = (uint1)_halide_buffer_get_device_dirty((halide_buffer_t *)d3_o.buffer)
+let d3_o.dimensions = _halide_buffer_get_dimensions((halide_buffer_t *)d3_o.buffer)
+let d3_o.min.0 = _halide_buffer_get_min((halide_buffer_t *)d3_o.buffer, 0)
+let d3_o.extent.0 = _halide_buffer_get_extent((halide_buffer_t *)d3_o.buffer, 0)
+let d3_o.stride.0 = _halide_buffer_get_stride((halide_buffer_t *)d3_o.buffer, 0)
+let d3_o.min.1 = _halide_buffer_get_min((halide_buffer_t *)d3_o.buffer, 1)
+let d3_o.extent.1 = _halide_buffer_get_extent((halide_buffer_t *)d3_o.buffer, 1)
+let d3_o.stride.1 = _halide_buffer_get_stride((halide_buffer_t *)d3_o.buffer, 1)
+let d3_o.min.2 = _halide_buffer_get_min((halide_buffer_t *)d3_o.buffer, 2)
+let d3_o.extent.2 = _halide_buffer_get_extent((halide_buffer_t *)d3_o.buffer, 2)
+let d3_o.stride.2 = _halide_buffer_get_stride((halide_buffer_t *)d3_o.buffer, 2)
+let dd2_o = (void *)_halide_buffer_get_host((halide_buffer_t *)dd2_o.buffer)
+let dd2_o.type = (uint32)_halide_buffer_get_type((halide_buffer_t *)dd2_o.buffer)
+let dd2_o.device_dirty = (uint1)_halide_buffer_get_device_dirty((halide_buffer_t *)dd2_o.buffer)
+let dd2_o.dimensions = _halide_buffer_get_dimensions((halide_buffer_t *)dd2_o.buffer)
+let dd2_o.min.0 = _halide_buffer_get_min((halide_buffer_t *)dd2_o.buffer, 0)
+let dd2_o.extent.0 = _halide_buffer_get_extent((halide_buffer_t *)dd2_o.buffer, 0)
+let dd2_o.stride.0 = _halide_buffer_get_stride((halide_buffer_t *)dd2_o.buffer, 0)
+let dd2_o.min.1 = _halide_buffer_get_min((halide_buffer_t *)dd2_o.buffer, 1)
+let dd2_o.extent.1 = _halide_buffer_get_extent((halide_buffer_t *)dd2_o.buffer, 1)
+let dd2_o.stride.1 = _halide_buffer_get_stride((halide_buffer_t *)dd2_o.buffer, 1)
+let dd2_o.min.2 = _halide_buffer_get_min((halide_buffer_t *)dd2_o.buffer, 2)
+let dd2_o.extent.2 = _halide_buffer_get_extent((halide_buffer_t *)dd2_o.buffer, 2)
+let dd2_o.stride.2 = _halide_buffer_get_stride((halide_buffer_t *)dd2_o.buffer, 2)
+let dd2_o.min.3 = _halide_buffer_get_min((halide_buffer_t *)dd2_o.buffer, 3)
+let dd2_o.extent.3 = _halide_buffer_get_extent((halide_buffer_t *)dd2_o.buffer, 3)
+let dd2_o.stride.3 = _halide_buffer_get_stride((halide_buffer_t *)dd2_o.buffer, 3)
+let dd3_o = (void *)_halide_buffer_get_host((halide_buffer_t *)dd3_o.buffer)
+let dd3_o.type = (uint32)_halide_buffer_get_type((halide_buffer_t *)dd3_o.buffer)
+let dd3_o.device_dirty = (uint1)_halide_buffer_get_device_dirty((halide_buffer_t *)dd3_o.buffer)
+let dd3_o.dimensions = _halide_buffer_get_dimensions((halide_buffer_t *)dd3_o.buffer)
+let dd3_o.min.0 = _halide_buffer_get_min((halide_buffer_t *)dd3_o.buffer, 0)
+let dd3_o.extent.0 = _halide_buffer_get_extent((halide_buffer_t *)dd3_o.buffer, 0)
+let dd3_o.stride.0 = _halide_buffer_get_stride((halide_buffer_t *)dd3_o.buffer, 0)
+let dd3_o.min.1 = _halide_buffer_get_min((halide_buffer_t *)dd3_o.buffer, 1)
+let dd3_o.extent.1 = _halide_buffer_get_extent((halide_buffer_t *)dd3_o.buffer, 1)
+let dd3_o.stride.1 = _halide_buffer_get_stride((halide_buffer_t *)dd3_o.buffer, 1)
+let dd3_o.min.2 = _halide_buffer_get_min((halide_buffer_t *)dd3_o.buffer, 2)
+let dd3_o.extent.2 = _halide_buffer_get_extent((halide_buffer_t *)dd3_o.buffer, 2)
+let dd3_o.stride.2 = _halide_buffer_get_stride((halide_buffer_t *)dd3_o.buffer, 2)
+let dd3_o.min.3 = _halide_buffer_get_min((halide_buffer_t *)dd3_o.buffer, 3)
+let dd3_o.extent.3 = _halide_buffer_get_extent((halide_buffer_t *)dd3_o.buffer, 3)
+let dd3_o.stride.3 = _halide_buffer_get_stride((halide_buffer_t *)dd3_o.buffer, 3)
+let dd3_o.min.4 = _halide_buffer_get_min((halide_buffer_t *)dd3_o.buffer, 4)
+let dd3_o.extent.4 = _halide_buffer_get_extent((halide_buffer_t *)dd3_o.buffer, 4)
+let dd3_o.stride.4 = _halide_buffer_get_stride((halide_buffer_t *)dd3_o.buffer, 4)
+let e3_o = (void *)_halide_buffer_get_host((halide_buffer_t *)e3_o.buffer)
+let e3_o.type = (uint32)_halide_buffer_get_type((halide_buffer_t *)e3_o.buffer)
+let e3_o.device_dirty = (uint1)_halide_buffer_get_device_dirty((halide_buffer_t *)e3_o.buffer)
+let e3_o.dimensions = _halide_buffer_get_dimensions((halide_buffer_t *)e3_o.buffer)
+let e_o = (void *)_halide_buffer_get_host((halide_buffer_t *)e_o.buffer)
+let e_o.type = (uint32)_halide_buffer_get_type((halide_buffer_t *)e_o.buffer)
+let e_o.device_dirty = (uint1)_halide_buffer_get_device_dirty((halide_buffer_t *)e_o.buffer)
+let e_o.dimensions = _halide_buffer_get_dimensions((halide_buffer_t *)e_o.buffer)
+let elemindex = (void *)_halide_buffer_get_host((halide_buffer_t *)elemindex.buffer)
+let elemindex.type = (uint32)_halide_buffer_get_type((halide_buffer_t *)elemindex.buffer)
+let elemindex.device_dirty = (uint1)_halide_buffer_get_device_dirty((halide_buffer_t *)elemindex.buffer)
+let elemindex.dimensions = _halide_buffer_get_dimensions((halide_buffer_t *)elemindex.buffer)
+let elemindex.min.0 = _halide_buffer_get_min((halide_buffer_t *)elemindex.buffer, 0)
+let elemindex.extent.0 = _halide_buffer_get_extent((halide_buffer_t *)elemindex.buffer, 0)
+let elemindex.stride.0 = _halide_buffer_get_stride((halide_buffer_t *)elemindex.buffer, 0)
+let elemindex.min.1 = _halide_buffer_get_min((halide_buffer_t *)elemindex.buffer, 1)
+let elemindex.extent.1 = _halide_buffer_get_extent((halide_buffer_t *)elemindex.buffer, 1)
+let elemindex.stride.1 = _halide_buffer_get_stride((halide_buffer_t *)elemindex.buffer, 1)
+let fij_o = (void *)_halide_buffer_get_host((halide_buffer_t *)fij_o.buffer)
+let fij_o.type = (uint32)_halide_buffer_get_type((halide_buffer_t *)fij_o.buffer)
+let fij_o.device_dirty = (uint1)_halide_buffer_get_device_dirty((halide_buffer_t *)fij_o.buffer)
+let fij_o.dimensions = _halide_buffer_get_dimensions((halide_buffer_t *)fij_o.buffer)
+let fij_o.min.0 = _halide_buffer_get_min((halide_buffer_t *)fij_o.buffer, 0)
+let fij_o.extent.0 = _halide_buffer_get_extent((halide_buffer_t *)fij_o.buffer, 0)
+let fij_o.stride.0 = _halide_buffer_get_stride((halide_buffer_t *)fij_o.buffer, 0)
+let fij_o.min.1 = _halide_buffer_get_min((halide_buffer_t *)fij_o.buffer, 1)
+let fij_o.extent.1 = _halide_buffer_get_extent((halide_buffer_t *)fij_o.buffer, 1)
+let fij_o.stride.1 = _halide_buffer_get_stride((halide_buffer_t *)fij_o.buffer, 1)
+let pc3 = (void *)_halide_buffer_get_host((halide_buffer_t *)pc3.buffer)
+let pc3.type = (uint32)_halide_buffer_get_type((halide_buffer_t *)pc3.buffer)
+let pc3.device_dirty = (uint1)_halide_buffer_get_device_dirty((halide_buffer_t *)pc3.buffer)
+let pc3.dimensions = _halide_buffer_get_dimensions((halide_buffer_t *)pc3.buffer)
+let pc3.min.0 = _halide_buffer_get_min((halide_buffer_t *)pc3.buffer, 0)
+let pc3.extent.0 = _halide_buffer_get_extent((halide_buffer_t *)pc3.buffer, 0)
+let pc3.stride.0 = _halide_buffer_get_stride((halide_buffer_t *)pc3.buffer, 0)
+let pn3 = (void *)_halide_buffer_get_host((halide_buffer_t *)pn3.buffer)
+let pn3.type = (uint32)_halide_buffer_get_type((halide_buffer_t *)pn3.buffer)
+let pn3.device_dirty = (uint1)_halide_buffer_get_device_dirty((halide_buffer_t *)pn3.buffer)
+let pn3.dimensions = _halide_buffer_get_dimensions((halide_buffer_t *)pn3.buffer)
+let pn3.min.0 = _halide_buffer_get_min((halide_buffer_t *)pn3.buffer, 0)
+let pn3.extent.0 = _halide_buffer_get_extent((halide_buffer_t *)pn3.buffer, 0)
+let pn3.stride.0 = _halide_buffer_get_stride((halide_buffer_t *)pn3.buffer, 0)
+let pq = (void *)_halide_buffer_get_host((halide_buffer_t *)pq.buffer)
+let pq.type = (uint32)_halide_buffer_get_type((halide_buffer_t *)pq.buffer)
+let pq.device_dirty = (uint1)_halide_buffer_get_device_dirty((halide_buffer_t *)pq.buffer)
+let pq.dimensions = _halide_buffer_get_dimensions((halide_buffer_t *)pq.buffer)
+let pq.min.0 = _halide_buffer_get_min((halide_buffer_t *)pq.buffer, 0)
+let pq.extent.0 = _halide_buffer_get_extent((halide_buffer_t *)pq.buffer, 0)
+let pq.stride.0 = _halide_buffer_get_stride((halide_buffer_t *)pq.buffer, 0)
+let rijs = (void *)_halide_buffer_get_host((halide_buffer_t *)rijs.buffer)
+let rijs.type = (uint32)_halide_buffer_get_type((halide_buffer_t *)rijs.buffer)
+let rijs.device_dirty = (uint1)_halide_buffer_get_device_dirty((halide_buffer_t *)rijs.buffer)
+let rijs.dimensions = _halide_buffer_get_dimensions((halide_buffer_t *)rijs.buffer)
+let rijs.min.0 = _halide_buffer_get_min((halide_buffer_t *)rijs.buffer, 0)
+let rijs.extent.0 = _halide_buffer_get_extent((halide_buffer_t *)rijs.buffer, 0)
+let rijs.stride.0 = _halide_buffer_get_stride((halide_buffer_t *)rijs.buffer, 0)
+let rijs.min.1 = _halide_buffer_get_min((halide_buffer_t *)rijs.buffer, 1)
+let rijs.extent.1 = _halide_buffer_get_extent((halide_buffer_t *)rijs.buffer, 1)
+let rijs.stride.1 = _halide_buffer_get_stride((halide_buffer_t *)rijs.buffer, 1)
+let sumU_o = (void *)_halide_buffer_get_host((halide_buffer_t *)sumU_o.buffer)
+let sumU_o.type = (uint32)_halide_buffer_get_type((halide_buffer_t *)sumU_o.buffer)
+let sumU_o.device_dirty = (uint1)_halide_buffer_get_device_dirty((halide_buffer_t *)sumU_o.buffer)
+let sumU_o.dimensions = _halide_buffer_get_dimensions((halide_buffer_t *)sumU_o.buffer)
+let sumU_o.min.0 = _halide_buffer_get_min((halide_buffer_t *)sumU_o.buffer, 0)
+let sumU_o.extent.0 = _halide_buffer_get_extent((halide_buffer_t *)sumU_o.buffer, 0)
+let sumU_o.stride.0 = _halide_buffer_get_stride((halide_buffer_t *)sumU_o.buffer, 0)
+let sumU_o.min.1 = _halide_buffer_get_min((halide_buffer_t *)sumU_o.buffer, 1)
+let sumU_o.extent.1 = _halide_buffer_get_extent((halide_buffer_t *)sumU_o.buffer, 1)
+let sumU_o.stride.1 = _halide_buffer_get_stride((halide_buffer_t *)sumU_o.buffer, 1)
+let sumU_o.min.2 = _halide_buffer_get_min((halide_buffer_t *)sumU_o.buffer, 2)
+let sumU_o.extent.2 = _halide_buffer_get_extent((halide_buffer_t *)sumU_o.buffer, 2)
+let sumU_o.stride.2 = _halide_buffer_get_stride((halide_buffer_t *)sumU_o.buffer, 2)
+let tj = (void *)_halide_buffer_get_host((halide_buffer_t *)tj.buffer)
+let tj.type = (uint32)_halide_buffer_get_type((halide_buffer_t *)tj.buffer)
+let tj.device_dirty = (uint1)_halide_buffer_get_device_dirty((halide_buffer_t *)tj.buffer)
+let tj.dimensions = _halide_buffer_get_dimensions((halide_buffer_t *)tj.buffer)
+let tj.min.0 = _halide_buffer_get_min((halide_buffer_t *)tj.buffer, 0)
+let tj.extent.0 = _halide_buffer_get_extent((halide_buffer_t *)tj.buffer, 0)
+let tj.stride.0 = _halide_buffer_get_stride((halide_buffer_t *)tj.buffer, 0)
+let rbf$1.s1.i.max.s = max(nrbf2, nrbf3)
+let tm.s0.abfip.max.s = max(k3*3, k3)
+let coeff3.extent.2.required.s = min(((nelements + 1)*nelements)/2, (max(max(((nelements + -1)/2)*(nelements + -2), ((nelements + -1)/2)*((nelements*2) + -3)), 0) + nelements) + -1)
+let pq.extent.0.required.s = max(k3*2, k3) - min(k3, 0)
+assert(!(uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)Phi.buffer) || (rbf$1.s1.i.max.s <= ns), halide_error_constraints_make_required_region_smaller("Input buffer Phi", 1, 0, ns + -1, 0, rbf$1.s1.i.max.s + -1))
+assert(!(uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)coeff2.buffer) || (1 <= npairs), halide_error_constraints_make_required_region_smaller("Input buffer coeff2", 0, 0, npairs + -1, 0, 0))
+if ((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)Phi.buffer)) {
+ (halide_buffer_t *)_halide_buffer_init((halide_buffer_t *)Phi.buffer, (halide_dimension_t *)_halide_buffer_get_shape((halide_buffer_t *)Phi.buffer), (void *)reinterpret((uint64)0), (uint64)0, (halide_device_interface_t *)reinterpret((uint64)0), 2, 64, 2, (halide_dimension_t *)make_struct(0, ns, 1, 0, 0, ns, ns, 0), (uint64)0)
+}
+if ((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)U_o.buffer)) {
+ let t1750 = (k3*npairs) in (halide_buffer_t *)_halide_buffer_init((halide_buffer_t *)U_o.buffer, (halide_dimension_t *)_halide_buffer_get_shape((halide_buffer_t *)U_o.buffer), (void *)reinterpret((uint64)0), (uint64)0, (halide_device_interface_t *)reinterpret((uint64)0), 2, 64, 4, (halide_dimension_t *)make_struct(0, npairs, 1, 0, 0, k3, npairs, 0, 0, nrbf3, t1750, 0, 0, 4, t1750*nrbf3, 0), (uint64)0)
+}
+if ((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)besselparams.buffer)) {
+ (halide_buffer_t *)_halide_buffer_init((halide_buffer_t *)besselparams.buffer, (halide_dimension_t *)_halide_buffer_get_shape((halide_buffer_t *)besselparams.buffer), (void *)reinterpret((uint64)0), (uint64)0, (halide_device_interface_t *)reinterpret((uint64)0), 2, 64, 1, (halide_dimension_t *)make_struct(0, nbesselpars, 1, 0), (uint64)0)
+}
+if ((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)cU_o.buffer)) {
+ (halide_buffer_t *)_halide_buffer_init((halide_buffer_t *)cU_o.buffer, (halide_dimension_t *)_halide_buffer_get_shape((halide_buffer_t *)cU_o.buffer), (void *)reinterpret((uint64)0), (uint64)0, (halide_device_interface_t *)reinterpret((uint64)0), 2, 64, 3, (halide_dimension_t *)make_struct(0, nelements, 1, 0, 0, k3, nelements, 0, 0, nrbf3, k3*nelements, 0), (uint64)0)
+}
+if ((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)coeff2.buffer)) {
+ (halide_buffer_t *)_halide_buffer_init((halide_buffer_t *)coeff2.buffer, (halide_dimension_t *)_halide_buffer_get_shape((halide_buffer_t *)coeff2.buffer), (void *)reinterpret((uint64)0), (uint64)0, (halide_device_interface_t *)reinterpret((uint64)0), 2, 64, 2, (halide_dimension_t *)make_struct(0, npairs, nrbf2, 0, 0, nrbf2, 1, 0), (uint64)0)
+}
+if ((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)coeff3.buffer)) {
+ (halide_buffer_t *)_halide_buffer_init((halide_buffer_t *)coeff3.buffer, (halide_dimension_t *)_halide_buffer_get_shape((halide_buffer_t *)coeff3.buffer), (void *)reinterpret((uint64)0), (uint64)0, (halide_device_interface_t *)reinterpret((uint64)0), 2, 64, 3, (halide_dimension_t *)make_struct(0, nabf3, 1, 0, 0, nrbf3, nabf3, 0, 0, max(coeff3.extent.2.required.s, 1), nabf3*nrbf3, 0), (uint64)0)
+}
+if ((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)d2_o.buffer)) {
+ (halide_buffer_t *)_halide_buffer_init((halide_buffer_t *)d2_o.buffer, (halide_dimension_t *)_halide_buffer_get_shape((halide_buffer_t *)d2_o.buffer), (void *)reinterpret((uint64)0), (uint64)0, (halide_device_interface_t *)reinterpret((uint64)0), 2, 64, 2, (halide_dimension_t *)make_struct(0, nelements, nrbf2, 0, 0, nrbf2, 1, 0), (uint64)0)
+}
+if ((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)d3_o.buffer)) {
+ (halide_buffer_t *)_halide_buffer_init((halide_buffer_t *)d3_o.buffer, (halide_dimension_t *)_halide_buffer_get_shape((halide_buffer_t *)d3_o.buffer), (void *)reinterpret((uint64)0), (uint64)0, (halide_device_interface_t *)reinterpret((uint64)0), 2, 64, 3, (halide_dimension_t *)make_struct(0, nabf3, 1, 0, 0, nrbf3, nabf3, 0, 0, ((nelements + 1)*nelements)/2, nabf3*nrbf3, 0), (uint64)0)
+}
+if ((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)dd2_o.buffer)) {
+ (halide_buffer_t *)_halide_buffer_init((halide_buffer_t *)dd2_o.buffer, (halide_dimension_t *)_halide_buffer_get_shape((halide_buffer_t *)dd2_o.buffer), (void *)reinterpret((uint64)0), (uint64)0, (halide_device_interface_t *)reinterpret((uint64)0), 2, 64, 4, (halide_dimension_t *)make_struct(0, nelements, (npairs*nrbf2)*3, 0, 0, nrbf2, npairs*3, 0, 0, npairs, 3, 0, 0, 3, 1, 0), (uint64)0)
+}
+if ((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)dd3_o.buffer)) {
+ let t1751 = (nabf3*npairs) in (halide_buffer_t *)_halide_buffer_init((halide_buffer_t *)dd3_o.buffer, (halide_dimension_t *)_halide_buffer_get_shape((halide_buffer_t *)dd3_o.buffer), (void *)reinterpret((uint64)0), (uint64)0, (halide_device_interface_t *)reinterpret((uint64)0), 2, 64, 5, (halide_dimension_t *)make_struct(0, 3, 1, 0, 0, npairs, 3, 0, 0, nabf3, npairs*3, 0, 0, nrbf3, t1751*3, 0, 0, ((nelements + 1)*nelements)/2, (t1751*nrbf3)*3, 0), (uint64)0)
+}
+if ((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)e3_o.buffer)) {
+ (halide_buffer_t *)_halide_buffer_init((halide_buffer_t *)e3_o.buffer, (halide_dimension_t *)_halide_buffer_get_shape((halide_buffer_t *)e3_o.buffer), (void *)reinterpret((uint64)0), (uint64)0, (halide_device_interface_t *)reinterpret((uint64)0), 2, 64, 0, (halide_dimension_t *)make_struct(), (uint64)0)
+}
+if ((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)e_o.buffer)) {
+ (halide_buffer_t *)_halide_buffer_init((halide_buffer_t *)e_o.buffer, (halide_dimension_t *)_halide_buffer_get_shape((halide_buffer_t *)e_o.buffer), (void *)reinterpret((uint64)0), (uint64)0, (halide_device_interface_t *)reinterpret((uint64)0), 2, 64, 0, (halide_dimension_t *)make_struct(), (uint64)0)
+}
+if ((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)elemindex.buffer)) {
+ let t1752 = max(nelements, 1) in (halide_buffer_t *)_halide_buffer_init((halide_buffer_t *)elemindex.buffer, (halide_dimension_t *)_halide_buffer_get_shape((halide_buffer_t *)elemindex.buffer), (void *)reinterpret((uint64)0), (uint64)0, (halide_device_interface_t *)reinterpret((uint64)0), 0, 32, 2, (halide_dimension_t *)make_struct(0, t1752, 1, 0, 0, nelements, t1752, 0), (uint64)0)
+}
+if ((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)fij_o.buffer)) {
+ (halide_buffer_t *)_halide_buffer_init((halide_buffer_t *)fij_o.buffer, (halide_dimension_t *)_halide_buffer_get_shape((halide_buffer_t *)fij_o.buffer), (void *)reinterpret((uint64)0), (uint64)0, (halide_device_interface_t *)reinterpret((uint64)0), 2, 64, 2, (halide_dimension_t *)make_struct(0, npairs, 3, 0, 0, 3, 1, 0), (uint64)0)
+}
+if ((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)pc3.buffer)) {
+ (halide_buffer_t *)_halide_buffer_init((halide_buffer_t *)pc3.buffer, (halide_dimension_t *)_halide_buffer_get_shape((halide_buffer_t *)pc3.buffer), (void *)reinterpret((uint64)0), (uint64)0, (halide_device_interface_t *)reinterpret((uint64)0), 0, 32, 1, (halide_dimension_t *)make_struct(0, k3, 1, 0), (uint64)0)
+}
+if ((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)pn3.buffer)) {
+ (halide_buffer_t *)_halide_buffer_init((halide_buffer_t *)pn3.buffer, (halide_dimension_t *)_halide_buffer_get_shape((halide_buffer_t *)pn3.buffer), (void *)reinterpret((uint64)0), (uint64)0, (halide_device_interface_t *)reinterpret((uint64)0), 0, 32, 1, (halide_dimension_t *)make_struct(0, nabf3 + 1, 1, 0), (uint64)0)
+}
+if ((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)pq.buffer)) {
+ (halide_buffer_t *)_halide_buffer_init((halide_buffer_t *)pq.buffer, (halide_dimension_t *)_halide_buffer_get_shape((halide_buffer_t *)pq.buffer), (void *)reinterpret((uint64)0), (uint64)0, (halide_device_interface_t *)reinterpret((uint64)0), 0, 32, 1, (halide_dimension_t *)make_struct(min(k3, 0) + 1, pq.extent.0.required.s + 1, 1, 0), (uint64)0)
+}
+if ((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)rijs.buffer)) {
+ (halide_buffer_t *)_halide_buffer_init((halide_buffer_t *)rijs.buffer, (halide_dimension_t *)_halide_buffer_get_shape((halide_buffer_t *)rijs.buffer), (void *)reinterpret((uint64)0), (uint64)0, (halide_device_interface_t *)reinterpret((uint64)0), 2, 64, 2, (halide_dimension_t *)make_struct(0, 3, 1, 0, 0, npairs, 3, 0), (uint64)0)
+}
+if ((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)sumU_o.buffer)) {
+ (halide_buffer_t *)_halide_buffer_init((halide_buffer_t *)sumU_o.buffer, (halide_dimension_t *)_halide_buffer_get_shape((halide_buffer_t *)sumU_o.buffer), (void *)reinterpret((uint64)0), (uint64)0, (halide_device_interface_t *)reinterpret((uint64)0), 2, 64, 3, (halide_dimension_t *)make_struct(0, nelements, 1, 0, 0, k3, nelements, 0, 0, nrbf3, k3*nelements, 0), (uint64)0)
+}
+if ((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)tj.buffer)) {
+ (halide_buffer_t *)_halide_buffer_init((halide_buffer_t *)tj.buffer, (halide_dimension_t *)_halide_buffer_get_shape((halide_buffer_t *)tj.buffer), (void *)reinterpret((uint64)0), (uint64)0, (halide_device_interface_t *)reinterpret((uint64)0), 0, 32, 1, (halide_dimension_t *)make_struct(0, npairs, 1, 0), (uint64)0)
+}
+if (!((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)tj.buffer) || ((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)sumU_o.buffer) || ((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)rijs.buffer) || ((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)pq.buffer) || ((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)pn3.buffer) || ((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)pc3.buffer) || ((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)fij_o.buffer) || ((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)elemindex.buffer) || ((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)e_o.buffer) || ((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)e3_o.buffer) || ((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)dd3_o.buffer) || ((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)dd2_o.buffer) || ((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)d3_o.buffer) || ((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)d2_o.buffer) || ((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)coeff3.buffer) || ((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)coeff2.buffer) || ((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)cU_o.buffer) || ((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)besselparams.buffer) || ((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)Phi.buffer) || (uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)U_o.buffer))))))))))))))))))))) {
+ assert(Phi.type == (uint32)81922, halide_error_bad_type("Input buffer Phi", Phi.type, (uint32)81922))
+ assert(Phi.dimensions == 2, halide_error_bad_dimensions("Input buffer Phi", Phi.dimensions, 2))
+ assert(U_o.type == (uint32)81922, halide_error_bad_type("Output buffer U_o", U_o.type, (uint32)81922))
+ assert(U_o.dimensions == 4, halide_error_bad_dimensions("Output buffer U_o", U_o.dimensions, 4))
+ assert(besselparams.type == (uint32)81922, halide_error_bad_type("Input buffer besselparams", besselparams.type, (uint32)81922))
+ assert(besselparams.dimensions == 1, halide_error_bad_dimensions("Input buffer besselparams", besselparams.dimensions, 1))
+ assert(cU_o.type == (uint32)81922, halide_error_bad_type("Output buffer cU_o", cU_o.type, (uint32)81922))
+ assert(cU_o.dimensions == 3, halide_error_bad_dimensions("Output buffer cU_o", cU_o.dimensions, 3))
+ assert(coeff2.type == (uint32)81922, halide_error_bad_type("Input buffer coeff2", coeff2.type, (uint32)81922))
+ assert(coeff2.dimensions == 2, halide_error_bad_dimensions("Input buffer coeff2", coeff2.dimensions, 2))
+ assert(coeff3.type == (uint32)81922, halide_error_bad_type("Input buffer coeff3", coeff3.type, (uint32)81922))
+ assert(coeff3.dimensions == 3, halide_error_bad_dimensions("Input buffer coeff3", coeff3.dimensions, 3))
+ assert(d2_o.type == (uint32)81922, halide_error_bad_type("Output buffer d2_o", d2_o.type, (uint32)81922))
+ assert(d2_o.dimensions == 2, halide_error_bad_dimensions("Output buffer d2_o", d2_o.dimensions, 2))
+ assert(d3_o.type == (uint32)81922, halide_error_bad_type("Output buffer d3_o", d3_o.type, (uint32)81922))
+ assert(d3_o.dimensions == 3, halide_error_bad_dimensions("Output buffer d3_o", d3_o.dimensions, 3))
+ assert(dd2_o.type == (uint32)81922, halide_error_bad_type("Output buffer dd2_o", dd2_o.type, (uint32)81922))
+ assert(dd2_o.dimensions == 4, halide_error_bad_dimensions("Output buffer dd2_o", dd2_o.dimensions, 4))
+ assert(dd3_o.type == (uint32)81922, halide_error_bad_type("Output buffer dd3_o", dd3_o.type, (uint32)81922))
+ assert(dd3_o.dimensions == 5, halide_error_bad_dimensions("Output buffer dd3_o", dd3_o.dimensions, 5))
+ assert(e3_o.type == (uint32)81922, halide_error_bad_type("Output buffer e3_o", e3_o.type, (uint32)81922))
+ assert(e3_o.dimensions == 0, halide_error_bad_dimensions("Output buffer e3_o", e3_o.dimensions, 0))
+ assert(e_o.type == (uint32)81922, halide_error_bad_type("Output buffer e_o", e_o.type, (uint32)81922))
+ assert(e_o.dimensions == 0, halide_error_bad_dimensions("Output buffer e_o", e_o.dimensions, 0))
+ assert(elemindex.type == (uint32)73728, halide_error_bad_type("Input buffer elemindex", elemindex.type, (uint32)73728))
+ assert(elemindex.dimensions == 2, halide_error_bad_dimensions("Input buffer elemindex", elemindex.dimensions, 2))
+ assert(fij_o.type == (uint32)81922, halide_error_bad_type("Output buffer fij_o", fij_o.type, (uint32)81922))
+ assert(fij_o.dimensions == 2, halide_error_bad_dimensions("Output buffer fij_o", fij_o.dimensions, 2))
+ assert(pc3.type == (uint32)73728, halide_error_bad_type("Input buffer pc3", pc3.type, (uint32)73728))
+ assert(pc3.dimensions == 1, halide_error_bad_dimensions("Input buffer pc3", pc3.dimensions, 1))
+ assert(pn3.type == (uint32)73728, halide_error_bad_type("Input buffer pn3", pn3.type, (uint32)73728))
+ assert(pn3.dimensions == 1, halide_error_bad_dimensions("Input buffer pn3", pn3.dimensions, 1))
+ assert(pq.type == (uint32)73728, halide_error_bad_type("Input buffer pq", pq.type, (uint32)73728))
+ assert(pq.dimensions == 1, halide_error_bad_dimensions("Input buffer pq", pq.dimensions, 1))
+ assert(rijs.type == (uint32)81922, halide_error_bad_type("Input buffer rijs", rijs.type, (uint32)81922))
+ assert(rijs.dimensions == 2, halide_error_bad_dimensions("Input buffer rijs", rijs.dimensions, 2))
+ assert(sumU_o.type == (uint32)81922, halide_error_bad_type("Output buffer sumU_o", sumU_o.type, (uint32)81922))
+ assert(sumU_o.dimensions == 3, halide_error_bad_dimensions("Output buffer sumU_o", sumU_o.dimensions, 3))
+ assert(tj.type == (uint32)73728, halide_error_bad_type("Input buffer tj", tj.type, (uint32)73728))
+ assert(tj.dimensions == 1, halide_error_bad_dimensions("Input buffer tj", tj.dimensions, 1))
+ assert((Phi.min.0 <= 0) && (ns <= (Phi.extent.0 + Phi.min.0)), halide_error_access_out_of_bounds("Input buffer Phi", 0, 0, ns + -1, Phi.min.0, (Phi.extent.0 + Phi.min.0) + -1))
+ assert(0 <= Phi.extent.0, halide_error_buffer_extents_negative("Input buffer Phi", 0, Phi.extent.0))
+ assert((Phi.min.1 <= 0) && (rbf$1.s1.i.max.s <= (Phi.extent.1 + Phi.min.1)), halide_error_access_out_of_bounds("Input buffer Phi", 1, 0, rbf$1.s1.i.max.s + -1, Phi.min.1, (Phi.extent.1 + Phi.min.1) + -1))
+ assert(0 <= Phi.extent.1, halide_error_buffer_extents_negative("Input buffer Phi", 1, Phi.extent.1))
+ assert((U_o.min.0 <= 0) && (npairs <= (U_o.extent.0 + U_o.min.0)), halide_error_access_out_of_bounds("Output buffer U_o", 0, 0, npairs + -1, U_o.min.0, (U_o.extent.0 + U_o.min.0) + -1))
+ assert(0 <= U_o.extent.0, halide_error_buffer_extents_negative("Output buffer U_o", 0, U_o.extent.0))
+ assert((U_o.min.1 <= 0) && (k3 <= (U_o.extent.1 + U_o.min.1)), halide_error_access_out_of_bounds("Output buffer U_o", 1, 0, k3 + -1, U_o.min.1, (U_o.extent.1 + U_o.min.1) + -1))
+ assert(0 <= U_o.extent.1, halide_error_buffer_extents_negative("Output buffer U_o", 1, U_o.extent.1))
+ assert((U_o.min.2 <= 0) && (nrbf3 <= (U_o.extent.2 + U_o.min.2)), halide_error_access_out_of_bounds("Output buffer U_o", 2, 0, nrbf3 + -1, U_o.min.2, (U_o.extent.2 + U_o.min.2) + -1))
+ assert(0 <= U_o.extent.2, halide_error_buffer_extents_negative("Output buffer U_o", 2, U_o.extent.2))
+ assert((U_o.min.3 <= 0) && (4 <= (U_o.extent.3 + U_o.min.3)), halide_error_access_out_of_bounds("Output buffer U_o", 3, 0, 3, U_o.min.3, (U_o.extent.3 + U_o.min.3) + -1))
+ assert(0 <= U_o.extent.3, halide_error_buffer_extents_negative("Output buffer U_o", 3, U_o.extent.3))
+ assert((besselparams.min.0 <= 0) && (nbesselpars <= (besselparams.extent.0 + besselparams.min.0)), halide_error_access_out_of_bounds("Input buffer besselparams", 0, 0, nbesselpars + -1, besselparams.min.0, (besselparams.extent.0 + besselparams.min.0) + -1))
+ assert(0 <= besselparams.extent.0, halide_error_buffer_extents_negative("Input buffer besselparams", 0, besselparams.extent.0))
+ assert((cU_o.min.0 <= 0) && (nelements <= (cU_o.extent.0 + cU_o.min.0)), halide_error_access_out_of_bounds("Output buffer cU_o", 0, 0, nelements + -1, cU_o.min.0, (cU_o.extent.0 + cU_o.min.0) + -1))
+ assert(0 <= cU_o.extent.0, halide_error_buffer_extents_negative("Output buffer cU_o", 0, cU_o.extent.0))
+ assert((cU_o.min.1 <= 0) && (k3 <= (cU_o.extent.1 + cU_o.min.1)), halide_error_access_out_of_bounds("Output buffer cU_o", 1, 0, k3 + -1, cU_o.min.1, (cU_o.extent.1 + cU_o.min.1) + -1))
+ assert(0 <= cU_o.extent.1, halide_error_buffer_extents_negative("Output buffer cU_o", 1, cU_o.extent.1))
+ assert((cU_o.min.2 <= 0) && (nrbf3 <= (cU_o.extent.2 + cU_o.min.2)), halide_error_access_out_of_bounds("Output buffer cU_o", 2, 0, nrbf3 + -1, cU_o.min.2, (cU_o.extent.2 + cU_o.min.2) + -1))
+ assert(0 <= cU_o.extent.2, halide_error_buffer_extents_negative("Output buffer cU_o", 2, cU_o.extent.2))
+ assert((coeff2.min.0 <= 0) && ((max(npairs, 2) + -1) <= (coeff2.extent.0 + coeff2.min.0)), halide_error_access_out_of_bounds("Input buffer coeff2", 0, 0, max(npairs, 2) + -2, coeff2.min.0, (coeff2.extent.0 + coeff2.min.0) + -1))
+ assert(0 <= coeff2.extent.0, halide_error_buffer_extents_negative("Input buffer coeff2", 0, coeff2.extent.0))
+ assert((coeff2.min.1 <= 0) && (nrbf2 <= (coeff2.extent.1 + coeff2.min.1)), halide_error_access_out_of_bounds("Input buffer coeff2", 1, 0, nrbf2 + -1, coeff2.min.1, (coeff2.extent.1 + coeff2.min.1) + -1))
+ assert(0 <= coeff2.extent.1, halide_error_buffer_extents_negative("Input buffer coeff2", 1, coeff2.extent.1))
+ assert((coeff3.min.0 <= 0) && (nabf3 <= (coeff3.extent.0 + coeff3.min.0)), halide_error_access_out_of_bounds("Input buffer coeff3", 0, 0, nabf3 + -1, coeff3.min.0, (coeff3.extent.0 + coeff3.min.0) + -1))
+ assert(0 <= coeff3.extent.0, halide_error_buffer_extents_negative("Input buffer coeff3", 0, coeff3.extent.0))
+ assert((coeff3.min.1 <= 0) && (nrbf3 <= (coeff3.extent.1 + coeff3.min.1)), halide_error_access_out_of_bounds("Input buffer coeff3", 1, 0, nrbf3 + -1, coeff3.min.1, (coeff3.extent.1 + coeff3.min.1) + -1))
+ assert(0 <= coeff3.extent.1, halide_error_buffer_extents_negative("Input buffer coeff3", 1, coeff3.extent.1))
+ assert((coeff3.min.2 <= 0) && (max(coeff3.extent.2.required.s, 1) <= (coeff3.extent.2 + coeff3.min.2)), halide_error_access_out_of_bounds("Input buffer coeff3", 2, 0, max(coeff3.extent.2.required.s, 1) + -1, coeff3.min.2, (coeff3.extent.2 + coeff3.min.2) + -1))
+ assert(0 <= coeff3.extent.2, halide_error_buffer_extents_negative("Input buffer coeff3", 2, coeff3.extent.2))
+ assert((d2_o.min.0 <= 0) && (nelements <= (d2_o.extent.0 + d2_o.min.0)), halide_error_access_out_of_bounds("Output buffer d2_o", 0, 0, nelements + -1, d2_o.min.0, (d2_o.extent.0 + d2_o.min.0) + -1))
+ assert(0 <= d2_o.extent.0, halide_error_buffer_extents_negative("Output buffer d2_o", 0, d2_o.extent.0))
+ assert((d2_o.min.1 <= 0) && (nrbf2 <= (d2_o.extent.1 + d2_o.min.1)), halide_error_access_out_of_bounds("Output buffer d2_o", 1, 0, nrbf2 + -1, d2_o.min.1, (d2_o.extent.1 + d2_o.min.1) + -1))
+ assert(0 <= d2_o.extent.1, halide_error_buffer_extents_negative("Output buffer d2_o", 1, d2_o.extent.1))
+ assert((d3_o.min.0 <= 0) && (nabf3 <= (d3_o.extent.0 + d3_o.min.0)), halide_error_access_out_of_bounds("Output buffer d3_o", 0, 0, nabf3 + -1, d3_o.min.0, (d3_o.extent.0 + d3_o.min.0) + -1))
+ assert(0 <= d3_o.extent.0, halide_error_buffer_extents_negative("Output buffer d3_o", 0, d3_o.extent.0))
+ assert((d3_o.min.1 <= 0) && (nrbf3 <= (d3_o.extent.1 + d3_o.min.1)), halide_error_access_out_of_bounds("Output buffer d3_o", 1, 0, nrbf3 + -1, d3_o.min.1, (d3_o.extent.1 + d3_o.min.1) + -1))
+ assert(0 <= d3_o.extent.1, halide_error_buffer_extents_negative("Output buffer d3_o", 1, d3_o.extent.1))
+ assert((d3_o.min.2 <= 0) && ((((nelements + 1)*nelements)/2) <= (d3_o.extent.2 + d3_o.min.2)), halide_error_access_out_of_bounds("Output buffer d3_o", 2, 0, (((nelements + 1)*nelements)/2) + -1, d3_o.min.2, (d3_o.extent.2 + d3_o.min.2) + -1))
+ assert(0 <= d3_o.extent.2, halide_error_buffer_extents_negative("Output buffer d3_o", 2, d3_o.extent.2))
+ assert((dd2_o.min.0 <= 0) && (nelements <= (dd2_o.extent.0 + dd2_o.min.0)), halide_error_access_out_of_bounds("Output buffer dd2_o", 0, 0, nelements + -1, dd2_o.min.0, (dd2_o.extent.0 + dd2_o.min.0) + -1))
+ assert(0 <= dd2_o.extent.0, halide_error_buffer_extents_negative("Output buffer dd2_o", 0, dd2_o.extent.0))
+ assert((dd2_o.min.1 <= 0) && (nrbf2 <= (dd2_o.extent.1 + dd2_o.min.1)), halide_error_access_out_of_bounds("Output buffer dd2_o", 1, 0, nrbf2 + -1, dd2_o.min.1, (dd2_o.extent.1 + dd2_o.min.1) + -1))
+ assert(0 <= dd2_o.extent.1, halide_error_buffer_extents_negative("Output buffer dd2_o", 1, dd2_o.extent.1))
+ assert((dd2_o.min.2 <= 0) && (npairs <= (dd2_o.extent.2 + dd2_o.min.2)), halide_error_access_out_of_bounds("Output buffer dd2_o", 2, 0, npairs + -1, dd2_o.min.2, (dd2_o.extent.2 + dd2_o.min.2) + -1))
+ assert(0 <= dd2_o.extent.2, halide_error_buffer_extents_negative("Output buffer dd2_o", 2, dd2_o.extent.2))
+ assert((dd2_o.min.3 <= 0) && (3 <= (dd2_o.extent.3 + dd2_o.min.3)), halide_error_access_out_of_bounds("Output buffer dd2_o", 3, 0, 2, dd2_o.min.3, (dd2_o.extent.3 + dd2_o.min.3) + -1))
+ assert(0 <= dd2_o.extent.3, halide_error_buffer_extents_negative("Output buffer dd2_o", 3, dd2_o.extent.3))
+ assert((dd3_o.min.0 <= 0) && (3 <= (dd3_o.extent.0 + dd3_o.min.0)), halide_error_access_out_of_bounds("Output buffer dd3_o", 0, 0, 2, dd3_o.min.0, (dd3_o.extent.0 + dd3_o.min.0) + -1))
+ assert(0 <= dd3_o.extent.0, halide_error_buffer_extents_negative("Output buffer dd3_o", 0, dd3_o.extent.0))
+ assert((dd3_o.min.1 <= 0) && (npairs <= (dd3_o.extent.1 + dd3_o.min.1)), halide_error_access_out_of_bounds("Output buffer dd3_o", 1, 0, npairs + -1, dd3_o.min.1, (dd3_o.extent.1 + dd3_o.min.1) + -1))
+ assert(0 <= dd3_o.extent.1, halide_error_buffer_extents_negative("Output buffer dd3_o", 1, dd3_o.extent.1))
+ assert((dd3_o.min.2 <= 0) && (nabf3 <= (dd3_o.extent.2 + dd3_o.min.2)), halide_error_access_out_of_bounds("Output buffer dd3_o", 2, 0, nabf3 + -1, dd3_o.min.2, (dd3_o.extent.2 + dd3_o.min.2) + -1))
+ assert(0 <= dd3_o.extent.2, halide_error_buffer_extents_negative("Output buffer dd3_o", 2, dd3_o.extent.2))
+ assert((dd3_o.min.3 <= 0) && (nrbf3 <= (dd3_o.extent.3 + dd3_o.min.3)), halide_error_access_out_of_bounds("Output buffer dd3_o", 3, 0, nrbf3 + -1, dd3_o.min.3, (dd3_o.extent.3 + dd3_o.min.3) + -1))
+ assert(0 <= dd3_o.extent.3, halide_error_buffer_extents_negative("Output buffer dd3_o", 3, dd3_o.extent.3))
+ assert((dd3_o.min.4 <= 0) && ((((nelements + 1)*nelements)/2) <= (dd3_o.extent.4 + dd3_o.min.4)), halide_error_access_out_of_bounds("Output buffer dd3_o", 4, 0, (((nelements + 1)*nelements)/2) + -1, dd3_o.min.4, (dd3_o.extent.4 + dd3_o.min.4) + -1))
+ assert(0 <= dd3_o.extent.4, halide_error_buffer_extents_negative("Output buffer dd3_o", 4, dd3_o.extent.4))
+ assert((elemindex.min.0 <= 0) && (max(nelements, 1) <= (elemindex.extent.0 + elemindex.min.0)), halide_error_access_out_of_bounds("Input buffer elemindex", 0, 0, max(nelements, 1) + -1, elemindex.min.0, (elemindex.extent.0 + elemindex.min.0) + -1))
+ assert(0 <= elemindex.extent.0, halide_error_buffer_extents_negative("Input buffer elemindex", 0, elemindex.extent.0))
+ assert((elemindex.min.1 <= 0) && (nelements <= (elemindex.extent.1 + elemindex.min.1)), halide_error_access_out_of_bounds("Input buffer elemindex", 1, 0, nelements + -1, elemindex.min.1, (elemindex.extent.1 + elemindex.min.1) + -1))
+ assert(0 <= elemindex.extent.1, halide_error_buffer_extents_negative("Input buffer elemindex", 1, elemindex.extent.1))
+ assert((fij_o.min.0 <= 0) && (npairs <= (fij_o.extent.0 + fij_o.min.0)), halide_error_access_out_of_bounds("Output buffer fij_o", 0, 0, npairs + -1, fij_o.min.0, (fij_o.extent.0 + fij_o.min.0) + -1))
+ assert(0 <= fij_o.extent.0, halide_error_buffer_extents_negative("Output buffer fij_o", 0, fij_o.extent.0))
+ assert((fij_o.min.1 <= 0) && (3 <= (fij_o.extent.1 + fij_o.min.1)), halide_error_access_out_of_bounds("Output buffer fij_o", 1, 0, 2, fij_o.min.1, (fij_o.extent.1 + fij_o.min.1) + -1))
+ assert(0 <= fij_o.extent.1, halide_error_buffer_extents_negative("Output buffer fij_o", 1, fij_o.extent.1))
+ assert((pc3.min.0 <= 0) && (k3 <= (pc3.extent.0 + pc3.min.0)), halide_error_access_out_of_bounds("Input buffer pc3", 0, 0, k3 + -1, pc3.min.0, (pc3.extent.0 + pc3.min.0) + -1))
+ assert(0 <= pc3.extent.0, halide_error_buffer_extents_negative("Input buffer pc3", 0, pc3.extent.0))
+ assert((pn3.min.0 <= 0) && ((nabf3 + 1) <= (pn3.extent.0 + pn3.min.0)), halide_error_access_out_of_bounds("Input buffer pn3", 0, 0, nabf3, pn3.min.0, (pn3.extent.0 + pn3.min.0) + -1))
+ assert(0 <= pn3.extent.0, halide_error_buffer_extents_negative("Input buffer pn3", 0, pn3.extent.0))
+ assert(let t1753 = min(k3, 0) in (((pq.min.0 + -1) <= t1753) && (((t1753 + pq.extent.0.required.s) + 2) <= (pq.extent.0 + pq.min.0))), let t1754 = min(k3, 0) in halide_error_access_out_of_bounds("Input buffer pq", 0, t1754 + 1, (t1754 + pq.extent.0.required.s) + 1, pq.min.0, (pq.extent.0 + pq.min.0) + -1))
+ assert(0 <= pq.extent.0, halide_error_buffer_extents_negative("Input buffer pq", 0, pq.extent.0))
+ assert((rijs.min.0 <= 0) && (3 <= (rijs.extent.0 + rijs.min.0)), halide_error_access_out_of_bounds("Input buffer rijs", 0, 0, 2, rijs.min.0, (rijs.extent.0 + rijs.min.0) + -1))
+ assert(0 <= rijs.extent.0, halide_error_buffer_extents_negative("Input buffer rijs", 0, rijs.extent.0))
+ assert((rijs.min.1 <= 0) && (npairs <= (rijs.extent.1 + rijs.min.1)), halide_error_access_out_of_bounds("Input buffer rijs", 1, 0, npairs + -1, rijs.min.1, (rijs.extent.1 + rijs.min.1) + -1))
+ assert(0 <= rijs.extent.1, halide_error_buffer_extents_negative("Input buffer rijs", 1, rijs.extent.1))
+ assert((sumU_o.min.0 <= 0) && (nelements <= (sumU_o.extent.0 + sumU_o.min.0)), halide_error_access_out_of_bounds("Output buffer sumU_o", 0, 0, nelements + -1, sumU_o.min.0, (sumU_o.extent.0 + sumU_o.min.0) + -1))
+ assert(0 <= sumU_o.extent.0, halide_error_buffer_extents_negative("Output buffer sumU_o", 0, sumU_o.extent.0))
+ assert((sumU_o.min.1 <= 0) && (k3 <= (sumU_o.extent.1 + sumU_o.min.1)), halide_error_access_out_of_bounds("Output buffer sumU_o", 1, 0, k3 + -1, sumU_o.min.1, (sumU_o.extent.1 + sumU_o.min.1) + -1))
+ assert(0 <= sumU_o.extent.1, halide_error_buffer_extents_negative("Output buffer sumU_o", 1, sumU_o.extent.1))
+ assert((sumU_o.min.2 <= 0) && (nrbf3 <= (sumU_o.extent.2 + sumU_o.min.2)), halide_error_access_out_of_bounds("Output buffer sumU_o", 2, 0, nrbf3 + -1, sumU_o.min.2, (sumU_o.extent.2 + sumU_o.min.2) + -1))
+ assert(0 <= sumU_o.extent.2, halide_error_buffer_extents_negative("Output buffer sumU_o", 2, sumU_o.extent.2))
+ assert((tj.min.0 <= 0) && (npairs <= (tj.extent.0 + tj.min.0)), halide_error_access_out_of_bounds("Input buffer tj", 0, 0, npairs + -1, tj.min.0, (tj.extent.0 + tj.min.0) + -1))
+ assert(0 <= tj.extent.0, halide_error_buffer_extents_negative("Input buffer tj", 0, tj.extent.0))
+ assert(Phi.stride.0 == 1, halide_error_constraint_violated("Phi.stride.0", Phi.stride.0, "1", 1))
+ assert(Phi.min.0 == 0, halide_error_constraint_violated("Phi.min.0", Phi.min.0, "0", 0))
+ assert(Phi.extent.0 == ns, halide_error_constraint_violated("Phi.extent.0", Phi.extent.0, "ns", ns))
+ assert(Phi.stride.1 == ns, halide_error_constraint_violated("Phi.stride.1", Phi.stride.1, "ns", ns))
+ assert(Phi.min.1 == 0, halide_error_constraint_violated("Phi.min.1", Phi.min.1, "0", 0))
+ assert(Phi.extent.1 == ns, halide_error_constraint_violated("Phi.extent.1", Phi.extent.1, "ns", ns))
+ assert(U_o.stride.0 == 1, halide_error_constraint_violated("U_o.stride.0", U_o.stride.0, "1", 1))
+ assert(U_o.min.0 == 0, halide_error_constraint_violated("U_o.min.0", U_o.min.0, "0", 0))
+ assert(U_o.extent.0 == npairs, halide_error_constraint_violated("U_o.extent.0", U_o.extent.0, "npairs", npairs))
+ assert(U_o.stride.1 == npairs, halide_error_constraint_violated("U_o.stride.1", U_o.stride.1, "npairs", npairs))
+ assert(U_o.min.1 == 0, halide_error_constraint_violated("U_o.min.1", U_o.min.1, "0", 0))
+ assert(U_o.extent.1 == k3, halide_error_constraint_violated("U_o.extent.1", U_o.extent.1, "k3", k3))
+ assert(U_o.stride.2 == (k3*npairs), halide_error_constraint_violated("U_o.stride.2", U_o.stride.2, "(npairs*k3)", k3*npairs))
+ assert(U_o.min.2 == 0, halide_error_constraint_violated("U_o.min.2", U_o.min.2, "0", 0))
+ assert(U_o.extent.2 == nrbf3, halide_error_constraint_violated("U_o.extent.2", U_o.extent.2, "nrbf3", nrbf3))
+ assert(U_o.stride.3 == ((k3*npairs)*nrbf3), halide_error_constraint_violated("U_o.stride.3", U_o.stride.3, "((npairs*k3)*nrbf3)", (k3*npairs)*nrbf3))
+ assert(U_o.min.3 == 0, halide_error_constraint_violated("U_o.min.3", U_o.min.3, "0", 0))
+ assert(U_o.extent.3 == 4, halide_error_constraint_violated("U_o.extent.3", U_o.extent.3, "4", 4))
+ assert(besselparams.stride.0 == 1, halide_error_constraint_violated("besselparams.stride.0", besselparams.stride.0, "1", 1))
+ assert(besselparams.min.0 == 0, halide_error_constraint_violated("besselparams.min.0", besselparams.min.0, "0", 0))
+ assert(besselparams.extent.0 == nbesselpars, halide_error_constraint_violated("besselparams.extent.0", besselparams.extent.0, "nbesselpars", nbesselpars))
+ assert(cU_o.stride.0 == 1, halide_error_constraint_violated("cU_o.stride.0", cU_o.stride.0, "1", 1))
+ assert(cU_o.min.0 == 0, halide_error_constraint_violated("cU_o.min.0", cU_o.min.0, "0", 0))
+ assert(cU_o.extent.0 == nelements, halide_error_constraint_violated("cU_o.extent.0", cU_o.extent.0, "nelements", nelements))
+ assert(cU_o.stride.1 == nelements, halide_error_constraint_violated("cU_o.stride.1", cU_o.stride.1, "nelements", nelements))
+ assert(cU_o.min.1 == 0, halide_error_constraint_violated("cU_o.min.1", cU_o.min.1, "0", 0))
+ assert(cU_o.extent.1 == k3, halide_error_constraint_violated("cU_o.extent.1", cU_o.extent.1, "k3", k3))
+ assert(cU_o.stride.2 == (k3*nelements), halide_error_constraint_violated("cU_o.stride.2", cU_o.stride.2, "(nelements*k3)", k3*nelements))
+ assert(cU_o.min.2 == 0, halide_error_constraint_violated("cU_o.min.2", cU_o.min.2, "0", 0))
+ assert(cU_o.extent.2 == nrbf3, halide_error_constraint_violated("cU_o.extent.2", cU_o.extent.2, "nrbf3", nrbf3))
+ assert(coeff2.stride.0 == nrbf2, halide_error_constraint_violated("coeff2.stride.0", coeff2.stride.0, "nrbf2", nrbf2))
+ assert(coeff2.min.0 == 0, halide_error_constraint_violated("coeff2.min.0", coeff2.min.0, "0", 0))
+ assert(coeff2.extent.0 == npairs, halide_error_constraint_violated("coeff2.extent.0", coeff2.extent.0, "npairs", npairs))
+ assert(coeff2.stride.1 == 1, halide_error_constraint_violated("coeff2.stride.1", coeff2.stride.1, "1", 1))
+ assert(coeff2.min.1 == 0, halide_error_constraint_violated("coeff2.min.1", coeff2.min.1, "0", 0))
+ assert(coeff2.extent.1 == nrbf2, halide_error_constraint_violated("coeff2.extent.1", coeff2.extent.1, "nrbf2", nrbf2))
+ assert(coeff3.stride.0 == 1, halide_error_constraint_violated("coeff3.stride.0", coeff3.stride.0, "1", 1))
+ assert(d2_o.stride.0 == nrbf2, halide_error_constraint_violated("d2_o.stride.0", d2_o.stride.0, "nrbf2", nrbf2))
+ assert(d2_o.min.0 == 0, halide_error_constraint_violated("d2_o.min.0", d2_o.min.0, "0", 0))
+ assert(d2_o.extent.0 == nelements, halide_error_constraint_violated("d2_o.extent.0", d2_o.extent.0, "nelements", nelements))
+ assert(d2_o.stride.1 == 1, halide_error_constraint_violated("d2_o.stride.1", d2_o.stride.1, "1", 1))
+ assert(d2_o.min.1 == 0, halide_error_constraint_violated("d2_o.min.1", d2_o.min.1, "0", 0))
+ assert(d2_o.extent.1 == nrbf2, halide_error_constraint_violated("d2_o.extent.1", d2_o.extent.1, "nrbf2", nrbf2))
+ assert(d3_o.stride.0 == 1, halide_error_constraint_violated("d3_o.stride.0", d3_o.stride.0, "1", 1))
+ assert(d3_o.min.0 == 0, halide_error_constraint_violated("d3_o.min.0", d3_o.min.0, "0", 0))
+ assert(d3_o.extent.0 == nabf3, halide_error_constraint_violated("d3_o.extent.0", d3_o.extent.0, "nabf3", nabf3))
+ assert(d3_o.stride.1 == nabf3, halide_error_constraint_violated("d3_o.stride.1", d3_o.stride.1, "nabf3", nabf3))
+ assert(d3_o.min.1 == 0, halide_error_constraint_violated("d3_o.min.1", d3_o.min.1, "0", 0))
+ assert(d3_o.extent.1 == nrbf3, halide_error_constraint_violated("d3_o.extent.1", d3_o.extent.1, "nrbf3", nrbf3))
+ assert(d3_o.stride.2 == (nabf3*nrbf3), halide_error_constraint_violated("d3_o.stride.2", d3_o.stride.2, "(nabf3*nrbf3)", nabf3*nrbf3))
+ assert(d3_o.min.2 == 0, halide_error_constraint_violated("d3_o.min.2", d3_o.min.2, "0", 0))
+ assert(d3_o.extent.2 == (((nelements + 1)*nelements)/2), halide_error_constraint_violated("d3_o.extent.2", d3_o.extent.2, "((nelements*(nelements + 1))/2)", ((nelements + 1)*nelements)/2))
+ assert(dd2_o.stride.0 == ((npairs*nrbf2)*3), halide_error_constraint_violated("dd2_o.stride.0", dd2_o.stride.0, "((3*npairs)*nrbf2)", (npairs*nrbf2)*3))
+ assert(dd2_o.min.0 == 0, halide_error_constraint_violated("dd2_o.min.0", dd2_o.min.0, "0", 0))
+ assert(dd2_o.extent.0 == nelements, halide_error_constraint_violated("dd2_o.extent.0", dd2_o.extent.0, "nelements", nelements))
+ assert(dd2_o.stride.1 == (npairs*3), halide_error_constraint_violated("dd2_o.stride.1", dd2_o.stride.1, "(3*npairs)", npairs*3))
+ assert(dd2_o.min.1 == 0, halide_error_constraint_violated("dd2_o.min.1", dd2_o.min.1, "0", 0))
+ assert(dd2_o.extent.1 == nrbf2, halide_error_constraint_violated("dd2_o.extent.1", dd2_o.extent.1, "nrbf2", nrbf2))
+ assert(dd2_o.stride.2 == 3, halide_error_constraint_violated("dd2_o.stride.2", dd2_o.stride.2, "3", 3))
+ assert(dd2_o.min.2 == 0, halide_error_constraint_violated("dd2_o.min.2", dd2_o.min.2, "0", 0))
+ assert(dd2_o.extent.2 == npairs, halide_error_constraint_violated("dd2_o.extent.2", dd2_o.extent.2, "npairs", npairs))
+ assert(dd2_o.stride.3 == 1, halide_error_constraint_violated("dd2_o.stride.3", dd2_o.stride.3, "1", 1))
+ assert(dd2_o.min.3 == 0, halide_error_constraint_violated("dd2_o.min.3", dd2_o.min.3, "0", 0))
+ assert(dd2_o.extent.3 == 3, halide_error_constraint_violated("dd2_o.extent.3", dd2_o.extent.3, "3", 3))
+ assert(dd3_o.stride.0 == 1, halide_error_constraint_violated("dd3_o.stride.0", dd3_o.stride.0, "1", 1))
+ assert(dd3_o.min.0 == 0, halide_error_constraint_violated("dd3_o.min.0", dd3_o.min.0, "0", 0))
+ assert(dd3_o.extent.0 == 3, halide_error_constraint_violated("dd3_o.extent.0", dd3_o.extent.0, "3", 3))
+ assert(dd3_o.stride.1 == 3, halide_error_constraint_violated("dd3_o.stride.1", dd3_o.stride.1, "3", 3))
+ assert(dd3_o.min.1 == 0, halide_error_constraint_violated("dd3_o.min.1", dd3_o.min.1, "0", 0))
+ assert(dd3_o.extent.1 == npairs, halide_error_constraint_violated("dd3_o.extent.1", dd3_o.extent.1, "npairs", npairs))
+ assert(dd3_o.stride.2 == (npairs*3), halide_error_constraint_violated("dd3_o.stride.2", dd3_o.stride.2, "(3*npairs)", npairs*3))
+ assert(dd3_o.min.2 == 0, halide_error_constraint_violated("dd3_o.min.2", dd3_o.min.2, "0", 0))
+ assert(dd3_o.extent.2 == nabf3, halide_error_constraint_violated("dd3_o.extent.2", dd3_o.extent.2, "nabf3", nabf3))
+ assert(dd3_o.stride.3 == ((nabf3*npairs)*3), halide_error_constraint_violated("dd3_o.stride.3", dd3_o.stride.3, "((3*npairs)*nabf3)", (nabf3*npairs)*3))
+ assert(dd3_o.min.3 == 0, halide_error_constraint_violated("dd3_o.min.3", dd3_o.min.3, "0", 0))
+ assert(dd3_o.extent.3 == nrbf3, halide_error_constraint_violated("dd3_o.extent.3", dd3_o.extent.3, "nrbf3", nrbf3))
+ assert(dd3_o.stride.4 == (((nabf3*npairs)*nrbf3)*3), halide_error_constraint_violated("dd3_o.stride.4", dd3_o.stride.4, "(((3*npairs)*nabf3)*nrbf3)", ((nabf3*npairs)*nrbf3)*3))
+ assert(dd3_o.min.4 == 0, halide_error_constraint_violated("dd3_o.min.4", dd3_o.min.4, "0", 0))
+ assert(dd3_o.extent.4 == (((nelements + 1)*nelements)/2), halide_error_constraint_violated("dd3_o.extent.4", dd3_o.extent.4, "((nelements*(nelements + 1))/2)", ((nelements + 1)*nelements)/2))
+ assert(elemindex.stride.0 == 1, halide_error_constraint_violated("elemindex.stride.0", elemindex.stride.0, "1", 1))
+ assert(fij_o.stride.0 == 3, halide_error_constraint_violated("fij_o.stride.0", fij_o.stride.0, "3", 3))
+ assert(fij_o.min.0 == 0, halide_error_constraint_violated("fij_o.min.0", fij_o.min.0, "0", 0))
+ assert(fij_o.extent.0 == npairs, halide_error_constraint_violated("fij_o.extent.0", fij_o.extent.0, "npairs", npairs))
+ assert(fij_o.stride.1 == 1, halide_error_constraint_violated("fij_o.stride.1", fij_o.stride.1, "1", 1))
+ assert(fij_o.min.1 == 0, halide_error_constraint_violated("fij_o.min.1", fij_o.min.1, "0", 0))
+ assert(fij_o.extent.1 == 3, halide_error_constraint_violated("fij_o.extent.1", fij_o.extent.1, "3", 3))
+ assert(pc3.stride.0 == 1, halide_error_constraint_violated("pc3.stride.0", pc3.stride.0, "1", 1))
+ assert(pn3.stride.0 == 1, halide_error_constraint_violated("pn3.stride.0", pn3.stride.0, "1", 1))
+ assert(pq.stride.0 == 1, halide_error_constraint_violated("pq.stride.0", pq.stride.0, "1", 1))
+ assert(rijs.stride.0 == 1, halide_error_constraint_violated("rijs.stride.0", rijs.stride.0, "1", 1))
+ assert(rijs.min.0 == 0, halide_error_constraint_violated("rijs.min.0", rijs.min.0, "0", 0))
+ assert(rijs.extent.0 == 3, halide_error_constraint_violated("rijs.extent.0", rijs.extent.0, "3", 3))
+ assert(rijs.stride.1 == 3, halide_error_constraint_violated("rijs.stride.1", rijs.stride.1, "3", 3))
+ assert(rijs.min.1 == 0, halide_error_constraint_violated("rijs.min.1", rijs.min.1, "0", 0))
+ assert(rijs.extent.1 == npairs, halide_error_constraint_violated("rijs.extent.1", rijs.extent.1, "npairs", npairs))
+ assert(sumU_o.stride.0 == 1, halide_error_constraint_violated("sumU_o.stride.0", sumU_o.stride.0, "1", 1))
+ assert(sumU_o.min.0 == 0, halide_error_constraint_violated("sumU_o.min.0", sumU_o.min.0, "0", 0))
+ assert(sumU_o.extent.0 == nelements, halide_error_constraint_violated("sumU_o.extent.0", sumU_o.extent.0, "nelements", nelements))
+ assert(sumU_o.stride.1 == nelements, halide_error_constraint_violated("sumU_o.stride.1", sumU_o.stride.1, "nelements", nelements))
+ assert(sumU_o.min.1 == 0, halide_error_constraint_violated("sumU_o.min.1", sumU_o.min.1, "0", 0))
+ assert(sumU_o.extent.1 == k3, halide_error_constraint_violated("sumU_o.extent.1", sumU_o.extent.1, "k3", k3))
+ assert(sumU_o.stride.2 == (k3*nelements), halide_error_constraint_violated("sumU_o.stride.2", sumU_o.stride.2, "(nelements*k3)", k3*nelements))
+ assert(sumU_o.min.2 == 0, halide_error_constraint_violated("sumU_o.min.2", sumU_o.min.2, "0", 0))
+ assert(sumU_o.extent.2 == nrbf3, halide_error_constraint_violated("sumU_o.extent.2", sumU_o.extent.2, "nrbf3", nrbf3))
+ assert(tj.stride.0 == 1, halide_error_constraint_violated("tj.stride.0", tj.stride.0, "1", 1))
+ let Phi.total_extent.1 = int64(ns)*int64(ns)
+ let U_o.total_extent.1 = int64(k3)*int64(npairs)
+ let U_o.total_extent.2 = U_o.total_extent.1*int64(nrbf3)
+ let cU_o.total_extent.1 = int64(k3)*int64(nelements)
+ let cU_o.total_extent.2 = cU_o.total_extent.1*int64(nrbf3)
+ let coeff2.total_extent.1 = int64(nrbf2)*int64(npairs)
+ let coeff3.total_extent.1 = int64(coeff3.extent.1)*int64(coeff3.extent.0)
+ let coeff3.total_extent.2 = coeff3.total_extent.1*int64(coeff3.extent.2)
+ let d2_o.total_extent.1 = int64(nrbf2)*int64(nelements)
+ let d3_o.total_extent.1 = int64(nrbf3)*int64(nabf3)
+ let d3_o.total_extent.2 = d3_o.total_extent.1*int64(d3_o.extent.2)
+ let dd2_o.total_extent.2 = d2_o.total_extent.1*int64(npairs)
+ let dd3_o.total_extent.2.s = int64(npairs)*int64(nabf3)
+ let dd3_o.total_extent.3.s = dd3_o.total_extent.2.s*int64(nrbf3)
+ let dd3_o.total_extent.4.s = dd3_o.total_extent.3.s*int64(dd3_o.extent.4)
+ let elemindex.total_extent.1 = int64(elemindex.extent.1)*int64(elemindex.extent.0)
+ let sumU_o.total_extent.2 = cU_o.total_extent.1*int64(nrbf3)
+ assert((uint64)abs(int64(ns)) <= (uint64)2147483647, halide_error_buffer_allocation_too_large("Phi", (uint64)abs(int64(ns)), (uint64)2147483647))
+ assert((uint64)abs(Phi.total_extent.1) <= (uint64)2147483647, halide_error_buffer_allocation_too_large("Phi", (uint64)abs(Phi.total_extent.1), (uint64)2147483647))
+ assert(Phi.total_extent.1 <= (int64)2147483647, halide_error_buffer_extents_too_large("Phi", Phi.total_extent.1, (int64)2147483647))
+ assert((uint64)abs(int64(npairs)) <= (uint64)2147483647, halide_error_buffer_allocation_too_large("U_o", (uint64)abs(int64(npairs)), (uint64)2147483647))
+ assert((uint64)abs(U_o.total_extent.1) <= (uint64)2147483647, halide_error_buffer_allocation_too_large("U_o", (uint64)abs(U_o.total_extent.1), (uint64)2147483647))
+ assert(U_o.total_extent.1 <= (int64)2147483647, halide_error_buffer_extents_too_large("U_o", U_o.total_extent.1, (int64)2147483647))
+ assert((uint64)abs(int64(nrbf3)*int64(U_o.stride.2)) <= (uint64)2147483647, halide_error_buffer_allocation_too_large("U_o", (uint64)abs(int64(nrbf3)*int64(U_o.stride.2)), (uint64)2147483647))
+ assert(U_o.total_extent.2 <= (int64)2147483647, halide_error_buffer_extents_too_large("U_o", U_o.total_extent.2, (int64)2147483647))
+ assert((uint64)abs(int64(U_o.stride.3)*(int64)4) <= (uint64)2147483647, halide_error_buffer_allocation_too_large("U_o", (uint64)abs(int64(U_o.stride.3)*(int64)4), (uint64)2147483647))
+ assert(U_o.total_extent.2 <= (int64)536870911, halide_error_buffer_extents_too_large("U_o", U_o.total_extent.2*(int64)4, (int64)2147483647))
+ assert((uint64)abs(int64(nbesselpars)) <= (uint64)2147483647, halide_error_buffer_allocation_too_large("besselparams", (uint64)abs(int64(nbesselpars)), (uint64)2147483647))
+ assert((uint64)abs(int64(nelements)) <= (uint64)2147483647, halide_error_buffer_allocation_too_large("cU_o", (uint64)abs(int64(nelements)), (uint64)2147483647))
+ assert((uint64)abs(cU_o.total_extent.1) <= (uint64)2147483647, halide_error_buffer_allocation_too_large("cU_o", (uint64)abs(cU_o.total_extent.1), (uint64)2147483647))
+ assert(cU_o.total_extent.1 <= (int64)2147483647, halide_error_buffer_extents_too_large("cU_o", cU_o.total_extent.1, (int64)2147483647))
+ assert((uint64)abs(int64(nrbf3)*int64(cU_o.stride.2)) <= (uint64)2147483647, halide_error_buffer_allocation_too_large("cU_o", (uint64)abs(int64(nrbf3)*int64(cU_o.stride.2)), (uint64)2147483647))
+ assert(cU_o.total_extent.2 <= (int64)2147483647, halide_error_buffer_extents_too_large("cU_o", cU_o.total_extent.2, (int64)2147483647))
+ assert((uint64)abs(int64(npairs)*int64(nrbf2)) <= (uint64)2147483647, halide_error_buffer_allocation_too_large("coeff2", (uint64)abs(int64(npairs)*int64(nrbf2)), (uint64)2147483647))
+ assert((uint64)abs(int64(nrbf2)) <= (uint64)2147483647, halide_error_buffer_allocation_too_large("coeff2", (uint64)abs(int64(nrbf2)), (uint64)2147483647))
+ assert(coeff2.total_extent.1 <= (int64)2147483647, halide_error_buffer_extents_too_large("coeff2", coeff2.total_extent.1, (int64)2147483647))
+ assert(uint64(coeff3.extent.0) <= (uint64)2147483647, halide_error_buffer_allocation_too_large("coeff3", uint64(coeff3.extent.0), (uint64)2147483647))
+ assert((uint64)abs(int64(coeff3.extent.1)*int64(coeff3.stride.1)) <= (uint64)2147483647, halide_error_buffer_allocation_too_large("coeff3", (uint64)abs(int64(coeff3.extent.1)*int64(coeff3.stride.1)), (uint64)2147483647))
+ assert(coeff3.total_extent.1 <= (int64)2147483647, halide_error_buffer_extents_too_large("coeff3", coeff3.total_extent.1, (int64)2147483647))
+ assert((uint64)abs(int64(coeff3.extent.2)*int64(coeff3.stride.2)) <= (uint64)2147483647, halide_error_buffer_allocation_too_large("coeff3", (uint64)abs(int64(coeff3.extent.2)*int64(coeff3.stride.2)), (uint64)2147483647))
+ assert(coeff3.total_extent.2 <= (int64)2147483647, halide_error_buffer_extents_too_large("coeff3", coeff3.total_extent.2, (int64)2147483647))
+ assert((uint64)abs(int64(nelements)*int64(nrbf2)) <= (uint64)2147483647, halide_error_buffer_allocation_too_large("d2_o", (uint64)abs(int64(nelements)*int64(nrbf2)), (uint64)2147483647))
+ assert((uint64)abs(int64(nrbf2)) <= (uint64)2147483647, halide_error_buffer_allocation_too_large("d2_o", (uint64)abs(int64(nrbf2)), (uint64)2147483647))
+ assert(d2_o.total_extent.1 <= (int64)2147483647, halide_error_buffer_extents_too_large("d2_o", d2_o.total_extent.1, (int64)2147483647))
+ assert((uint64)abs(int64(nabf3)) <= (uint64)2147483647, halide_error_buffer_allocation_too_large("d3_o", (uint64)abs(int64(nabf3)), (uint64)2147483647))
+ assert((uint64)abs(d3_o.total_extent.1) <= (uint64)2147483647, halide_error_buffer_allocation_too_large("d3_o", (uint64)abs(d3_o.total_extent.1), (uint64)2147483647))
+ assert(d3_o.total_extent.1 <= (int64)2147483647, halide_error_buffer_extents_too_large("d3_o", d3_o.total_extent.1, (int64)2147483647))
+ assert((uint64)abs(int64(d3_o.extent.2)*int64(d3_o.stride.2)) <= (uint64)2147483647, halide_error_buffer_allocation_too_large("d3_o", (uint64)abs(int64(d3_o.extent.2)*int64(d3_o.stride.2)), (uint64)2147483647))
+ assert(d3_o.total_extent.2 <= (int64)2147483647, halide_error_buffer_extents_too_large("d3_o", d3_o.total_extent.2, (int64)2147483647))
+ assert((uint64)abs(int64(nelements)*int64(dd2_o.stride.0)) <= (uint64)2147483647, halide_error_buffer_allocation_too_large("dd2_o", (uint64)abs(int64(nelements)*int64(dd2_o.stride.0)), (uint64)2147483647))
+ assert((uint64)abs(int64(nrbf2)*int64(dd2_o.stride.1)) <= (uint64)2147483647, halide_error_buffer_allocation_too_large("dd2_o", (uint64)abs(int64(nrbf2)*int64(dd2_o.stride.1)), (uint64)2147483647))
+ assert((uint64)abs(int64(npairs)*(int64)3) <= (uint64)2147483647, halide_error_buffer_allocation_too_large("dd2_o", (uint64)abs(int64(npairs)*(int64)3), (uint64)2147483647))
+ assert(dd2_o.total_extent.2 <= (int64)2147483647, halide_error_buffer_extents_too_large("dd2_o", dd2_o.total_extent.2, (int64)2147483647))
+ assert(dd2_o.total_extent.2 <= (int64)715827882, halide_error_buffer_extents_too_large("dd2_o", dd2_o.total_extent.2*(int64)3, (int64)2147483647))
+ assert(int64(npairs) <= (int64)715827882, halide_error_buffer_extents_too_large("dd3_o", int64(npairs)*(int64)3, (int64)2147483647))
+ assert((uint64)abs(int64(nabf3)*int64(dd3_o.stride.2)) <= (uint64)2147483647, halide_error_buffer_allocation_too_large("dd3_o", (uint64)abs(int64(nabf3)*int64(dd3_o.stride.2)), (uint64)2147483647))
+ assert(dd3_o.total_extent.2.s <= (int64)715827882, halide_error_buffer_extents_too_large("dd3_o", dd3_o.total_extent.2.s*(int64)3, (int64)2147483647))
+ assert((uint64)abs(int64(nrbf3)*int64(dd3_o.stride.3)) <= (uint64)2147483647, halide_error_buffer_allocation_too_large("dd3_o", (uint64)abs(int64(nrbf3)*int64(dd3_o.stride.3)), (uint64)2147483647))
+ assert(dd3_o.total_extent.3.s <= (int64)715827882, halide_error_buffer_extents_too_large("dd3_o", dd3_o.total_extent.3.s*(int64)3, (int64)2147483647))
+ assert((uint64)abs(int64(dd3_o.extent.4)*int64(dd3_o.stride.4)) <= (uint64)2147483647, halide_error_buffer_allocation_too_large("dd3_o", (uint64)abs(int64(dd3_o.extent.4)*int64(dd3_o.stride.4)), (uint64)2147483647))
+ assert(dd3_o.total_extent.4.s <= (int64)715827882, halide_error_buffer_extents_too_large("dd3_o", dd3_o.total_extent.4.s*(int64)3, (int64)2147483647))
+ assert(uint64(elemindex.extent.0) <= (uint64)2147483647, halide_error_buffer_allocation_too_large("elemindex", uint64(elemindex.extent.0), (uint64)2147483647))
+ assert((uint64)abs(int64(elemindex.extent.1)*int64(elemindex.stride.1)) <= (uint64)2147483647, halide_error_buffer_allocation_too_large("elemindex", (uint64)abs(int64(elemindex.extent.1)*int64(elemindex.stride.1)), (uint64)2147483647))
+ assert(elemindex.total_extent.1 <= (int64)2147483647, halide_error_buffer_extents_too_large("elemindex", elemindex.total_extent.1, (int64)2147483647))
+ assert(uint64(pc3.extent.0) <= (uint64)2147483647, halide_error_buffer_allocation_too_large("pc3", uint64(pc3.extent.0), (uint64)2147483647))
+ assert(uint64(pn3.extent.0) <= (uint64)2147483647, halide_error_buffer_allocation_too_large("pn3", uint64(pn3.extent.0), (uint64)2147483647))
+ assert(uint64(pq.extent.0) <= (uint64)2147483647, halide_error_buffer_allocation_too_large("pq", uint64(pq.extent.0), (uint64)2147483647))
+ assert((uint64)abs(int64(nrbf3)*int64(sumU_o.stride.2)) <= (uint64)2147483647, halide_error_buffer_allocation_too_large("sumU_o", (uint64)abs(int64(nrbf3)*int64(sumU_o.stride.2)), (uint64)2147483647))
+ assert(sumU_o.total_extent.2 <= (int64)2147483647, halide_error_buffer_extents_too_large("sumU_o", sumU_o.total_extent.2, (int64)2147483647))
+ assert(uint64(tj.extent.0) <= (uint64)2147483647, halide_error_buffer_allocation_too_large("tj", uint64(tj.extent.0), (uint64)2147483647))
+ assert(!Phi.device_dirty, halide_error_device_dirty_with_no_device_support("Input buffer Phi"))
+ assert(!U_o.device_dirty, halide_error_device_dirty_with_no_device_support("Output buffer U_o"))
+ assert(!besselparams.device_dirty, halide_error_device_dirty_with_no_device_support("Input buffer besselparams"))
+ assert(!cU_o.device_dirty, halide_error_device_dirty_with_no_device_support("Output buffer cU_o"))
+ assert(!coeff2.device_dirty, halide_error_device_dirty_with_no_device_support("Input buffer coeff2"))
+ assert(!coeff3.device_dirty, halide_error_device_dirty_with_no_device_support("Input buffer coeff3"))
+ assert(!d2_o.device_dirty, halide_error_device_dirty_with_no_device_support("Output buffer d2_o"))
+ assert(!d3_o.device_dirty, halide_error_device_dirty_with_no_device_support("Output buffer d3_o"))
+ assert(!dd2_o.device_dirty, halide_error_device_dirty_with_no_device_support("Output buffer dd2_o"))
+ assert(!dd3_o.device_dirty, halide_error_device_dirty_with_no_device_support("Output buffer dd3_o"))
+ assert(!e3_o.device_dirty, halide_error_device_dirty_with_no_device_support("Output buffer e3_o"))
+ assert(!e_o.device_dirty, halide_error_device_dirty_with_no_device_support("Output buffer e_o"))
+ assert(!elemindex.device_dirty, halide_error_device_dirty_with_no_device_support("Input buffer elemindex"))
+ assert(!fij_o.device_dirty, halide_error_device_dirty_with_no_device_support("Output buffer fij_o"))
+ assert(!pc3.device_dirty, halide_error_device_dirty_with_no_device_support("Input buffer pc3"))
+ assert(!pn3.device_dirty, halide_error_device_dirty_with_no_device_support("Input buffer pn3"))
+ assert(!pq.device_dirty, halide_error_device_dirty_with_no_device_support("Input buffer pq"))
+ assert(!rijs.device_dirty, halide_error_device_dirty_with_no_device_support("Input buffer rijs"))
+ assert(!sumU_o.device_dirty, halide_error_device_dirty_with_no_device_support("Output buffer sumU_o"))
+ assert(!tj.device_dirty, halide_error_device_dirty_with_no_device_support("Input buffer tj"))
+ assert(Phi != (void *)reinterpret((uint64)0), halide_error_host_is_null("Input buffer Phi"))
+ assert(U_o != (void *)reinterpret((uint64)0), halide_error_host_is_null("Output buffer U_o"))
+ assert(besselparams != (void *)reinterpret((uint64)0), halide_error_host_is_null("Input buffer besselparams"))
+ assert(cU_o != (void *)reinterpret((uint64)0), halide_error_host_is_null("Output buffer cU_o"))
+ assert(coeff2 != (void *)reinterpret((uint64)0), halide_error_host_is_null("Input buffer coeff2"))
+ assert(coeff3 != (void *)reinterpret((uint64)0), halide_error_host_is_null("Input buffer coeff3"))
+ assert(d2_o != (void *)reinterpret((uint64)0), halide_error_host_is_null("Output buffer d2_o"))
+ assert(d3_o != (void *)reinterpret((uint64)0), halide_error_host_is_null("Output buffer d3_o"))
+ assert(dd2_o != (void *)reinterpret((uint64)0), halide_error_host_is_null("Output buffer dd2_o"))
+ assert(dd3_o != (void *)reinterpret((uint64)0), halide_error_host_is_null("Output buffer dd3_o"))
+ assert(e3_o != (void *)reinterpret((uint64)0), halide_error_host_is_null("Output buffer e3_o"))
+ assert(e_o != (void *)reinterpret((uint64)0), halide_error_host_is_null("Output buffer e_o"))
+ assert(elemindex != (void *)reinterpret((uint64)0), halide_error_host_is_null("Input buffer elemindex"))
+ assert(fij_o != (void *)reinterpret((uint64)0), halide_error_host_is_null("Output buffer fij_o"))
+ assert(pc3 != (void *)reinterpret((uint64)0), halide_error_host_is_null("Input buffer pc3"))
+ assert(pn3 != (void *)reinterpret((uint64)0), halide_error_host_is_null("Input buffer pn3"))
+ assert(pq != (void *)reinterpret((uint64)0), halide_error_host_is_null("Input buffer pq"))
+ assert(rijs != (void *)reinterpret((uint64)0), halide_error_host_is_null("Input buffer rijs"))
+ assert(sumU_o != (void *)reinterpret((uint64)0), halide_error_host_is_null("Output buffer sumU_o"))
+ assert(tj != (void *)reinterpret((uint64)0), halide_error_host_is_null("Input buffer tj"))
+ let tm.abfip.extent_realized.s = max(max(k3*3, k3 + 2), tm.s0.abfip.max.s)
+ allocate tm[float64 * npairs * max(tm.abfip.extent_realized.s, 1) * 4]
+ produce tm {
+  let t1415 = max(tm.s0.abfip.max.s, 1)
+  let t1416 = max(tm.abfip.extent_realized.s, 1)*npairs
+  for (tm.s0.c, 0, 4) {
+   let t1417 = t1416*tm.s0.c
+   for (tm.s0.abfip, 0, t1415) {
+    let t1418 = (npairs*tm.s0.abfip) + t1417
+    for (tm.s0.pairindex, 0, npairs) {
+     tm[t1418 + tm.s0.pairindex] = 0.000000
+    }
+   }
+  }
+  for (tm.s1.pairindex, 0, npairs) {
+   tm[tm.s1.pairindex] = 1.000000
+  }
+  let t1421 = max(tm.abfip.extent_realized.s, 1)*npairs
+  for (tm.s2.pairindex, 0, npairs) {
+   for (tm.s2.r86$y, 0, 4) {
+    let t1429 = t1421*tm.s2.r86$y
+    for (tm.s2.r86$x.rebased, 0, k3 + 1) {
+     let t1204 = pq[((k3 - pq.min.0) + tm.s2.r86$x.rebased) + 1]
+     let t1205.s = min(pq[(tm.s2.r86$x.rebased - pq.min.0) + 1], k3*3)
+     let t1207 = rijs[(tm.s2.pairindex*3) + 1]
+     let t1208 = rijs[(tm.s2.pairindex*3) + 2]
+     let t1209 = rijs[tm.s2.pairindex*3]
+     let t1210 = (float64)sqrt_f64((t1208*t1208) + ((t1209*t1209) + (t1207*t1207)))
+     let t1349 = max(t1205.s, 1)*npairs
+     let t1755 = tm.s2.pairindex - npairs
+     tm[((tm.s2.r86$x.rebased + 1)*npairs) + (t1429 + tm.s2.pairindex)] = select(max(min(t1204, 3), 1) == tm.s2.r86$y, tm[t1755 + t1349], 0.000000) + (tm[(t1755 + t1429) + t1349]*select(1 < t1204, select(t1204 == 2, t1207/t1210, select(t1204 < 3, 0.000000, t1208/t1210)), t1209/t1210))
+    }
+   }
+  }
+ }
+ allocate abf4[float64 * npairs * k3 * 4]
+ produce abf4 {
+  consume tm {
+   let t1435 = k3*npairs
+   let t1431 = max(tm.abfip.extent_realized.s, 1)*npairs
+   for (abf4.s0.pairindex, 0, npairs) {
+    let t1442 = (t1435*3) + abf4.s0.pairindex
+    let t1441 = (t1435*2) + abf4.s0.pairindex
+    let t1437 = (t1431*3) + abf4.s0.pairindex
+    let t1439 = (t1431*2) + abf4.s0.pairindex
+    let t1440 = abf4.s0.pairindex + t1435
+    let t1438 = abf4.s0.pairindex + t1431
+    for (abf4.s0.abfi, 0, k3) {
+     let t1351 = (abf4.s0.abfi*npairs) + abf4.s0.pairindex
+     abf4[t1351] = tm[t1351]
+     let t1214 = rijs[(abf4.s0.pairindex*3) + 2]
+     let t1215 = rijs[abf4.s0.pairindex*3]
+     let t1217 = rijs[(abf4.s0.pairindex*3) + 1]
+     let t1219 = (float64)sqrt_f64((t1214*t1214) + ((t1215*t1215) + (t1217*t1217)))
+     let t1353 = abf4.s0.abfi*npairs
+     let t1354 = (t1219*t1219)*t1219
+     abf4[t1353 + t1440] = (tm[t1353 + t1437]*((0.000000 - (t1214*t1215))/t1354)) + ((tm[t1353 + t1438]*(((t1217*t1217) + (t1214*t1214))/t1354)) + (tm[t1353 + t1439]*((0.000000 - (t1215*t1217))/t1354)))
+     let t1223 = rijs[(abf4.s0.pairindex*3) + 1]
+     let t1224 = rijs[(abf4.s0.pairindex*3) + 2]
+     let t1226 = rijs[abf4.s0.pairindex*3]
+     let t1228 = (float64)sqrt_f64((t1224*t1224) + ((t1226*t1226) + (t1223*t1223)))
+     let t1356 = abf4.s0.abfi*npairs
+     let t1357 = (t1228*t1228)*t1228
+     abf4[t1356 + t1441] = (tm[t1356 + t1437]*((0.000000 - (t1223*t1224))/t1357)) + ((tm[t1356 + t1438]*((0.000000 - (t1223*t1226))/t1357)) + (tm[t1356 + t1439]*(((t1226*t1226) + (t1224*t1224))/t1357)))
+     let t1232 = rijs[abf4.s0.pairindex*3]
+     let t1233 = rijs[(abf4.s0.pairindex*3) + 1]
+     let t1234 = (t1232*t1232) + (t1233*t1233)
+     let t1235 = rijs[(abf4.s0.pairindex*3) + 2]
+     let t1236 = (float64)sqrt_f64((t1235*t1235) + t1234)
+     let t1359 = abf4.s0.abfi*npairs
+     let t1360 = (t1236*t1236)*t1236
+     abf4[t1359 + t1442] = (tm[t1359 + t1437]*(t1234/t1360)) + ((tm[t1359 + t1438]*((0.000000 - (t1232*t1235))/t1360)) + (tm[t1359 + t1439]*((0.000000 - (t1233*t1235))/t1360)))
+    }
+   }
+  }
+ }
+ free tm
+ allocate abf_f[float64 * adegree * npairs]
+ allocate dabf_f[float64 * adegree * npairs * 3]
+ produce dabf_f {
+  produce abf_f {
+   let t1446 = (float64)exp_f64(-1.000000)
+   let t1443 = max(npairs, 0)
+   let t1444 = max(adegree, 0)
+   let t1447 = adegree*npairs
+   let t1445 = (float64)rcut - (float64)rin
+   for (abf_f.s0.fused.pairindex, 0, t1443) {
+    let t1450 = 3.000000/(t1445*t1446)
+    let t1449 = abf_f.s0.fused.pairindex*adegree
+    let t1448 = abf_f.s0.fused.pairindex*3
+    for (abf_f.s0.fused.basis function index, 0, t1444) {
+     let t1238 = rijs[t1448 + 2]
+     let t1239 = rijs[t1448]
+     let t1240 = rijs[t1448 + 1]
+     let t1241 = (float64)sqrt_f64((t1238*t1238) + ((t1239*t1239) + (t1240*t1240)))
+     let t1242 = (t1241 - (float64)rin)/t1445
+     let t1361 = (t1242*t1242)*t1242
+     abf_f[abf_f.s0.fused.basis function index + t1449] = ((float64)exp_f64(-1.000000/(float64)sqrt_f64(((1.000000 - t1361)*(1.000000 - t1361)) + 0.000001))/t1446)/(float64)pow_f64(t1241, float64(abf_f.s0.fused.basis function index) + 1.000000)
+     let t1451 = float64(abf_f.s0.fused.basis function index) + 1.000000
+     let t1452 = abf_f.s0.fused.basis function index + t1449
+     for (dabf_f.s0.dim, 0, 3) {
+      let t1244 = rijs[t1448 + 2]
+      let t1245 = rijs[t1448]
+      let t1246 = rijs[t1448 + 1]
+      let t1247 = (float64)sqrt_f64((t1244*t1244) + ((t1245*t1245) + (t1246*t1246)))
+      let t1250 = (t1247 - (float64)rin)/t1445
+      let t1253 = let t1756 = ((t1250*t1250)*t1250) in ((1.000000 - t1756)*(1.000000 - t1756))
+      let t1254 = (float64)exp_f64(-1.000000/(float64)sqrt_f64(t1253 + 0.000001))
+      let t1255 = (float64)pow_f64(t1247, float64((abf_f.s0.fused.basis function index + 1)))
+      let t1363 = t1250*t1250
+      dabf_f[(dabf_f.s0.dim*t1447) + t1452] = (rijs[dabf_f.s0.dim + t1448]/t1247)*((((((t1363*t1450)*t1254)*((t1250*t1363) + -1.000000))/(float64)pow_f64(t1253 + 0.000001, 1.500000))/t1255) - (((t1254/t1446)*t1451)/(t1247*t1255)))
+     }
+    }
+   }
+  }
+ }
+ allocate drbf_f[float64 * nbesselpars * bdegree * npairs * 3]
+ allocate rbf[float64 * nbesselpars * bdegree * npairs]
+ produce rbf {
+  produce drbf_f {
+   let t1456 = (float64)exp_f64(-1.000000)
+   let t1453 = max(npairs, 0)
+   let t1454 = max(bdegree, 0)
+   let t1457 = bdegree*nbesselpars
+   let t1455 = (float64)rcut - (float64)rin
+   for (drbf_f.s0.fused.pairindex, 0, t1453) {
+    let t1459 = (float64)sqrt_f64(2.000000/t1455)
+    let t1460 = 3.000000/(t1455*t1456)
+    let t1462 = npairs*t1457
+    let t1461 = drbf_f.s0.fused.pairindex*t1457
+    let t1458 = drbf_f.s0.fused.pairindex*3
+    for (drbf_f.s0.fused.basis function index, 0, t1454) {
+     let t1463 = t1459/float64((drbf_f.s0.fused.basis function index + 1))
+     let t1464 = (drbf_f.s0.fused.basis function index*nbesselpars) + t1461
+     for (drbf_f.s0.basis function param, 0, nbesselpars) {
+      let t1465 = drbf_f.s0.basis function param + t1464
+      for (drbf_f.s0.dim, 0, 3) {
+       let t1256 = rijs[t1458 + 2]
+       let t1257 = rijs[t1458]
+       let t1258 = rijs[t1458 + 1]
+       let t1259 = (float64)sqrt_f64((t1256*t1256) + ((t1257*t1257) + (t1258*t1258)))
+       let t1261.s = besselparams[drbf_f.s0.basis function param]
+       let t1263 = max(t1261.s, 0.001000)*(t1259 - (float64)rin)
+       let t1264 = (float64)exp_f64(0.000000 - max(t1261.s, 0.001000))
+       let t1265 = ((1.000000 - (float64)exp_f64((0.000000 - t1263)/t1455))/(1.000000 - t1264))*float64((drbf_f.s0.fused.basis function index + 1))
+       let t1266 = (t1259 - (float64)rin)/t1455
+       let t1269 = let t1757 = ((t1266*t1266)*t1266) in ((1.000000 - t1757)*(1.000000 - t1757))
+       let t1270 = (float64)exp_f64(-1.000000/(float64)sqrt_f64(t1269 + 0.000001))
+       let t1272 = t1270/t1456
+       let t1273 = (float64)sin_f64(t1265*3.141593)
+       let t1366 = t1259 - (float64)rin
+       let t1367 = t1266*t1266
+       drbf_f[(drbf_f.s0.dim*t1462) + t1465] = (rijs[drbf_f.s0.dim + t1458]/t1259)*((((((((float64)exp_f64(0.000000 - (t1263/t1455))*(max(t1261.s, 0.001000)/t1455))/(1.000000 - t1264))*(((float64)cos_f64(t1265*3.141593)*float64((drbf_f.s0.fused.basis function index + 1)))*t1272))*3.141593)/t1366) + (((((((t1367*t1460)*t1270)*((t1266*t1367) + -1.000000))/(float64)pow_f64(t1269 + 0.000001, 1.500000))*t1273)/t1366) - ((t1272*t1273)/(t1366*t1366))))*t1463)
+      }
+     }
+     let t1466 = t1459/float64((drbf_f.s0.fused.basis function index + 1))
+     let t1467 = (drbf_f.s0.fused.basis function index*nbesselpars) + t1461
+     for (rbf.s0.basis function param, 0, nbesselpars) {
+      let t1275.s = besselparams[rbf.s0.basis function param]
+      let t1276 = rijs[t1458 + 2]
+      let t1277 = rijs[t1458]
+      let t1278 = rijs[t1458 + 1]
+      let t1279.s = (float64)sqrt_f64((t1276*t1276) + ((t1277*t1277) + (t1278*t1278)))
+      let t1281 = (t1279.s - (float64)rin)/t1455
+      let t1369 = max(t1275.s, 0.001000)
+      let t1370 = t1279.s - (float64)rin
+      let t1372 = (t1281*t1281)*t1281
+      rbf[rbf.s0.basis function param + t1467] = ((float64)sin_f64((((1.000000 - (float64)exp_f64((0.000000 - (t1369*t1370))/t1455))/(1.000000 - (float64)exp_f64(0.000000 - t1369)))*float64((drbf_f.s0.fused.basis function index + 1)))*3.141593)*(((float64)exp_f64(-1.000000/(float64)sqrt_f64(((1.000000 - t1372)*(1.000000 - t1372)) + 0.000001))/t1456)*t1466))/t1370
+     }
+    }
+   }
+  }
+ }
+ assert(max(max(select(bdegree < 0, 0, (nbesselpars + -1)*bdegree) + bdegree, ns), (bdegree*nbesselpars) + adegree) <= ns, let t1758 = (bdegree < 0) in (let t1759 = ((nbesselpars + -1)*bdegree) in (let t1760 = (bdegree*nbesselpars) in halide_error_explicit_bounds_too_small("rbf_abf_info", "rbft", 0, ns + -1, min(min(select(t1758, t1759, 0), t1760), 0), max(max(select(t1758, 0, t1759) + bdegree, ns), t1760 + adegree) + -1))))
+ assert(0 <= min(select(bdegree < 0, (nbesselpars + -1)*bdegree, 0), bdegree*nbesselpars), let t1761 = (bdegree < 0) in (let t1762 = ((nbesselpars + -1)*bdegree) in (let t1763 = (bdegree*nbesselpars) in halide_error_explicit_bounds_too_small("rbf_abf_info", "rbft", 0, ns + -1, min(min(select(t1761, t1762, 0), t1763), 0), max(max(select(t1761, 0, t1762) + bdegree, ns), t1763 + adegree) + -1))))
+ allocate rbft[float64 * npairs * ns * 4]
+ produce rbft {
+  for (rbft.s0.rbfty, 0, 4) {
+   let t1469 = (npairs*ns)*rbft.s0.rbfty
+   for (rbft.s0.rbf_abf_info, 0, ns) {
+    let t1470 = (npairs*rbft.s0.rbf_abf_info) + t1469
+    for (rbft.s0.pairindex, 0, npairs) {
+     rbft[rbft.s0.pairindex + t1470] = 0.000000
+    }
+   }
+  }
+  consume rbf {
+   for (rbft.s1.r46$z, 0, npairs) {
+    let t1472 = (bdegree*nbesselpars)*rbft.s1.r46$z
+    for (rbft.s1.r46$y, 0, bdegree) {
+     let t1473 = (nbesselpars*rbft.s1.r46$y) + t1472
+     for (rbft.s1.r46$x, 0, nbesselpars) {
+      rbft[(((bdegree*rbft.s1.r46$x) + rbft.s1.r46$y)*npairs) + rbft.s1.r46$z] = rbf[rbft.s1.r46$x + t1473]
+     }
+    }
+   }
+  }
+  free rbf
+  consume abf_f {
+   let t1474 = bdegree*nbesselpars
+   for (rbft.s2.r51$y, 0, adegree) {
+    let t1475 = (rbft.s2.r51$y + t1474)*npairs
+    for (rbft.s2.r51$x, 0, npairs) {
+     rbft[rbft.s2.r51$x + t1475] = abf_f[(adegree*rbft.s2.r51$x) + rbft.s2.r51$y]
+    }
+   }
+  }
+  free abf_f
+  consume drbf_f {
+   let t1477 = npairs*ns
+   for (rbft.s3.r46$z, 0, npairs) {
+    let t1478 = (bdegree*nbesselpars)*rbft.s3.r46$z
+    let t1479 = rbft.s3.r46$z + t1477
+    for (rbft.s3.r46$y, 0, bdegree) {
+     let t1480 = (nbesselpars*rbft.s3.r46$y) + t1478
+     for (rbft.s3.r46$x, 0, nbesselpars) {
+      rbft[(((bdegree*rbft.s3.r46$x) + rbft.s3.r46$y)*npairs) + t1479] = drbf_f[rbft.s3.r46$x + t1480]
+     }
+    }
+   }
+  }
+  consume dabf_f {
+   let t1481 = npairs*ns
+   let t1482 = bdegree*nbesselpars
+   for (rbft.s4.r51$y, 0, adegree) {
+    let t1483 = ((rbft.s4.r51$y + t1482)*npairs) + t1481
+    for (rbft.s4.r51$x, 0, npairs) {
+     rbft[rbft.s4.r51$x + t1483] = dabf_f[(adegree*rbft.s4.r51$x) + rbft.s4.r51$y]
+    }
+   }
+  }
+  consume drbf_f {
+   let t1485 = (npairs*ns)*2
+   for (rbft.s5.r46$z, 0, npairs) {
+    let t1486 = (bdegree*nbesselpars)*(npairs + rbft.s5.r46$z)
+    let t1487 = rbft.s5.r46$z + t1485
+    for (rbft.s5.r46$y, 0, bdegree) {
+     let t1488 = (nbesselpars*rbft.s5.r46$y) + t1486
+     for (rbft.s5.r46$x, 0, nbesselpars) {
+      rbft[(((bdegree*rbft.s5.r46$x) + rbft.s5.r46$y)*npairs) + t1487] = drbf_f[rbft.s5.r46$x + t1488]
+     }
+    }
+   }
+  }
+  consume dabf_f {
+   let t1490 = (npairs*ns)*2
+   let t1491 = bdegree*nbesselpars
+   for (rbft.s6.r51$y, 0, adegree) {
+    let t1493 = ((rbft.s6.r51$y + t1491)*npairs) + t1490
+    let t1492 = (adegree*npairs) + rbft.s6.r51$y
+    for (rbft.s6.r51$x, 0, npairs) {
+     rbft[rbft.s6.r51$x + t1493] = dabf_f[(adegree*rbft.s6.r51$x) + t1492]
+    }
+   }
+  }
+  consume drbf_f {
+   let t1495 = (npairs*ns)*3
+   for (rbft.s7.r46$z, 0, npairs) {
+    let t1498 = bdegree*nbesselpars
+    let t1496 = ((npairs*t1498)*2) + (rbft.s7.r46$z*t1498)
+    let t1497 = rbft.s7.r46$z + t1495
+    for (rbft.s7.r46$y, 0, bdegree) {
+     let t1499 = (nbesselpars*rbft.s7.r46$y) + t1496
+     for (rbft.s7.r46$x, 0, nbesselpars) {
+      rbft[(((bdegree*rbft.s7.r46$x) + rbft.s7.r46$y)*npairs) + t1497] = drbf_f[rbft.s7.r46$x + t1499]
+     }
+    }
+   }
+  }
+  free drbf_f
+  consume dabf_f {
+   let t1501 = (npairs*ns)*3
+   let t1500 = (adegree*npairs)*2
+   let t1502 = bdegree*nbesselpars
+   for (rbft.s8.r51$y, 0, adegree) {
+    let t1504 = ((rbft.s8.r51$y + t1502)*npairs) + t1501
+    let t1503 = rbft.s8.r51$y + t1500
+    for (rbft.s8.r51$x, 0, npairs) {
+     rbft[rbft.s8.r51$x + t1504] = dabf_f[(adegree*rbft.s8.r51$x) + t1503]
+    }
+   }
+  }
+  free dabf_f
+ }
+ let rbf$1.i.extent_realized = max(max(nrbf3, rbf$1.s1.i.max.s), nrbf2)
+ allocate rbf$1[float64 * npairs * rbf$1.i.extent_realized * 4]
+ produce rbf$1 {
+  let t1505 = npairs*rbf$1.i.extent_realized
+  for (rbf$1.s0.c, 0, 4) {
+   let t1506 = rbf$1.s0.c*t1505
+   for (rbf$1.s0.i, 0, rbf$1.s1.i.max.s) {
+    let t1507 = (npairs*rbf$1.s0.i) + t1506
+    for (rbf$1.s0.j, 0, npairs) {
+     rbf$1[rbf$1.s0.j + t1507] = 0.000000
+    }
+   }
+  }
+  consume rbft {
+   let t1508 = npairs*rbf$1.i.extent_realized
+   for (rbf$1.s1.c, 0, 4) {
+    let t1511 = (npairs*ns)*rbf$1.s1.c
+    let t1510 = rbf$1.s1.c*t1508
+    for (rbf$1.s1.i, 0, rbf$1.s1.i.max.s) {
+     let t1513 = ns*rbf$1.s1.i
+     let t1512 = (npairs*rbf$1.s1.i) + t1510
+     for (rbf$1.s1.j, 0, npairs) {
+      let t1514 = rbf$1.s1.j + t1512
+      let t1515 = rbf$1.s1.j + t1511
+      for (rbf$1.s1.r66$x, 0, ns) {
+       rbf$1[t1514] = rbf$1[t1514] + (Phi[rbf$1.s1.r66$x + t1513]*rbft[(npairs*rbf$1.s1.r66$x) + t1515])
+      }
+     }
+    }
+   }
+  }
+  free rbft
+ }
+ allocate U[float64 * npairs * k3 * nrbf3 * 4]
+ produce U {
+  consume rbf$1 {
+   consume abf4 {
+    let t1517 = npairs*rbf$1.i.extent_realized
+    for (U.s0.crab, 0, 4) {
+     let t1528 = k3*npairs
+     let t1524 = U.s0.crab == 3
+     let t1521 = U.s0.crab == 2
+     let t1519 = U.s0.crab == 1
+     let t1518 = U.s0.crab == 0
+     let t1527 = (nrbf3*t1528)*U.s0.crab
+     for (U.s0.m, 0, nrbf3) {
+      let t1529 = U.s0.m*npairs
+      let t1534 = (U.s0.m*t1528) + t1527
+      for (U.s0.k, 0, k3) {
+       let t1535 = U.s0.k*npairs
+       let t1540 = (t1517*3) + t1529
+       let t1538 = (t1517*2) + t1529
+       let t1536 = t1517 + t1529
+       for (U.s0.n, 0, npairs) {
+        let t1293 = rbf$1[U.s0.n + t1529]
+        let t1295 = abf4[U.s0.n + t1535]
+        U[(t1534 + t1535) + U.s0.n] = select(t1518, t1293*t1295, select(t1519, (abf4[(t1528 + t1535) + U.s0.n]*t1293) + (rbf$1[U.s0.n + t1536]*t1295), select(t1521, (abf4[((t1528*2) + t1535) + U.s0.n]*t1293) + (rbf$1[U.s0.n + t1538]*t1295), select(t1524, (abf4[((t1528*3) + t1535) + U.s0.n]*t1293) + (rbf$1[U.s0.n + t1540]*t1295), 0.000000))))
+       }
+      }
+     }
+    }
+   }
+  }
+ }
+ assert(1 <= nelements, halide_error_explicit_bounds_too_small("ne", "sumU", 0, nelements + -1, 0, 0))
+ allocate sumU[float64 * nelements * k3 * nrbf3]
+ produce sumU {
+  for (sumU.s0.m, 0, nrbf3) {
+   let t1542 = (k3*nelements)*sumU.s0.m
+   for (sumU.s0.k, 0, k3) {
+    let t1543 = (nelements*sumU.s0.k) + t1542
+    for (sumU.s0.ne, 0, nelements) {
+     sumU[sumU.s0.ne + t1543] = 0.000000
+    }
+   }
+  }
+  consume rbf$1 {
+   consume abf4 {
+    for (sumU.s1.r115$z, 0, npairs) {
+     let t1545 = sumU.s1.r115$z - tj.min.0
+     for (sumU.s1.r115$y, 0, k3) {
+      let t1547 = nelements*sumU.s1.r115$y
+      let t1548 = k3*nelements
+      let t1549 = (npairs*sumU.s1.r115$y) + sumU.s1.r115$z
+      for (sumU.s1.r115$x, 0, nrbf3) {
+       let t1298 = (sumU.s1.r115$x*t1548) + (max(min(tj[t1545], nelements), 1) + t1547)
+       sumU[t1298 + -1] = sumU[t1298 + -1] + (rbf$1[(npairs*sumU.s1.r115$x) + sumU.s1.r115$z]*abf4[t1549])
+      }
+     }
+    }
+   }
+  }
+  free abf4
+ }
+ allocate cU[float64 * nelements * k3 * nrbf3]
+ produce cU {
+  for (cU.s0.rbfThree, 0, nrbf3) {
+   let t1551 = (k3*nelements)*cU.s0.rbfThree
+   for (cU.s0.k3var, 0, k3) {
+    let t1552 = (cU.s0.k3var*nelements) + t1551
+    for (cU.s0.ne, 0, nelements) {
+     cU[cU.s0.ne + t1552] = 0.000000
+    }
+   }
+  }
+  consume sumU {
+   let t1555 = ((nelements + 1)*nelements)/2
+   let t1554 = (((coeff3.min.2*coeff3.stride.2) + (coeff3.min.1*coeff3.stride.1)) + coeff3.min.0) + coeff3.stride.2
+   for (cU.s1.r178$4, 0, nrbf3) {
+    let t1557 = (k3*nelements)*cU.s1.r178$4
+    let t1558 = (cU.s1.r178$4*coeff3.stride.1) - t1554
+    for (cU.s1.r178$w, 0, nelements) {
+     let cU.s1.r178$z.new_max.s = min(cU.s1.r178$w + 1, nelements)
+     for (cU.s1.r178$z, 0, cU.s1.r178$z.new_max.s) {
+      let t1563 = (max(min(((cU.s1.r178$z/2)*(((nelements*2) - cU.s1.r178$z) + -3)) + cU.s1.r178$w, t1555), 1)*coeff3.stride.2) + t1558
+      let t1564 = cU.s1.r178$z + t1557
+      let t1562 = cU.s1.r178$w + t1557
+      for (cU.s1.r178$y, 0, nabf3) {
+       let cU.s1.r178$x.new_min.s = min(pn3[cU.s1.r178$y - pn3.min.0], k3)
+       let cU.s1.r178$x.new_max.s = max(min(pn3[(cU.s1.r178$y - pn3.min.0) + 1], k3), cU.s1.r178$x.new_min.s)
+       let t1568 = max(cU.s1.r178$x.new_min.s, 0)
+       let t1565 = max(cU.s1.r178$x.new_max.s, 0) - t1568
+       let t1567 = cU.s1.r178$y + t1563
+       for (cU.s1.r178$x.rebased, 0, t1565) {
+        let t1301 = ((cU.s1.r178$x.rebased + t1568)*nelements) + t1562
+        cU[t1301] = cU[t1301] + (coeff3[t1567]*(sumU[((cU.s1.r178$x.rebased + t1568)*nelements) + t1564]*float64(pc3[(t1568 - pc3.min.0) + cU.s1.r178$x.rebased])))
+       }
+      }
+     }
+    }
+   }
+  }
+  consume sumU {
+   let t1571 = ((nelements + 1)*nelements)/2
+   let t1570 = (((coeff3.min.2*coeff3.stride.2) + (coeff3.min.1*coeff3.stride.1)) + coeff3.min.0) + coeff3.stride.2
+   for (cU.s2.r178$4, 0, nrbf3) {
+    let t1573 = (k3*nelements)*cU.s2.r178$4
+    let t1574 = (cU.s2.r178$4*coeff3.stride.1) - t1570
+    for (cU.s2.r178$w, 0, nelements) {
+     let cU.s2.r178$z.new_max.s = min(cU.s2.r178$w + 1, nelements)
+     for (cU.s2.r178$z, 0, cU.s2.r178$z.new_max.s) {
+      let t1579 = (max(min(((cU.s2.r178$z/2)*(((nelements*2) - cU.s2.r178$z) + -3)) + cU.s2.r178$w, t1571), 1)*coeff3.stride.2) + t1574
+      let t1578 = cU.s2.r178$z + t1573
+      let t1580 = cU.s2.r178$w + t1573
+      for (cU.s2.r178$y, 0, nabf3) {
+       let cU.s2.r178$x.new_min.s = min(pn3[cU.s2.r178$y - pn3.min.0], k3)
+       let cU.s2.r178$x.new_max.s = max(min(pn3[(cU.s2.r178$y - pn3.min.0) + 1], k3), cU.s2.r178$x.new_min.s)
+       let t1584 = max(cU.s2.r178$x.new_min.s, 0)
+       let t1581 = max(cU.s2.r178$x.new_max.s, 0) - t1584
+       let t1583 = cU.s2.r178$y + t1579
+       for (cU.s2.r178$x.rebased, 0, t1581) {
+        let t1304 = ((cU.s2.r178$x.rebased + t1584)*nelements) + t1578
+        cU[t1304] = cU[t1304] + (coeff3[t1583]*(sumU[((cU.s2.r178$x.rebased + t1584)*nelements) + t1580]*float64(pc3[(t1584 - pc3.min.0) + cU.s2.r178$x.rebased])))
+       }
+      }
+     }
+    }
+   }
+  }
+ }
+ allocate fij[float64 * npairs * 3]
+ produce fij {
+  for (fij.s0.dim, 0, 3) {
+   let t1585 = fij.s0.dim*npairs
+   for (fij.s0.n, 0, npairs) {
+    fij[fij.s0.n + t1585] = 0.000000
+   }
+  }
+  consume rbf$1 {
+   let t1586 = npairs*rbf$1.i.extent_realized
+   for (fij.s1.dim, 0, 3) {
+    let t1588 = (fij.s1.dim + 1)*t1586
+    let t1587 = fij.s1.dim*npairs
+    for (fij.s1.r76$y, 0, nrbf2) {
+     let t1589 = fij.s1.r76$y - nrbf2
+     let t1590 = (fij.s1.r76$y*npairs) + t1588
+     for (fij.s1.r76$x, 0, npairs) {
+      let t1387 = fij.s1.r76$x + t1587
+      fij[t1387] = fij[t1387] + (coeff2[(max(min(tj[fij.s1.r76$x - tj.min.0], npairs + -1), 1)*nrbf2) + t1589]*rbf$1[fij.s1.r76$x + t1590])
+     }
+    }
+   }
+  }
+  consume cU {
+   consume U {
+    for (fij.s2.dim, 0, 3) {
+     let t1597 = k3*npairs
+     for (fij.s2.r186$z, 0, npairs) {
+      let t1599 = fij.s2.r186$z - tj.min.0
+      let t1601 = ((nrbf3*t1597)*(fij.s2.dim + 1)) + fij.s2.r186$z
+      let t1598 = (fij.s2.dim*npairs) + fij.s2.r186$z
+      for (fij.s2.r186$y, 0, k3) {
+       let t1603 = k3*nelements
+       let t1602 = fij.s2.r186$y*nelements
+       let t1604 = (fij.s2.r186$y*npairs) + t1601
+       for (fij.s2.r186$x, 0, nrbf3) {
+        fij[t1598] = fij[t1598] + (cU[((fij.s2.r186$x*t1603) + (max(min(tj[t1599], nelements), 1) + t1602)) + -1]*U[(fij.s2.r186$x*t1597) + t1604])
+       }
+      }
+     }
+    }
+   }
+  }
+ }
+ produce fij_o {
+  consume fij {
+   for (fij_o.s0.dim, 0, 3) {
+    for (fij_o.s0.n, 0, npairs) {
+     fij_o[(fij_o.s0.n*3) + fij_o.s0.dim] = fij[(fij_o.s0.dim*npairs) + fij_o.s0.n]
+    }
+   }
+  }
+ }
+ free fij
+ allocate e[float64 * 1]
+ produce e {
+  e[0] = 0.000000
+  consume rbf$1 {
+   for (e.s1.r76$y, 0, nrbf2) {
+    let t1607 = e.s1.r76$y*npairs
+    let t1606 = e.s1.r76$y - nrbf2
+    for (e.s1.r76$x, 0, npairs) {
+     e[0] = e[0] + (coeff2[(max(min(tj[e.s1.r76$x - tj.min.0], npairs + -1), 1)*nrbf2) + t1606]*rbf$1[e.s1.r76$x + t1607])
+    }
+   }
+  }
+ }
+ produce e_o {
+  consume e {
+   e_o[0] = e[0]
+  }
+ }
+ free e
+ produce sumU_o {
+  consume sumU {
+   for (sumU_o.s0.v30, 0, nrbf3) {
+    let t1609 = (k3*nelements)*sumU_o.s0.v30
+    let t1610 = sumU_o.s0.v30*sumU_o.stride.2
+    for (sumU_o.s0.v29, 0, k3) {
+     let t1611 = nelements*sumU_o.s0.v29
+     for (sumU_o.s0.v28, 0, nelements) {
+      sumU_o[(t1610 + t1611) + sumU_o.s0.v28] = sumU[(t1609 + t1611) + sumU_o.s0.v28]
+     }
+    }
+   }
+  }
+ }
+ produce U_o {
+  consume U {
+   for (U_o.s0.v31, 0, 4) {
+    let t1616 = k3*npairs
+    let t1613 = (nrbf3*t1616)*U_o.s0.v31
+    let t1615 = U_o.s0.v31*U_o.stride.3
+    for (U_o.s0.v30, 0, nrbf3) {
+     let t1617 = (U_o.s0.v30*t1616) + t1613
+     let t1618 = (U_o.s0.v30*U_o.stride.2) + t1615
+     for (U_o.s0.v29, 0, k3) {
+      let t1619 = U_o.s0.v29*npairs
+      for (U_o.s0.v28, 0, npairs) {
+       U_o[(t1618 + t1619) + U_o.s0.v28] = U[(t1617 + t1619) + U_o.s0.v28]
+      }
+     }
+    }
+   }
+  }
+ }
+ allocate d2$0[float64 * nelements * nrbf2]
+ produce d2$0 {
+  for (d2$0.s0.m, 0, nrbf2) {
+   let t1620 = d2$0.s0.m*nelements
+   for (d2$0.s0.ne, 0, nelements) {
+    d2$0[d2$0.s0.ne + t1620] = 0.000000
+   }
+  }
+  consume rbf$1 {
+   for (d2$0.s1.r133$y, 0, nrbf2) {
+    let t1622 = d2$0.s1.r133$y*npairs
+    let t1621 = d2$0.s1.r133$y*nelements
+    for (d2$0.s1.r133$x, 0, npairs) {
+     let t1313 = max(min(tj[d2$0.s1.r133$x - tj.min.0], nelements), 1) + t1621
+     d2$0[t1313 + -1] = d2$0[t1313 + -1] + rbf$1[d2$0.s1.r133$x + t1622]
+    }
+   }
+  }
+ }
+ produce d2_o {
+  consume d2$0 {
+   for (d2_o.s0.v29, 0, nrbf2) {
+    for (d2_o.s0.v28, 0, nelements) {
+     d2_o[(d2_o.s0.v28*nrbf2) + d2_o.s0.v29] = d2$0[(d2_o.s0.v29*nelements) + d2_o.s0.v28]
+    }
+   }
+  }
+ }
+ free d2$0
+ allocate dd2[float64 * nelements * nrbf2 * npairs * 3]
+ produce dd2 {
+  for (dd2.s0.dim, 0, 3) {
+   let t1627 = nelements*nrbf2
+   let t1625 = (npairs*t1627)*dd2.s0.dim
+   for (dd2.s0.n, 0, npairs) {
+    let t1628 = (dd2.s0.n*t1627) + t1625
+    for (dd2.s0.m, 0, nrbf2) {
+     let t1629 = (dd2.s0.m*nelements) + t1628
+     for (dd2.s0.ne, 0, nelements) {
+      dd2[dd2.s0.ne + t1629] = 0.000000
+     }
+    }
+   }
+  }
+  consume rbf$1 {
+   let t1631 = npairs*rbf$1.i.extent_realized
+   for (dd2.s1.r133$y, 0, nrbf2) {
+    let t1633 = nelements*nrbf2
+    let t1632 = dd2.s1.r133$y*nelements
+    let t1634 = (dd2.s1.r133$y*npairs) + t1631
+    for (dd2.s1.r133$x, 0, npairs) {
+     let t1315 = max(min(tj[dd2.s1.r133$x - tj.min.0], nelements), 1) + ((dd2.s1.r133$x*t1633) + t1632)
+     dd2[t1315 + -1] = dd2[t1315 + -1] + rbf$1[dd2.s1.r133$x + t1634]
+    }
+   }
+  }
+  consume rbf$1 {
+   let t1636 = (npairs*rbf$1.i.extent_realized)*2
+   for (dd2.s2.r133$y, 0, nrbf2) {
+    let t1640 = nelements*nrbf2
+    let t1637 = (npairs*t1640) + (dd2.s2.r133$y*nelements)
+    let t1639 = (dd2.s2.r133$y*npairs) + t1636
+    for (dd2.s2.r133$x, 0, npairs) {
+     let t1317 = max(min(tj[dd2.s2.r133$x - tj.min.0], nelements), 1) + ((dd2.s2.r133$x*t1640) + t1637)
+     dd2[t1317 + -1] = dd2[t1317 + -1] + rbf$1[dd2.s2.r133$x + t1639]
+    }
+   }
+  }
+  consume rbf$1 {
+   let t1642 = (npairs*rbf$1.i.extent_realized)*3
+   for (dd2.s3.r133$y, 0, nrbf2) {
+    let t1646 = nelements*nrbf2
+    let t1643 = ((npairs*t1646)*2) + (dd2.s3.r133$y*nelements)
+    let t1645 = (dd2.s3.r133$y*npairs) + t1642
+    for (dd2.s3.r133$x, 0, npairs) {
+     let t1319 = max(min(tj[dd2.s3.r133$x - tj.min.0], nelements), 1) + ((dd2.s3.r133$x*t1646) + t1643)
+     dd2[t1319 + -1] = dd2[t1319 + -1] + rbf$1[dd2.s3.r133$x + t1645]
+    }
+   }
+  }
+  free rbf$1
+ }
+ produce dd2_o {
+  consume dd2 {
+   for (dd2_o.s0.v31, 0, 3) {
+    let t1650 = nelements*nrbf2
+    let t1648 = (npairs*t1650)*dd2_o.s0.v31
+    for (dd2_o.s0.v30, 0, npairs) {
+     let t1651 = (dd2_o.s0.v30*t1650) + t1648
+     let t1652 = (dd2_o.s0.v30*3) + dd2_o.s0.v31
+     for (dd2_o.s0.v29, 0, nrbf2) {
+      let t1653 = (dd2_o.s0.v29*nelements) + t1651
+      let t1654 = (dd2_o.s0.v29*dd2_o.stride.1) + t1652
+      for (dd2_o.s0.v28, 0, nelements) {
+       dd2_o[(dd2_o.s0.v28*dd2_o.stride.0) + t1654] = dd2[dd2_o.s0.v28 + t1653]
+      }
+     }
+    }
+   }
+  }
+ }
+ free dd2
+ assert(2 <= ((nelements + 1)*nelements), let t1764 = ((nelements + 1)*nelements) in halide_error_explicit_bounds_too_small("kme", "d3$0", 0, (t1764/2) + -1, 0, max(t1764/2, 1) + -1))
+ allocate d3$0[float64 * nabf3 * nrbf3 * (((nelements + 1)*nelements)/2)]
+ produce d3$0 {
+  let t1655 = ((nelements + 1)*nelements)/2
+  for (d3$0.s0.kme, 0, t1655) {
+   let t1657 = (nabf3*nrbf3)*d3$0.s0.kme
+   for (d3$0.s0.rbfThree, 0, nrbf3) {
+    let t1658 = (d3$0.s0.rbfThree*nabf3) + t1657
+    for (d3$0.s0.abfThree, 0, nabf3) {
+     d3$0[d3$0.s0.abfThree + t1658] = 0.000000
+    }
+   }
+  }
+  consume sumU {
+   let t1660 = ((nelements + 1)*nelements)/2
+   for (d3$0.s1.rbfThree, 0, nrbf3) {
+    let t1666 = (k3*nelements)*d3$0.s1.rbfThree
+    let t1663 = (d3$0.s1.rbfThree - nrbf3)*nabf3
+    let t1665 = nabf3*nrbf3
+    for (d3$0.s1.r147$w, 0, nelements) {
+     let d3$0.s1.r147$z.new_min.s = min(d3$0.s1.r147$w, nelements)
+     let t1668 = (nelements*2) - d3$0.s1.r147$z.new_min.s
+     let t1670 = d3$0.s1.r147$z.new_min.s + t1666
+     let t1669 = d3$0.s1.r147$w + t1666
+     for (d3$0.s1.r147$z.rebased, 0, nelements - d3$0.s1.r147$z.new_min.s) {
+      let t1671 = (max(min((((d3$0.s1.r147$z.new_min.s + d3$0.s1.r147$z.rebased)/2)*((t1668 - d3$0.s1.r147$z.rebased) + -3)) + d3$0.s1.r147$w, t1660), 1)*t1665) + t1663
+      let t1672 = d3$0.s1.r147$z.rebased + t1670
+      for (d3$0.s1.r147$y, 0, nabf3) {
+       let d3$0.s1.r147$x.new_min.s = min(pn3[d3$0.s1.r147$y - pn3.min.0], k3)
+       let d3$0.s1.r147$x.new_max.s = max(min(pn3[(d3$0.s1.r147$y - pn3.min.0) + 1], k3), d3$0.s1.r147$x.new_min.s)
+       let t1676 = max(d3$0.s1.r147$x.new_min.s, 0)
+       let t1673 = max(d3$0.s1.r147$x.new_max.s, 0) - t1676
+       let t1674 = d3$0.s1.r147$y + t1671
+       for (d3$0.s1.r147$x.rebased, 0, t1673) {
+        let t1403 = (d3$0.s1.r147$x.rebased + t1676)*nelements
+        d3$0[t1674] = d3$0[t1674] + (sumU[t1403 + t1669]*(sumU[t1403 + t1672]*float64(pc3[(t1676 - pc3.min.0) + d3$0.s1.r147$x.rebased])))
+       }
+      }
+     }
+    }
+   }
+  }
+ }
+ produce d3_o {
+  consume d3$0 {
+   let t1677 = ((nelements + 1)*nelements)/2
+   for (d3_o.s0.v30, 0, t1677) {
+    let t1679 = (nabf3*nrbf3)*d3_o.s0.v30
+    let t1680 = d3_o.s0.v30*d3_o.stride.2
+    for (d3_o.s0.v29, 0, nrbf3) {
+     let t1681 = d3_o.s0.v29*nabf3
+     for (d3_o.s0.v28, 0, nabf3) {
+      d3_o[(t1680 + t1681) + d3_o.s0.v28] = d3$0[(t1679 + t1681) + d3_o.s0.v28]
+     }
+    }
+   }
+  }
+ }
+ free d3$0
+ allocate dd3[float64 * 3 * npairs * nabf3 * nrbf3 * (((nelements + 1)*nelements)/2)]
+ produce dd3 {
+  let t1682 = ((nelements + 1)*nelements)/2
+  for (dd3.s0.kme, 0, t1682) {
+   let t1686 = nabf3*npairs
+   let t1684 = ((nrbf3*t1686)*dd3.s0.kme)*3
+   for (dd3.s0.rbfThree, 0, nrbf3) {
+    let t1687 = ((dd3.s0.rbfThree*t1686)*3) + t1684
+    for (dd3.s0.abfThree, 0, nabf3) {
+     let t1688 = ((dd3.s0.abfThree*npairs)*3) + t1687
+     for (dd3.s0.nj, 0, npairs) {
+      let t1689 = (dd3.s0.nj*3) + t1688
+      for (dd3.s0.dim, 0, 3) {
+       dd3[dd3.s0.dim + t1689] = 0.000000
+      }
+     }
+    }
+   }
+  }
+  consume sumU {
+   consume U {
+    let t1696 = nabf3*npairs
+    let t1693 = ((nelements + 1)*nelements)/2
+    let t1692 = (elemindex.min.1*elemindex.stride.1) + elemindex.min.0
+    for (dd3.s1.rbfThree, 0, nrbf3) {
+     let t1702 = k3*npairs
+     let t1700 = nrbf3*t1702
+     let t1701 = dd3.s1.rbfThree*t1702
+     let t1698 = (k3*nelements)*dd3.s1.rbfThree
+     let t1697 = (dd3.s1.rbfThree*t1696)*3
+     let t1699 = nrbf3*t1696
+     for (dd3.s1.r156$y, 0, nabf3) {
+      let dd3.s1.r156$x.new_min.s = min(pn3[dd3.s1.r156$y - pn3.min.0], k3)
+      let dd3.s1.r156$x.new_max.s = max(min(pn3[(dd3.s1.r156$y - pn3.min.0) + 1], k3), dd3.s1.r156$x.new_min.s)
+      let t1707 = max(dd3.s1.r156$x.new_min.s, 0)
+      let t1703 = max(dd3.s1.r156$x.new_max.s, 0) - t1707
+      let t1704 = ((dd3.s1.r156$y*npairs)*3) + t1697
+      let t1706 = t1700 + t1701
+      for (dd3.s1.r156$x.rebased, 0, t1703) {
+       let t1711 = dd3.s1.r156$x.rebased + t1707
+       let t1710 = (npairs*t1711) + t1706
+       let t1708 = (nelements*t1711) + t1698
+       let t1709 = (t1707 - pc3.min.0) + dd3.s1.r156$x.rebased
+       for (dd3.s1.r156$z, 0, nelements) {
+        let t1713 = (dd3.s1.r156$z*elemindex.stride.1) - t1692
+        let t1712 = dd3.s1.r156$z + t1708
+        for (dd3.s1.r156$w, 0, npairs) {
+         let t1714 = dd3.s1.r156$w - tj.min.0
+         let t1715 = (dd3.s1.r156$w*3) + t1704
+         let t1716 = dd3.s1.r156$w + t1710
+         for (dd3.s1.dim, 0, 3) {
+          let t1328 = tj[t1714]
+          let t1334 = dd3.s1.dim + t1715
+          let t1337 = sumU[t1712]*float64(pc3[t1709])
+          let t1407 = ((max(min(elemindex[(max(min(nelements, t1328), 1) + t1713) + -1], t1693 + -1), 0)*t1699)*3) + t1334
+          dd3[t1407] = dd3[t1407] + (U[(dd3.s1.dim*t1700) + t1716]*select(dd3.s1.r156$z == (t1328 + -1), t1337*2.000000, t1337))
+         }
+        }
+       }
+      }
+     }
+    }
+   }
+  }
+  free U
+ }
+ produce dd3_o {
+  consume dd3 {
+   let t1717 = ((nelements + 1)*nelements)/2
+   for (dd3_o.s0.v30, 0, t1717) {
+    let t1722 = nabf3*npairs
+    let t1719 = ((nrbf3*t1722)*dd3_o.s0.v30)*3
+    let t1721 = dd3_o.s0.v30*dd3_o.stride.4
+    for (dd3_o.s0.v29, 0, nrbf3) {
+     let t1723 = ((dd3_o.s0.v29*t1722)*3) + t1719
+     let t1724 = (dd3_o.s0.v29*dd3_o.stride.3) + t1721
+     for (dd3_o.s0.v28, 0, nabf3) {
+      let t1725 = ((dd3_o.s0.v28*npairs)*3) + t1723
+      let t1726 = (dd3_o.s0.v28*dd3_o.stride.2) + t1724
+      for (dd3_o.s0.nj, 0, npairs) {
+       let t1729 = dd3_o.s0.nj*3
+       let t1728 = t1726 + t1729
+       let t1727 = t1725 + t1729
+       for (dd3_o.s0.dim, 0, 3) {
+        dd3_o[dd3_o.s0.dim + t1728] = dd3[dd3_o.s0.dim + t1727]
+       }
+      }
+     }
+    }
+   }
+  }
+ }
+ free dd3
+ produce cU_o {
+  consume cU {
+   for (cU_o.s0.v30, 0, nrbf3) {
+    let t1731 = (k3*nelements)*cU_o.s0.v30
+    let t1732 = cU_o.s0.v30*cU_o.stride.2
+    for (cU_o.s0.v29, 0, k3) {
+     let t1733 = cU_o.s0.v29*nelements
+     for (cU_o.s0.v28, 0, nelements) {
+      cU_o[(t1732 + t1733) + cU_o.s0.v28] = cU[(t1731 + t1733) + cU_o.s0.v28]
+     }
+    }
+   }
+  }
+ }
+ free cU
+ allocate e3$0[float64 * 1]
+ produce e3$0 {
+  e3$0[0] = 0.000000
+  consume sumU {
+   let t1736 = ((nelements + 1)*nelements)/2
+   let t1735 = (((coeff3.min.2*coeff3.stride.2) + (coeff3.min.1*coeff3.stride.1)) + coeff3.min.0) + coeff3.stride.2
+   for (e3$0.s1.r178$4, 0, nrbf3) {
+    let t1738 = (k3*nelements)*e3$0.s1.r178$4
+    let t1739 = (coeff3.stride.1*e3$0.s1.r178$4) - t1735
+    for (e3$0.s1.r178$w, 0, nelements) {
+     let e3$0.s1.r178$z.new_max.s = min(e3$0.s1.r178$w + 1, nelements)
+     for (e3$0.s1.r178$z, 0, e3$0.s1.r178$z.new_max.s) {
+      let t1744 = (max(min(((e3$0.s1.r178$z/2)*(((nelements*2) - e3$0.s1.r178$z) + -3)) + e3$0.s1.r178$w, t1736), 1)*coeff3.stride.2) + t1739
+      let t1745 = e3$0.s1.r178$z + t1738
+      let t1743 = e3$0.s1.r178$w + t1738
+      for (e3$0.s1.r178$y, 0, nabf3) {
+       let e3$0.s1.r178$x.new_min.s = min(pn3[e3$0.s1.r178$y - pn3.min.0], k3)
+       let e3$0.s1.r178$x.new_max.s = max(min(pn3[(e3$0.s1.r178$y - pn3.min.0) + 1], k3), e3$0.s1.r178$x.new_min.s)
+       let t1749 = max(e3$0.s1.r178$x.new_min.s, 0)
+       let t1746 = max(e3$0.s1.r178$x.new_max.s, 0) - t1749
+       let t1748 = e3$0.s1.r178$y + t1744
+       for (e3$0.s1.r178$x.rebased, 0, t1746) {
+        let t1414 = (e3$0.s1.r178$x.rebased + t1749)*nelements
+        e3$0[0] = e3$0[0] + (sumU[t1414 + t1743]*(coeff3[t1748]*(sumU[t1414 + t1745]*float64(pc3[(t1749 - pc3.min.0) + e3$0.s1.r178$x.rebased]))))
+       }
+      }
+     }
+    }
+   }
+  }
+  free sumU
+ }
+ produce e3_o {
+  consume e3$0 {
+   e3_o[0] = e3$0[0]
+  }
+ }
+ free e3$0
+}
+}
+
+

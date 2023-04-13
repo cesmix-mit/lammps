@@ -61,22 +61,22 @@ Setting up Verlet run ...
   Time step     : 0.0005
 Per MPI rank memory allocation (min/avg/max) = 8.929 | 8.929 | 8.929 Mbytes
    Step          Temp          E_pair         E_mol          TotEng         Press     
-         0   300           -11.84513       0             -11.806354      1905242.7    
-         5   302.81786     -11.845031      0             -11.805891      1905291      
-Loop time of 17.7001 on 1 procs for 5 steps with 16000 atoms
+         0   300           -11.84513       0             -11.806354      12211.757    
+         5   299.23493     -11.845031      0             -11.806354      12252.732    
+Loop time of 7.09361 on 1 procs for 5 steps with 16000 atoms
 
-Performance: 0.012 ns/day, 1966.677 hours/ns, 0.282 timesteps/s, 4.520 katom-step/s
-99.9% CPU use with 1 MPI tasks x 1 OpenMP threads
+Performance: 0.030 ns/day, 788.179 hours/ns, 0.705 timesteps/s, 11.278 katom-step/s
+101.0% CPU use with 1 MPI tasks x 1 OpenMP threads
 
 MPI task timing breakdown:
 Section |  min time  |  avg time  |  max time  |%varavg| %total
 ---------------------------------------------------------------
-Pair    | 17.697     | 17.697     | 17.697     |   0.0 | 99.98
+Pair    | 7.0913     | 7.0913     | 7.0913     |   0.0 | 99.97
 Neigh   | 0          | 0          | 0          |   0.0 |  0.00
-Comm    | 0.00040228 | 0.00040228 | 0.00040228 |   0.0 |  0.00
-Output  | 6.0322e-05 | 6.0322e-05 | 6.0322e-05 |   0.0 |  0.00
-Modify  | 0.0014078  | 0.0014078  | 0.0014078  |   0.0 |  0.01
-Other   |            | 0.0009582  |            |       |  0.01
+Comm    | 0.00036787 | 0.00036787 | 0.00036787 |   0.0 |  0.01
+Output  | 4.7436e-05 | 4.7436e-05 | 4.7436e-05 |   0.0 |  0.00
+Modify  | 0.0012356  | 0.0012356  | 0.0012356  |   0.0 |  0.02
+Other   |            | 0.0006921  |            |       |  0.01
 
 Nlocal:          16000 ave       16000 max       16000 min
 Histogram: 1 0 0 0 0 0 0 0 0 0
@@ -91,28 +91,38 @@ Total # of neighbors = 800000
 Ave neighs/atom = 50
 Neighbor list builds = 0
 Dangerous builds = 0
-Total wall time: 0:00:21
+Total wall time: 0:00:08
 poddescTwoBody
- total time: 18665.494141 ms  samples: 17730  runs: 96000  time/run: 0.194432 ms
- heap allocations: 1152000  peak heap usage: 550144 bytes
-  halide_malloc:         0.001ms   (0%)    
-  halide_free:           0.000ms   (0%)    
-  abf_f:                 0.004ms   (2%)     peak: 672      num: 96000     avg: 672
-  dabf_f:                0.015ms   (7%)     peak: 2016     num: 96000     avg: 2016
-  drbf_f:                0.021ms   (11%)    peak: 1344     num: 96000     avg: 1344
-  rbf:                   0.005ms   (2%)     peak: 448      num: 96000     avg: 448
-  rbft:                  0.000ms   (0%)     peak: 4480     num: 96000     avg: 4480
-  rbf$1:                 0.002ms   (1%)     peak: 3584     num: 96000     avg: 3584
-  fij:                   0.000ms   (0%)     peak: 336      num: 96000     avg: 336
-  fij_o:                 0.000ms   (0%)    
-  e:                     0.000ms   (0%)     stack: 8
-  e_o:                   0.000ms   (0%)    
-  tm:                    0.118ms   (60%)    peak: 537600   num: 96000     avg: 537600
-  abf4:                  0.007ms   (3%)     peak: 8960     num: 96000     avg: 8960
-  sumU:                  0.001ms   (0%)     peak: 960      num: 96000     avg: 960
-  sumU_o:                0.000ms   (0%)    
-  U_o:                   0.010ms   (5%)    
-  d2$0:                  0.000ms   (0%)     peak: 64       num: 96000     avg: 64
-  d2_o:                  0.000ms   (0%)    
-  dd2:                   0.001ms   (0%)     peak: 2688     num: 96000     avg: 2688
-  dd2_o:                 0.000ms   (0%)    
+ total time: 6727.607910 ms  samples: 6087  runs: 96000  time/run: 0.070079 ms
+ average threads used: 0.999507
+ heap allocations: 1536000  peak heap usage: 67264 bytes
+  halide_malloc:         0.001ms   (2%)    threads: 1.000 
+  halide_free:           0.000ms   (0%)    threads: 1.000 
+  tm:                    0.003ms   (5%)    threads: 1.000  peak: 26880    num: 96000     avg: 26880
+  abf4:                  0.003ms   (5%)    threads: 1.000  peak: 8960     num: 96000     avg: 8960
+  abf_f:                 0.010ms   (15%)   threads: 1.000  peak: 672      num: 96000     avg: 672
+  dabf_f:                0.000ms   (0%)    threads: 0.000  peak: 2016     num: 96000     avg: 2016
+  drbf_f:                0.007ms   (10%)   threads: 1.000  peak: 1344     num: 96000     avg: 1344
+  rbf:                   0.000ms   (0%)    threads: 0.000  peak: 448      num: 96000     avg: 448
+  rbft:                  0.001ms   (1%)    threads: 1.000  peak: 4480     num: 96000     avg: 4480
+  rbf$1:                 0.004ms   (6%)    threads: 1.000  peak: 3584     num: 96000     avg: 3584
+  U:                     0.005ms   (8%)    threads: 1.000  peak: 53760    num: 96000     avg: 53760
+  sumU:                  0.001ms   (2%)    threads: 1.000  peak: 960      num: 96000     avg: 960
+  cU:                    0.001ms   (1%)    threads: 1.000  peak: 960      num: 96000     avg: 960
+  fij:                   0.007ms   (11%)   threads: 1.000  peak: 336      num: 96000     avg: 336
+  fij_o:                 0.000ms   (0%)    threads: 1.000 
+  e:                     0.000ms   (0%)    threads: 1.000  stack: 8
+  e_o:                   0.000ms   (0%)    threads: 0.000 
+  sumU_o:                0.000ms   (0%)    threads: 1.000 
+  U_o:                   0.004ms   (6%)    threads: 1.000 
+  d2$0:                  0.000ms   (0%)    threads: 1.000  peak: 64       num: 96000     avg: 64
+  d2_o:                  0.000ms   (0%)    threads: 1.000 
+  dd2:                   0.001ms   (2%)    threads: 1.000  peak: 2688     num: 96000     avg: 2688
+  dd2_o:                 0.002ms   (2%)    threads: 1.000 
+  d3$0:                  0.000ms   (0%)    threads: 1.000  peak: 192      num: 96000     avg: 192
+  d3_o:                  0.000ms   (0%)    threads: 1.000 
+  dd3:                   0.008ms   (12%)   threads: 1.000  peak: 8064     num: 96000     avg: 8064
+  dd3_o:                 0.000ms   (0%)    threads: 1.000 
+  cU_o:                  0.000ms   (0%)    threads: 1.000 
+  e3$0:                  0.000ms   (0%)    threads: 1.000  stack: 8
+  e3_o:                  0.000ms   (0%)    threads: 0.250 

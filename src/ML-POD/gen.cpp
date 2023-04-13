@@ -74,15 +74,26 @@ void buildRBF( Func & rbfall,
   dabf.bound(bfi, 0, adegree);
   dabf.bound(np, 0, npairs);
 
+  rbf.reorder(bfi, bfp, np);
   rbf.compute_root();
 
-  drbf.compute_root(); // .021 ms (10%)
-  //drbf.compute_at(xij, np); // .022 ms (11%)
-  // nothing ? // Runtime looks like increases slightly and info gets pushed into `rbft`
+  drbf.reorder(dim, bfi, bfp, np);
+  drbf.compute_root();
 
+  abf.reorder(bfi, np);
   abf.compute_root();
   
+  dabf.reorder(dim, bfi, np);
   dabf.compute_root();
+
+  rbf.compute_with(drbf, bfi);
+  dabf.compute_with(abf, bfi);
+
+  // Loop order bfi first was 7ish seconds
+  //rbf.compute_with(abf, bfi).compute_with(drbf,bfi).compute_with(dabf, bfi);
+  
+  
+  
 
   // rbf.size() = nbparams * bdegree * npairs
   // drbf[x].size() = nbparams * bdegree * npairs
@@ -530,9 +541,9 @@ void buildAngularBasis(Expr k3, Expr npairs, Func pq, Func rij,
   uvw.compute_at(tm, pair);
   //tm.update(0).reorder(abfip, pair);
   tm.compute_at(abf4, pair);
-  abf4.reorder(c, abfi, pair);
   */
   tm.store_root().compute_root();
+  abf4.reorder(c, abfi, pair).unroll(c, 4);
   abf4.store_root().compute_root();
   //abf4.store_root().compute_root();
 }
