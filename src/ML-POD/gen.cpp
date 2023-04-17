@@ -805,9 +805,21 @@ public:
   Input<int> nd23{"nd23", 1};
   Input<int> nd33{"nd33", 1};
   Input<int> nd34{"nd34", 1};
+  Input<int> n32{"n32", 1};
+  Input<int> n23{"n23", 1};
+  Input<int> n33{"n33", 1};
+  Input<int> n43{"n43", 1};
+  Input<int> n34{"n34", 1};
+  Input<int> n44{"n44", 1};
   Input<int> nabf3{"nabf3", 1};
   
+  
   Input<Buffer<double>> coeff3{"coeff3", 3};
+  Input<Buffer<double>> coeff23{"coeff23", 3};
+  Input<Buffer<double>> coeff33{"coeff33", 1};
+  Input<Buffer<double>> coeff4{"coeff4", 1};
+  Input<Buffer<double>> coeff34{"coeff34", 1};
+  Input<Buffer<double>> coeff44{"coeff44", 1};
 
   
   Output<Buffer<double>> sumU_o{"sumU_o", 3};
@@ -870,6 +882,10 @@ public:
 
     coeff2.dim(0).set_bounds(0, npairs).set_stride(nrbf2);
     coeff2.dim(1).set_bounds(0, nrbf2).set_stride(1);
+    //coeff3
+    coeff23.dim(2).set_bounds(0, nelements).set_stride(n23 * n32);
+    coeff23.dim(1).set_bounds(0, n32).set_stride(n23);
+    coeff23.dim(0).set_bounds(0, n23).set_stride(1);
 
     Func fij("fij"), e("e");
     tallyTwoBodyLocalForce(fij, e, coeff2, rbf, tj, nrbf2, npairs);
