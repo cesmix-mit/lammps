@@ -767,6 +767,63 @@ void threeBodyDesc(Func & d3,
 
 }
 
+// void indexMap3(Func & indexmap, Expr n1, Expr n2, Expr n3, Expr N1, Expr N2){
+//   Var v1("v1");
+//   Var v2("v2");
+//   Var v3("v3");
+//   Var k("k");
+//   Var c("c");
+
+//   Expr i3 =  k / (N1 * N2);
+//   Expr kp = (k - i3 * N1 * N2);
+//   Expr i2 = kp/ N1;
+//   Expr i3 = kp % N1;
+
+//   indexmap(k, c) = mux(c, {i1, i2, i3});
+//   indexmap.bound(k, 0, n1 * n2 * n3);
+//   indexmap.bound(c, 0, 3);
+// }
+
+
+// void fourbodystuff(Func & fij, Func & e23,
+// 		   Func ind23, Func ind32, Func coeff23, Func d2, Func d3, Func dd3,
+// 		   Expr npairs, Expr n23, Expr n32,
+// 		   Var pairindex)
+// {
+//   Func d23("d23");
+//   Var d23i("d23i");
+//   Var d23j("d23j");
+//   //Use unsafe_promise_clamped
+//   // j is n32
+//   //i is n23
+//   d23(d23i, d23j) = d2(ind23(d23i, 1), ind23(d23i, 2)) * d3(ind32(d23j, 0), ind32(d23j, 1), ind32(d23j, 2));
+//   d23.bound(d23i, 0, n23);
+//   d32.bound(d23j, 0, n32);
+
+
+//   Rdom e23rdom(0, n23, 0, n32);
+//   e23() += d23(e23rdom.x, e23rdom.y) * coef23(e23rdom.x, e23rdom.y);
+
+//   Expr zero = Expr((double) 0.0);
+//   Func cf1("cf1");
+//   Var j("j");
+//   Var dim("dim");
+//   Rdom r1(0, n23);
+//   cf1(j) = zero;
+//   cf1(j) += d2(ind23(r1.x,1), ind23(r1.x,2)) * coeff23(r.x, j);
+
+//   Rdom r2(0, n32);
+//   fij(pairindex, dim) += cf1(r2.x) * dd3(dim, ind32(r2.x,0), ind32(r2.x,1), ind32(r2.x,2));
+
+//   Func cf2("c2");
+//   Var i("i");
+//   cf2(i) = zero;
+//   cf2(i) += d3(dim, ind32(r2.x,0), ind32(r2.x,1), ind32(r2.x,2)) * coeff23(i, r2.x);
+
+//   fij(pairindex, dim) += cf2(r1.x) * dd2(dim, ind23(r1.x, 1), ind23(r1.x, 2));
+  
+// }
+
 class poddescTwoBody : public Halide::Generator<poddescTwoBody> {
 public:
 
@@ -800,6 +857,7 @@ public:
 
 
   Input<int> nrbf3{"nrbf3", 1};
+  Input<int> nrbf4{"nrbf4", 1};
   Input<int> nelements{"nelements", 1};
 
   Input<int> nd23{"nd23", 1};
@@ -812,6 +870,16 @@ public:
   Input<int> n34{"n34", 1};
   Input<int> n44{"n44", 1};
   Input<int> nabf3{"nabf3", 1};
+  Input<int> nabf4{"nabf4", 1};
+  Input<int> nrbf23{"nrbf23", 1};
+  Input<int> nrbf33{"nrbf33", 1};
+  Input<int> nrbf34{"nrbf34", 1};
+  Input<int> nrbf44{"nrbf44", 1};
+  Input<int> nabf23{"nabf23", 1};
+  Input<int> nabf33{"nabf33", 1};
+  Input<int> nabf34{"nabf34", 1};
+  Input<int> nabf44{"nabf44", 1};
+
   
   
   Input<Buffer<double>> coeff3{"coeff3", 3};
@@ -834,6 +902,13 @@ public:
   Output<double> e3_o{"e3_o"};
 
   void generate() {
+
+    //    Func ind23("ind23");
+    //    Func ind32("ind32");
+    //    indexmap3(ind23, 1, nrbf23, Ne, 1, nrbf2);
+    //    indexmap3(ind32, nabf23, nrbf23, Ne*(Ne+1)/2, nabf3, nrbf3);
+
+    
     rijs.dim(0).set_bounds(0, 3).set_stride(1);
     rijs.dim(1).set_bounds(0, npairs).set_stride(3);
 
