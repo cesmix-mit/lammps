@@ -730,11 +730,24 @@ void indexMap3(Func & indexmap, Expr n1, Expr n2, Expr n3, Expr N1, Expr N2){
 }
 
 
-void fourbodyfij23(Func & fij,
-		   Func ind23, Func ind32, Func coeff23, Func d2, Func dd3,
+void fourbodystuff(Func & fij, Func & e23,
+		   Func ind23, Func ind32, Func coeff23, Func d2, Func d3, Func dd3,
 		   Expr npairs, Expr n23, Expr n32,
 		   Var pairindex)
 {
+  Func d23("d23");
+  Var d23i("d23i");
+  Var d23j("d23j");
+  //Use unsafe_promise_clamped
+  // j is n32
+  //i is n23
+  d23(d23i, d23j) = d2(ind23(d23i, 1), ind23(d23i, 2)) * d3(ind32(d23j, 0), ind32(d23j, 1), ind32(d23j, 2));
+  d23.bound(d23i, 0, n23);
+  d32.bound(d23j, 0, n32);
+
+
+  Rdom e23rdom(0, n23, 0, n32);
+  e23() += d23(e23rdom.x, e23rdom.y) * coef23(e23rdom.x, e23rdom.y);
 
   Expr zero = Expr((double) 0.0);
   Func cf1("cf1");
@@ -753,15 +766,6 @@ void fourbodyfij23(Func & fij,
   cf2(i) += d3(dim, ind32(r2.x,0), ind32(r2.x,1), ind32(r2.x,2)) * coeff23(i, r2.x);
 
   fij(pairindex, dim) += cf2(r1.x) * dd2(dim, ind23(r1.x, 1), ind23(r1.x, 2));
-    
-
-
-  
-  
-
-    
-    
-    
   
 }
 
