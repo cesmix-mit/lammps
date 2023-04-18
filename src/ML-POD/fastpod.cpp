@@ -539,13 +539,14 @@ void buildHalideAngularBasis(double *abf, double *rij, double * tm, int *pq, int
   poddescAngularBasis(N, K, tm_buffer, rij_buffer, abf_buffer);
 }
 
-void buildTwoBody(double *rijs, double *besselparams, int nbesselpars, int bdegree, int adegree, int npairs, int nrbfmax, double rin, double rcut, double *phi, int ns, double *coeff2, double *coeff3, int *tj, int *pq, int * pn3, int * pc3, int * elemindex, int nrbf2, int k3, int nrbf3, int nelements, int nd23, int nd33, int nd34, int nabf3, double *fij, double *e2, double *e3, double *sumU, double *U, double *d2, double *dd2, double * d3, double * dd3, double * cU) {
+void buildTwoBody(double *rijs, double *besselparams, int nbesselpars, int bdegree, int adegree, int npairs, int nrbfmax, double rin, double rcut, double *phi, int ns, double *coeff2, double *coeff3, double * coeff23, double *coeff33, double * coeff4, double *coeff34, double *coeff44,  int * ti, int *tj, int *pq, int * pn3, int * pc3, int * elemindex, int nrbf2, int k3, int nrbf3, int nrbf4, int nelements, int nd23, int nd33, int nd34, int n32, int n23, int n33, int n43, int n34, int n44,int nabf3, int nabf4, int nrbf23, int nrbf33, int nrbf34, int nrbf44, int nabf23, int nabf33, int nabf34, int nabf44, double *fij, double *e2, double *e3, double *sumU, double *U, double *d2, double *dd2, double * d3, double * dd3, double * cU) {
   // rijs is different now
   Halide::Runtime::Buffer<double> rijs_buffer(rijs, {{0, 3, 1}, {0, npairs, 3}});
   Halide::Runtime::Buffer<double> besselparams_buffer(besselparams, nbesselpars);
   Halide::Runtime::Buffer<double> phi_buffer(phi, {{0, ns, 1}, {0, ns, ns}});
   Halide::Runtime::Buffer<double> coeff2_buffer(coeff2, {{0, npairs, nrbf2}, {0, nrbf2, 1}});
   Halide::Runtime::Buffer<int> tj_buffer(tj, npairs);
+  Halide::Runtime::Buffer<int> ti_buffer(ti, npairs);
   Halide::Runtime::Buffer<int> pq_buffer(pq, k3*3);
   Halide::Runtime::Buffer<double> fij_buffer(fij, {{0, npairs, 3}, {0, 3, 1}});
   auto e2_buffer = Halide::Runtime::Buffer<double, 0>::make_scalar(e2);
@@ -559,6 +560,11 @@ void buildTwoBody(double *rijs, double *besselparams, int nbesselpars, int bdegr
   Halide::Runtime::Buffer<double> d3_buffer(d3, {{0, nabf3, 1}, {0, nrbf3, nabf3}, {0, me, nabf3 * nrbf3}});
   Halide::Runtime::Buffer<double> dd3_buffer(dd3, {{0, 3, 1}, {0, npairs, 3}, {0, nabf3, 3 * npairs}, {0, nrbf3, 3 * npairs * nabf3}, {0, me, 3 * npairs * nabf3 * nrbf3}});
   Halide::Runtime::Buffer<double> coeff3_buffer(coeff3, {{0, nabf3, 1}, {0, nrbf3, nabf3}, {0, me, nabf3 * nrbf3}});
+  Halide::Runtime::Buffer<double> coeff23_buffer(coeff23, {{0, n23, 1}, {0, n32, n23}, {0, nelements, n23 * n32}});
+  Halide::Runtime::Buffer<double> coeff33_buffer(coeff33, {1});
+  Halide::Runtime::Buffer<double> coeff4_buffer(coeff4, {1});
+  Halide::Runtime::Buffer<double> coeff34_buffer(coeff34, {1});
+  Halide::Runtime::Buffer<double> coeff44_buffer(coeff44, {1});
   auto e3_buffer = Halide::Runtime::Buffer<double, 0>::make_scalar(e3);
   Halide::Runtime::Buffer<double> cU_buffer(cU, {{0, nelements, 1}, {0, k3, nelements}, {0, nrbf3, nelements * k3}});
 
@@ -566,7 +572,7 @@ void buildTwoBody(double *rijs, double *besselparams, int nbesselpars, int bdegr
   Halide::Runtime::Buffer<int> pc3_buffer(pc3, k3 + 1);
   Halide::Runtime::Buffer<int> elemindex_buffer(elemindex, {{0, nelements, 1}, {0, nelements, nelements}});
   
-  poddescTwoBody(rijs_buffer, besselparams_buffer, nbesselpars, bdegree, adegree, npairs, nrbfmax, rin, rcut, phi_buffer, ns, coeff2_buffer, tj_buffer, nrbf2, k3, pq_buffer, pn3_buffer, pc3_buffer, elemindex_buffer, nrbf3, nelements, nd23, nd33, nd34, nabf3, coeff3_buffer, fij_buffer, e2_buffer, sumU_buffer, U_buffer, d2_buffer, dd2_buffer, d3_buffer, dd3_buffer, cU_buffer, e3_buffer);
+  poddescTwoBody(rijs_buffer, besselparams_buffer, nbesselpars, bdegree, adegree, npairs, nrbfmax, rin, rcut, phi_buffer, ns, coeff2_buffer, ti_buffer, tj_buffer, nrbf2, k3, pq_buffer, pn3_buffer, pc3_buffer, elemindex_buffer, nrbf3, nrbf4, nelements, nd23, nd33, nd34, n32, n23, n33, n43, n34, n44, nabf3, nabf4, nrbf23, nrbf33, nrbf34, nrbf44, nabf23, nabf33, nabf34, nabf44, coeff3_buffer, coeff23_buffer, coeff33_buffer, coeff4_buffer, coeff34_buffer, coeff44_buffer, fij_buffer, e2_buffer, sumU_buffer, U_buffer, d2_buffer, dd2_buffer, d3_buffer, dd3_buffer, cU_buffer, e3_buffer);
 }
 
 double FASTPOD::peratomenergyforce(double *fij, double *rij, double *temp,
@@ -629,7 +635,7 @@ double FASTPOD::peratomenergyforce(double *fij, double *rij, double *temp,
     double *dd4 = &temp[4*n1 + n5 + 4*n2 + nl2 + 3*Nj*nl2 + nl3 + 3*Nj*nl3 + nl4]; // 3*Nj*nl4
     double *cU = &temp[4*n1 + n5 + 4*n2 + nl2 + 3*Nj*nl2 + nl3 + 3*Nj*nl3 + nl4 + 3*Nj*nl4];
 
-    buildTwoBody(rij, besselparams, nbesselpars, pdegree[0], pdegree[1], Nj, nrbfmax, rin, rcut, Phi, ns, &coeff2[nl2*t0], &coeff3[nl3*t0], tj, pq3, pn3, pc3, elemindex, nrbf2, K3, nrbf3, nelements, nd23, nd33, nd34, nabf3, fij, &e2, &e3, sumU, U, d2, dd2, d3, dd3, cU);
+    buildTwoBody(rij, besselparams, nbesselpars, pdegree[0], pdegree[1], Nj, nrbfmax, rin, rcut, Phi, ns, &coeff2[nl2*t0], &coeff3[nl3*t0], coeff23, coeff33, coeff4, coeff34, coeff44, ti, tj, pq3, pn3, pc3, elemindex, nrbf2, K3, nrbf3, nrbf4, nelements, nd23, nd33, nd34,n32, n23, n33, n43, n34, n44, nabf3, nabf4, nrbf23, nrbf33, nrbf34, nrbf44, nabf23, nabf33, nabf34, nabf44, fij, &e2, &e3, sumU, U, d2, dd2, d3, dd3, cU);
 
     if ((nd23>0) || (nd33>0) || (nd34>0)) {
       
@@ -641,10 +647,10 @@ double FASTPOD::peratomenergyforce(double *fij, double *rij, double *temp,
     // tallylocalforce(fij, cU, Ux, Uy, Uz, tj, Nj, K3, nrbf3, nelements);
     
     if (nd23>0) {
-      double *d23 = &temp[0];
-      fourbodydesc23(d23, d2, d3);
-      e23 = dotproduct(&coeff23[nl23*t0], d23, nl23);
-      fourbodyfij23(fij, temp, &coeff23[nl23*t0], d2, d3, dd2, dd3, 3*Nj);
+      //      double *d23 = &temp[0];
+      //      fourbodydesc23(d23, d2, d3);
+      //      e23 = dotproduct(&coeff23[nl23*t0], d23, nl23);
+      //      fourbodyfij23(fij, temp, &coeff23[nl23*t0], d2, d3, dd2, dd3, 3*Nj);
     }
 
     if (nd33>0) {      

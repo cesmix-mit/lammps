@@ -261,7 +261,7 @@ void tallyTwoBodyLocalForce(Func & fij, Func & e, Func coeff2, Func rbf, Func tj
   fij.bound(dim, 0, 3);
 
   fij.reorder(dim, n);
-  fij.update(0).reorder(dim, r.x);
+  fij.update(0).reorder(dim, r.y, r.x);
   // fij.compute_root();
   e.compute_root();
 }
@@ -694,7 +694,7 @@ void tallyLocalForce(Func & fij, Func atomtype, Func cU, Func U, Expr nrbf3, Exp
     Expr i2 = atomtype(r.z) - 1;
     Expr c = cU(clamp(i2, 0, nelements - 1), r.y, r.x);
     fij(r.z, dim) += c * U(r.z, r.y, r.x, dim + 1);
-    fij.update(1).reorder(dim, r.z);
+    fij.update(1).reorder(dim, r.z, r.y, r.x);
 }
 
 void threeBodyCoeff(Func & cU, Func & e, Func coeff3, Func sumU, Func pn3, Func pc3, Expr npairs, Var ne, Var k3, Var rbf3,
@@ -800,6 +800,7 @@ void threeBodyDesc(Func & d3,
   Expr k = (2 * nelements - 3 - rz) * (rz/ 2) + rzz - 1; //mem  - ki + kij;
   Expr t2 = sumU(rzz, rx, rbf3);
   d3(ry, rbf3, clamp(k, 0, me -1)) += t1 * t2;
+  
     //k is a trian
     //(n*(n-1)/2) - (n-i)*((n-i)-1)/2 + j - i - 1
     //Formula for indexing
@@ -807,138 +808,237 @@ void threeBodyDesc(Func & d3,
 
 }
 
+void indexMap3(Func & indexmap, Expr n1, Expr n2, Expr n3, Expr N1, Expr N2){
+  Var v1("v1");
+  Var v2("v2");
+  Var v3("v3");
+  Var k("k");
+  Var c("c");
+
+  Expr i3 =  k / (N1 * N2);
+  Expr kp = (k - i3 * N1 * N2);
+  Expr i2 = kp/ N1;
+  Expr i1 = kp % N1;
+
+  indexmap(k, c) = mux(c, {i1, i2, i3});
+  indexmap.bound(k, 0, n1 * n2 * n3);
+  indexmap.bound(c, 0, 3);
+  indexmap.compute_root();
+}
+
+
+void fourbodystuff(Func & fij, Func & e23,
+		   Func ind23, Func ind32, Func coeff23, Func d2, Func d3, Func dd3, Func dd2, Func ti,
+		   Expr npairs, Expr n23, Expr n32, Expr nelements, Expr nrbf2, Expr nrbf3, Expr nabf3, Expr me,
+		   Var pairindex)
+{
+  Func d23("d23");
+  Var d23i("d23i");
+  Var d23j("d23j");
+  e23() = Expr((double) 0.0);
+  Expr acc = unsafe_promise_clamped(ti(0) - 1, 0, nelements - 1);
+  //Use unsafe_promise_clamped
+  // j is n32
+  //i is n23
+  d23(d23i, d23j) = d2(unsafe_promise_clamped(ind23(d23i, 1), 0, nelements -1), unsafe_promise_clamped(ind23(d23i, 2), 0, nrbf2 -1)) * d3(unsafe_promise_clamped(ind32(d23j, 0), 0, nabf3- 1), unsafe_promise_clamped(ind32(d23j, 1),0, nrbf3 - 1), unsafe_promise_clamped(ind32(d23j, 2), 0, me -1));
+  d23.bound(d23i, 0, n23);
+  d23.bound(d23j, 0, n32);
+
+  d23.compute_root();
+
+
+  RDom e23rdom(0, n23, 0, n32);
+  e23() += d23(e23rdom.x, e23rdom.y) * coeff23(e23rdom.x, e23rdom.y, acc);
+
+  Expr zero = Expr((double) 0.0);
+  Func cf1("cf1");
+  Var j("j");
+  Var dim("dim");
+  RDom r1(0, n23);
+  cf1(j) = zero;
+  cf1(j) += d2(unsafe_promise_clamped(ind23(r1.x, 1), 0, nelements -1), unsafe_promise_clamped(ind23(r1.x, 2), 0, nrbf2 -1)) * coeff23(r1.x, j, acc);
+
+  // RDom r2(0, n32);
+  // fij(pairindex, dim) += cf1(r2.x) * dd3(dim, pairindex, ind32(r2.x,0), ind32(r2.x,1), ind32(r2.x,2));
+    RDom r2(0, n32);
+    fij(pairindex, dim) += cf1(r2.x) * dd3(dim, pairindex,   unsafe_promise_clamped(ind32(r2.x, 0), 0, nabf3- 1), unsafe_promise_clamped(ind32(r2.x, 1),0, nrbf3 - 1), unsafe_promise_clamped(ind32(r2.x, 2), 0, me -1));
+
+  Func cf2("cf2");
+  Var i("i");
+  cf2(i) = zero;
+  cf2(i) += d3( unsafe_promise_clamped(ind32(r2.x, 0), 0, nabf3- 1), unsafe_promise_clamped(ind32(r2.x, 1),0, nrbf3 - 1), unsafe_promise_clamped(ind32(r2.x, 2), 0, me -1)) * coeff23(i, r2.x, acc);
+
+  fij(pairindex, dim) += cf2(r1.x) * dd2(unsafe_promise_clamped(ind23(r1.x, 1), 0, nelements -1), unsafe_promise_clamped(ind23(r1.x, 2), 0, nrbf2 -1), pairindex, dim);
+  //fij.update(2).reorder();
+  //fij.update(3).reorder();
+  
+}
+
 class poddescTwoBody : public Halide::Generator<poddescTwoBody> {
 public:
 
-    Input<Buffer<double>> rijs{"rijs", 2};
-    Input<Buffer<double>> besselparams{"besselparams", 1};
-    Input<int> nbesselparams{"nbesselpars", 1};
-    Input<int> bdegree{"bdegree", 1};
-    Input<int> adegree{"adegree", 1};
-    Input<int> npairs{"npairs", 1};
-    Input<int> nrbfmax{"nrbfmax", 1};
-    Input<double> rin{"rin", 1};
-    Input<double> rcut{"rcut", 1};
+  Input<Buffer<double>> rijs{"rijs", 2};
+  Input<Buffer<double>> besselparams{"besselparams", 1};
+  Input<int> nbesselparams{"nbesselpars", 1};
+  Input<int> bdegree{"bdegree", 1};
+  Input<int> adegree{"adegree", 1};
+  Input<int> npairs{"npairs", 1};
+  Input<int> nrbfmax{"nrbfmax", 1};
+  Input<double> rin{"rin", 1};
+  Input<double> rcut{"rcut", 1};
 
-    Input<Buffer<double>> Phi{"Phi", 2};
-    Input<int> ns{"ns", 1};
+  Input<Buffer<double>> Phi{"Phi", 2};
+  Input<int> ns{"ns", 1};
 
-    Input<Buffer<double>> coeff2{"coeff2", 2};
-    Input<Buffer<int>> tj{"tj", 1};
-    Input<int> nrbf2{"nrbf2", 1};
-    Output<Buffer<double>> fij_o{"fij_o", 2};
-    Output<double> e_o{"e_o"};
+  Input<Buffer<double>> coeff2{"coeff2", 2};
+  Input<Buffer<int>> ti{"ti", 1};
+  Input<Buffer<int>> tj{"tj", 1};
+  
+  
+  Input<int> nrbf2{"nrbf2", 1};
+  Output<Buffer<double>> fij_o{"fij_o", 2};
+  Output<double> e_o{"e_o"};
 
-    Input<int> k3{"k3", 1};
-    Input<Buffer<int>> pq{"pq", 1};
-    Input<Buffer<int>> pn3{"pn3", 1};
-    Input<Buffer<int>> pc3{"pc3", 1};
-    Input<Buffer<int>> elemindex{"elemindex", 2};
+  Input<int> k3{"k3", 1};
+  Input<Buffer<int>> pq{"pq", 1};
+  Input<Buffer<int>> pn3{"pn3", 1};
+  Input<Buffer<int>> pc3{"pc3", 1};
+  Input<Buffer<int>> elemindex{"elemindex", 2};
 
 
-    Input<int> nrbf3{"nrbf3", 1};
-    Input<int> nelements{"nelements", 1};
+  Input<int> nrbf3{"nrbf3", 1};
+  Input<int> nrbf4{"nrbf4", 1};
+  Input<int> nelements{"nelements", 1};
 
   Input<int> nd23{"nd23", 1};
   Input<int> nd33{"nd33", 1};
   Input<int> nd34{"nd34", 1};
+  Input<int> n32{"n32", 1};
+  Input<int> n23{"n23", 1};
+  Input<int> n33{"n33", 1};
+  Input<int> n43{"n43", 1};
+  Input<int> n34{"n34", 1};
+  Input<int> n44{"n44", 1};
   Input<int> nabf3{"nabf3", 1};
+  Input<int> nabf4{"nabf4", 1};
+  Input<int> nrbf23{"nrbf23", 1};
+  Input<int> nrbf33{"nrbf33", 1};
+  Input<int> nrbf34{"nrbf34", 1};
+  Input<int> nrbf44{"nrbf44", 1};
+  Input<int> nabf23{"nabf23", 1};
+  Input<int> nabf33{"nabf33", 1};
+  Input<int> nabf34{"nabf34", 1};
+  Input<int> nabf44{"nabf44", 1};
+
+  
   
   Input<Buffer<double>> coeff3{"coeff3", 3};
-  
-    Output<Buffer<double>> sumU_o{"sumU_o", 3};
-    Output<Buffer<double>> U_o{"U_o", 4};
+  Input<Buffer<double>> coeff23{"coeff23", 3};
+  Input<Buffer<double>> coeff33{"coeff33", 1};
+  Input<Buffer<double>> coeff4{"coeff4", 1};
+  Input<Buffer<double>> coeff34{"coeff34", 1};
+  Input<Buffer<double>> coeff44{"coeff44", 1};
 
-    Output<Buffer<double>> d2_o{"d2_o", 2};
-    Output<Buffer<double>> dd2_o{"dd2_o", 4};
+  
+  Output<Buffer<double>> sumU_o{"sumU_o", 3};
+  Output<Buffer<double>> U_o{"U_o", 4};
+
+  Output<Buffer<double>> d2_o{"d2_o", 2};
+  Output<Buffer<double>> dd2_o{"dd2_o", 4};
 
   Output<Buffer<double>> d3_o{"d3_o", 3};
   Output<Buffer<double>> dd3_o{"dd3_o", 5};
-    Output<Buffer<double>> cU_o{"cU_o", 3};
-    Output<double> e3_o{"e3_o"};
+  Output<Buffer<double>> cU_o{"cU_o", 3};
+  Output<double> e3_o{"e3_o"};
 
-    void generate() {
-        rijs.dim(0).set_bounds(0, 3).set_stride(1);
-        rijs.dim(1).set_bounds(0, npairs).set_stride(3);
+  void generate() {
 
-        besselparams.dim(0).set_bounds(0, nbesselparams);
-        Var bfi("basis function index");
-        Var bfp("basis function param");
-        Var np("pairindex");
-        Var numOuts("numOuts");
-        Var dim("dim");
+       Func ind23("ind23");
+       Func ind32("ind32");
+       indexMap3(ind23, Expr(1), nrbf23, nelements, Expr(1), nrbf2);
+       indexMap3(ind32, nabf23, nrbf23, nelements*(nelements+1)/2, nabf3, nrbf3);
 
-        Func rbft("rbft");
-        buildRBF(rbft, rijs, besselparams, rin, rcut-rin,
-		 bdegree, adegree, nbesselparams, npairs, ns,
-		 bfi, bfp, np, dim);
+    
+    rijs.dim(0).set_bounds(0, 3).set_stride(1);
+    rijs.dim(1).set_bounds(0, npairs).set_stride(3);
 
-        // MatMul
-        Phi.dim(0).set_bounds(0, ns).set_stride(1);
-        Phi.dim(1).set_bounds(0, ns).set_stride(ns);
+    besselparams.dim(0).set_bounds(0, nbesselparams);
+    Var bfi("basis function index");
+    Var bfp("basis function param");
+    Var np("pairindex");
+    Var numOuts("numOuts");
+    Var dim("dim");
 
-        //rbft.dim(2).set_bounds(0, 4).set_stride(npairs * ns);
-        //rbft.dim(1).set_bounds(0, ns).set_stride(npairs);
-        //rbft.dim(0).set_bounds(0, npairs).set_stride(1);
-        Var i("i");
-        Var j("j");
-        Var k("k");
-        Var c("c");
-        Func prod("prod");
-        prod(c, k, i, j) = Phi(k, i) * rbft(j, k, c);
-	/*
-        prod.bound(c, 0, 4);
-        prod.bound(k, 0, nrbfmax);
-        prod.bound(j, 0, npairs);
-        prod.bound(i, 0, npairs);
-	*/
-        Func rbf("rbf");
-        rbf(j, i, c) = Expr((double) 0.0);
-        RDom r(0, ns);
-        rbf(j, i, c) += prod(c, r, i, j);
+    Func rbft("rbft");
+    buildRBF(rbft, rijs, besselparams, rin, rcut-rin,
+	     bdegree, adegree, nbesselparams, npairs, ns,
+	     bfi, bfp, np, dim);
 
-	    // rbf.compute_root(); // 19410.314 ms -- .004 ms 2%
-	rbf.update(0).reorder(c, r, i, j);
-        rbf.store_root().compute_root(); // 19353.843750 ms -- .003 ms 1%
-        // Nothing? 36 seconds .004 ms 1%
+    // MatMul
+    Phi.dim(0).set_bounds(0, ns).set_stride(1);
+    Phi.dim(1).set_bounds(0, ns).set_stride(ns);
 
-        //rbf.dim(2).set_bounds(0, 4).set_stride(nrbfmax * npairs);
-        //rbf.dim(1).set_bounds(0, nrbfmax).set_stride(npairs);
-        //rbf.dim(0).set_bounds(0, npairs).set_stride(1);
-        // end MatMul
+    //rbft.dim(2).set_bounds(0, 4).set_stride(npairs * ns);
+    //rbft.dim(1).set_bounds(0, ns).set_stride(npairs);
+    //rbft.dim(0).set_bounds(0, npairs).set_stride(1);
+    Var i("i");
+    Var j("j");
+    Var k("k");
+    Var c("c");
+    Func prod("prod");
+    prod(c, k, i, j) = Phi(k, i) * rbft(j, k, c);
+    /*
+    prod.bound(c, 0, 4);
+    prod.bound(k, 0, nrbfmax);
+    prod.bound(j, 0, npairs);
+    prod.bound(i, 0, npairs);
+    */
+    Func rbf("rbf");
+    rbf(j, i, c) = Expr((double) 0.0);
+    RDom r(0, ns);
+    rbf(j, i, c) += prod(c, r, i, j);
 
-        coeff2.dim(0).set_bounds(0, npairs).set_stride(nrbf2);
-        coeff2.dim(1).set_bounds(0, nrbf2).set_stride(1);
+    //rbf.update(0).reorder(c, r, i, j); // TODO
+    rbf.store_root().compute_root();
 
-        Func fij("fij"), e("e");
-        tallyTwoBodyLocalForce(fij, e, coeff2, rbf, tj, nrbf2, npairs);
+    // end MatMul
 
-        Var n("n");
-        e_o() = e();
+    coeff2.dim(0).set_bounds(0, npairs).set_stride(nrbf2);
+    coeff2.dim(1).set_bounds(0, nrbf2).set_stride(1);
+    //coeff3
+    coeff23.dim(2).set_bounds(0, nelements).set_stride(n23 * n32);
+    coeff23.dim(1).set_bounds(0, n32).set_stride(n23);
+    coeff23.dim(0).set_bounds(0, n23).set_stride(1);
 
-	Func abf4("abf4");
-	Func tm("tm");
-	Var abfi("abfi");
-	Var abfip("abfip");
-	buildAngularBasis(k3, npairs, pq, rijs,
-			  abf4, tm,
-			  c, np,  abfi, abfip
-			  );
-	// abf4.compute_root();
+    Func fij("fij"), e("e");
+    tallyTwoBodyLocalForce(fij, e, coeff2, rbf, tj, nrbf2, npairs);
 
-	Func sumU("sumU"), U("U");
-	Var copy1, copy2, copy3, copy4;
-	radialAngularBasis(sumU, U, rbf, abf4,
-			   tj, npairs, k3, nrbf3, nelements);
-	sumU_o(copy1, copy2, copy3) = sumU(copy1, copy2, copy3);
-	U_o(copy1, copy2, copy3, copy4)= U(copy1, copy2, copy3, copy4);
-	sumU_o.dim(0).set_bounds(0, nelements).set_stride(1);
-	sumU_o.dim(1).set_bounds(0, k3).set_stride(nelements);
-	sumU_o.dim(2).set_bounds(0, nrbf3).set_stride(nelements * k3);
-	U_o.dim(0).set_bounds(0, npairs).set_stride(1);
-	U_o.dim(1).set_bounds(0, k3).set_stride(npairs);
-	U_o.dim(2).set_bounds(0, nrbf3).set_stride(npairs * k3);
-	U_o.dim(3).set_bounds(0, 4).set_stride(npairs * k3 * nrbf3);
+    Var n("n");
+    e_o() = e();
+
+    Func abf4("abf4");
+    Func tm("tm");
+    Var abfi("abfi");
+    Var abfip("abfip");
+    buildAngularBasis(k3, npairs, pq, rijs,
+		      abf4, tm,
+		      c, np,  abfi, abfip
+		      );
+    // abf4.compute_root();
+
+    Func sumU("sumU"), U("U");
+    Var copy1, copy2, copy3, copy4;
+    radialAngularBasis(sumU, U, rbf, abf4,
+		       tj, npairs, k3, nrbf3, nelements);
+    sumU_o(copy1, copy2, copy3) = sumU(copy1, copy2, copy3);
+    U_o(copy1, copy2, copy3, copy4)= U(copy1, copy2, copy3, copy4);
+    sumU_o.dim(0).set_bounds(0, nelements).set_stride(1);
+    sumU_o.dim(1).set_bounds(0, k3).set_stride(nelements);
+    sumU_o.dim(2).set_bounds(0, nrbf3).set_stride(nelements * k3);
+    U_o.dim(0).set_bounds(0, npairs).set_stride(1);
+    U_o.dim(1).set_bounds(0, k3).set_stride(npairs);
+    U_o.dim(2).set_bounds(0, nrbf3).set_stride(npairs * k3);
+    U_o.dim(3).set_bounds(0, 4).set_stride(npairs * k3 * nrbf3);
 
     //U_o.compute_root();
     sumU_o.compute_root();
@@ -994,8 +1094,8 @@ public:
     Var nj("nj");    
     RDom r3body(0, k3, 0, nabf3, 0, nelements, 0, npairs);
     threeBodyDescDeriv(dd3, sumU, U, tj, pn3, pc3,
-        elemindex, npairs, k3, nelements, dim, nj, abfThree, nabf3, 
-        rbfThree, nrbf3, kme, me, r3body);
+		       elemindex, npairs, k3, nelements, dim, nj, abfThree, nabf3, 
+		       rbfThree, nrbf3, kme, me, r3body);
     //dd3.update(0).reorder(rbfThree, r3body.y, r3body.x, r3body[3], dim);
     dd3.update(0).reorder(dim, r3body[3], r3body.x, r3body.y, rbfThree);
     dd3.compute_root();
@@ -1013,7 +1113,7 @@ public:
     Var ne("ne"), k3var("k3var");
    
     threeBodyCoeff(cU, e3, coeff3, sumU, pn3, pc3, nj, ne, k3var, rbfThree,
-		nelements, k3, nrbf3, nabf3, me);
+		   nelements, k3, nrbf3, nabf3, me);
     cU.compute_root();
     e3.compute_root();
     cU_o(copy1, copy2, copy3) = cU(copy1, copy2, copy3);
@@ -1023,12 +1123,19 @@ public:
     e3_o() = e3();
 
     tallyLocalForce(fij, tj, cU, U, nrbf3, k3, npairs, nelements, dim);
+    Func e23("e23");
+    fourbodystuff(fij, e23, ind23, ind32, coeff23, d2, d3, dd3, dd2, ti, npairs, n23, n32, nelements, nrbf2, nrbf3, nabf3,me, n);
+    e3_o() += e23();
     fij.store_root().compute_root();
     fij_o(n, dim) = fij(n, dim);
     fij_o.reorder(dim, n);
     fij_o.dim(0).set_bounds(0, npairs).set_stride(3);
     fij_o.dim(1).set_bounds(0, 3).set_stride(1);
-    }
+
+
+
+
+  }
 };
 
 HALIDE_REGISTER_GENERATOR(poddescTwoBody, poddescTwoBody);
