@@ -647,10 +647,10 @@ double FASTPOD::peratomenergyforce(double *fij, double *rij, double *temp,
     // tallylocalforce(fij, cU, Ux, Uy, Uz, tj, Nj, K3, nrbf3, nelements);
     
     if (nd23>0) {
-      double *d23 = &temp[0];
-      fourbodydesc23(d23, d2, d3);
-      e23 = dotproduct(&coeff23[nl23*t0], d23, nl23);
-      fourbodyfij23(fij, temp, &coeff23[nl23*t0], d2, d3, dd2, dd3, 3*Nj);
+      //      double *d23 = &temp[0];
+      //      fourbodydesc23(d23, d2, d3);
+      //      e23 = dotproduct(&coeff23[nl23*t0], d23, nl23);
+      //      fourbodyfij23(fij, temp, &coeff23[nl23*t0], d2, d3, dd2, dd3, 3*Nj);
     }
 
     if (nd33>0) {      

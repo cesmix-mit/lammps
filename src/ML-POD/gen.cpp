@@ -767,62 +767,69 @@ void threeBodyDesc(Func & d3,
 
 }
 
-// void indexMap3(Func & indexmap, Expr n1, Expr n2, Expr n3, Expr N1, Expr N2){
-//   Var v1("v1");
-//   Var v2("v2");
-//   Var v3("v3");
-//   Var k("k");
-//   Var c("c");
+void indexMap3(Func & indexmap, Expr n1, Expr n2, Expr n3, Expr N1, Expr N2){
+  Var v1("v1");
+  Var v2("v2");
+  Var v3("v3");
+  Var k("k");
+  Var c("c");
 
-//   Expr i3 =  k / (N1 * N2);
-//   Expr kp = (k - i3 * N1 * N2);
-//   Expr i2 = kp/ N1;
-//   Expr i3 = kp % N1;
+  Expr i3 =  k / (N1 * N2);
+  Expr kp = (k - i3 * N1 * N2);
+  Expr i2 = kp/ N1;
+  Expr i1 = kp % N1;
 
-//   indexmap(k, c) = mux(c, {i1, i2, i3});
-//   indexmap.bound(k, 0, n1 * n2 * n3);
-//   indexmap.bound(c, 0, 3);
-// }
-
-
-// void fourbodystuff(Func & fij, Func & e23,
-// 		   Func ind23, Func ind32, Func coeff23, Func d2, Func d3, Func dd3,
-// 		   Expr npairs, Expr n23, Expr n32,
-// 		   Var pairindex)
-// {
-//   Func d23("d23");
-//   Var d23i("d23i");
-//   Var d23j("d23j");
-//   //Use unsafe_promise_clamped
-//   // j is n32
-//   //i is n23
-//   d23(d23i, d23j) = d2(ind23(d23i, 1), ind23(d23i, 2)) * d3(ind32(d23j, 0), ind32(d23j, 1), ind32(d23j, 2));
-//   d23.bound(d23i, 0, n23);
-//   d32.bound(d23j, 0, n32);
+  indexmap(k, c) = mux(c, {i1, i2, i3});
+  indexmap.bound(k, 0, n1 * n2 * n3);
+  indexmap.bound(c, 0, 3);
+  indexmap.compute_root();
+}
 
 
-//   Rdom e23rdom(0, n23, 0, n32);
-//   e23() += d23(e23rdom.x, e23rdom.y) * coef23(e23rdom.x, e23rdom.y);
+void fourbodystuff(Func & fij, Func & e23,
+		   Func ind23, Func ind32, Func coeff23, Func d2, Func d3, Func dd3, Func dd2, Func ti,
+		   Expr npairs, Expr n23, Expr n32, Expr nelements, Expr nrbf2, Expr nrbf3, Expr nabf3, Expr me,
+		   Var pairindex)
+{
+  Func d23("d23");
+  Var d23i("d23i");
+  Var d23j("d23j");
+  e23() = Expr((double) 0.0);
+  Expr acc = unsafe_promise_clamped(ti(0) - 1, 0, nelements - 1);
+  //Use unsafe_promise_clamped
+  // j is n32
+  //i is n23
+  d23(d23i, d23j) = d2(unsafe_promise_clamped(ind23(d23i, 1), 0, nelements -1), unsafe_promise_clamped(ind23(d23i, 2), 0, nrbf2 -1)) * d3(unsafe_promise_clamped(ind32(d23j, 0), 0, nabf3- 1), unsafe_promise_clamped(ind32(d23j, 1),0, nrbf3 - 1), unsafe_promise_clamped(ind32(d23j, 2), 0, me -1));
+  d23.bound(d23i, 0, n23);
+  d23.bound(d23j, 0, n32);
 
-//   Expr zero = Expr((double) 0.0);
-//   Func cf1("cf1");
-//   Var j("j");
-//   Var dim("dim");
-//   Rdom r1(0, n23);
-//   cf1(j) = zero;
-//   cf1(j) += d2(ind23(r1.x,1), ind23(r1.x,2)) * coeff23(r.x, j);
+  d23.compute_root();
 
-//   Rdom r2(0, n32);
-//   fij(pairindex, dim) += cf1(r2.x) * dd3(dim, ind32(r2.x,0), ind32(r2.x,1), ind32(r2.x,2));
 
-//   Func cf2("c2");
-//   Var i("i");
-//   cf2(i) = zero;
-//   cf2(i) += d3(dim, ind32(r2.x,0), ind32(r2.x,1), ind32(r2.x,2)) * coeff23(i, r2.x);
+  RDom e23rdom(0, n23, 0, n32);
+  e23() += d23(e23rdom.x, e23rdom.y) * coeff23(e23rdom.x, e23rdom.y, acc);
 
-//   fij(pairindex, dim) += cf2(r1.x) * dd2(dim, ind23(r1.x, 1), ind23(r1.x, 2));
+  Expr zero = Expr((double) 0.0);
+  Func cf1("cf1");
+  Var j("j");
+  Var dim("dim");
+  RDom r1(0, n23);
+  cf1(j) = zero;
+  cf1(j) += d2(unsafe_promise_clamped(ind23(r1.x, 1), 0, nelements -1), unsafe_promise_clamped(ind23(r1.x, 2), 0, nrbf2 -1)) * coeff23(r1.x, j, acc);
+
+  // RDom r2(0, n32);
+  // fij(pairindex, dim) += cf1(r2.x) * dd3(dim, pairindex, ind32(r2.x,0), ind32(r2.x,1), ind32(r2.x,2));
+    RDom r2(0, n32);
+    fij(pairindex, dim) += cf1(r2.x) * dd3(dim, pairindex,   unsafe_promise_clamped(ind32(r2.x, 0), 0, nabf3- 1), unsafe_promise_clamped(ind32(r2.x, 1),0, nrbf3 - 1), unsafe_promise_clamped(ind32(r2.x, 2), 0, me -1));
+
+  Func cf2("cf2");
+  Var i("i");
+  cf2(i) = zero;
+  cf2(i) += d3( unsafe_promise_clamped(ind32(r2.x, 0), 0, nabf3- 1), unsafe_promise_clamped(ind32(r2.x, 1),0, nrbf3 - 1), unsafe_promise_clamped(ind32(r2.x, 2), 0, me -1)) * coeff23(i, r2.x, acc);
+
+  fij(pairindex, dim) += cf2(r1.x) * dd2(unsafe_promise_clamped(ind23(r1.x, 1), 0, nelements -1), unsafe_promise_clamped(ind23(r1.x, 2), 0, nrbf2 -1), pairindex, dim);
   
-// }
+}
 
 class poddescTwoBody : public Halide::Generator<poddescTwoBody> {
 public:
@@ -903,10 +910,10 @@ public:
 
   void generate() {
 
-    //    Func ind23("ind23");
-    //    Func ind32("ind32");
-    //    indexmap3(ind23, 1, nrbf23, Ne, 1, nrbf2);
-    //    indexmap3(ind32, nabf23, nrbf23, Ne*(Ne+1)/2, nabf3, nrbf3);
+       Func ind23("ind23");
+       Func ind32("ind32");
+       indexMap3(ind23, Expr(1), nrbf23, nelements, Expr(1), nrbf2);
+       indexMap3(ind32, nabf23, nrbf23, nelements*(nelements+1)/2, nabf3, nrbf3);
 
     
     rijs.dim(0).set_bounds(0, 3).set_stride(1);
@@ -1075,10 +1082,17 @@ public:
     e3_o() = e3();
 
     tallyLocalForce(fij, tj, cU, U, nrbf3, k3, npairs, nelements, dim);
+    Func e23("e23");
+    fourbodystuff(fij, e23, ind23, ind32, coeff23, d2, d3, dd3, dd2, ti, npairs, n23, n32, nelements, nrbf2, nrbf3, nabf3,me, n);
+    e3_o() += e23();
     fij.compute_root();
     fij_o(n, dim) = fij(n, dim);
     fij_o.dim(0).set_bounds(0, npairs).set_stride(3);
     fij_o.dim(1).set_bounds(0, 3).set_stride(1);
+
+
+
+
   }
 };
 
