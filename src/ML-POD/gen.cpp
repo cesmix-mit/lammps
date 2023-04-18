@@ -102,8 +102,8 @@ void buildRBF( Func & rbfall,
   // output.size() = nbparams * bdgree * npairs + adegree * npairs
   Var rbf_abf_info("rbf_abf_info"), drbf_dabf_info("drbf_dabf_info");
   Var rbfty("rbfty");
-  RDom r1(0, nbparams, 0, bdegree, 0, npairs);
-  RDom r2(0, npairs, 0, adegree);
+  RDom r1(0, nbparams, 0, bdegree, 0, npairs, 0, 3);
+  RDom r2(0, npairs, 0, adegree, 0, 3);
   Var abf_index("abf_index");
   Expr rbf_info_length = nbparams * bdegree;
   Expr nsp = rbf_info_length + adegree;
@@ -115,15 +115,26 @@ void buildRBF( Func & rbfall,
 
   rbfall(r1.z, r1.y + r1.x * bdegree, 0) = rbf(r1.x, r1.y, r1.z);
   rbfall(r2.x, get_abf_index(r2.y, rbf_info_length), 0) = abf(r2.y, r2.x);
+
+  rbfall(r1.z, r1.y + r1.x * bdegree, r1[3] + 1) = drbf(r1.x, r1.y, r1.z, r1[3]);
+  rbfall(r2.x, get_abf_index(r2.y, rbf_info_length), r2.z + 1) = dabf(r2.y, r2.x, r2.z);
+
+  /*
   rbfall(r1.z, r1.y + r1.x * bdegree, 1) = drbf(r1.x, r1.y, r1.z, 0);
   rbfall(r2.x, get_abf_index(r2.y, rbf_info_length), 1) = dabf(r2.y, r2.x, 0);
   rbfall(r1.z, r1.y + r1.x * bdegree, 2) = drbf(r1.x, r1.y, r1.z, 1);
   rbfall(r2.x, get_abf_index(r2.y, rbf_info_length), 2) = dabf(r2.y, r2.x, 1);
   rbfall(r1.z, r1.y + r1.x * bdegree, 3) = drbf(r1.x, r1.y, r1.z, 2);
   rbfall(r2.x, get_abf_index(r2.y, rbf_info_length), 3) = dabf(r2.y, r2.x, 2);
+  */
 
 // This seems like it was the most important thing that needed to be changed 
   // rbfall.compute_root();  // 19353.844 ms .001 ms 0%
+  rbfall.reorder(rbfty, rbf_abf_info, np);
+  rbfall.update(0).reorder(r1.w, r1.z);
+  rbfall.update(1).reorder(r2.z, r2.y, r2.x);
+  rbfall.update(2).reorder(r1.x, r1.y, r1.z);
+  rbfall.update(3).reorder(r2.z, r2.y, r2.x);
   rbfall.store_root().compute_root();  // 19247.139 ms .001 ms 0%
   // nothing? TERRIBLE TERRIBLE TERRIBLE, possibly bottleneck from earlier? 295 seconds total! with rbft taking 2.378 ms (77%)
 }
@@ -141,25 +152,34 @@ void radialAngularBasis(Func & sumU, Func & U,
 
   //Expr c1 = rbf(m, n);
   //Expr c2 = abf(k, n);
-  Expr c1 = rbf(n, m, 0);
-  Expr c2 = abf(n, k, 0);
     
   // U(m, k, n) = c1 * c2;
   // Ux(m, k, n) = abfx(k, n) * c1 + c2 * rbfx(m, n);
   // Uy(m, k, n) = abfy(k, n) * c1 + c2 * rbfy(m, n);
   // Uz(m, k, n) = abfz(k, n) * c1 + c2 * rbfz(m, n);
+  /*
+  Expr c1 = rbf(n, m, 0);
+  Expr c2 = abf(n, k, 0);
   U(n, k, m, c) = select(c == 0, c1 * c2,
 			 select(c == 1, abf(n, k, 1) * c1 + c2 * rbf(n, m, 1),
 				select(c== 2, abf(n, k, 2) * c1 + c2 * rbf(n, m, 2) ,
 				       select(c==3, abf(n, k, 3) * c1+ c2 * rbf(n, m, 3), Expr((double) 0.0)))));
+				       */
+  U(n, k, m, c) = zero;
   // Ux(m, k, n) = abfx(n, k) * c1 + c2 * rbfx(n, m);
     
   // Uy(m, k, n) = abfy(n, k) * c1 + c2 * rbfy(n, m);
   // Uz(m, k, n) = abfz(n, k) * c1 + c2 * rbfz(n, m);
 
   RDom r(0, M, 0, K, 0, N);
+  Expr c1 = rbf(r.z, r.x, 0);
+  Expr c2 = abf(r.z, r.y, 0);
   Expr in = atomtype(r.z) - 1;
 
+  U(r.z, r.y, r.x, c) = select(c == 0, c1 * c2,
+			 select(c == 1, abf(r.z, r.y, 1) * c1 + c2 * rbf(r.z, r.x, 1),
+				select(c== 2, abf(r.z, r.y, 2) * c1 + c2 * rbf(r.z, r.x, 2) ,
+				       select(c==3, abf(r.z, r.y, 3) * c1+ c2 * rbf(r.z, r.x, 3), Expr((double) 0.0)))));
   // sumU(r.x, r.y, clamp(in, 0, Ne - 1)) += rbf(r.x, r.z) * abf(r.y, r.z);
   sumU(clamp(in, 0, Ne - 1), r.y, r.x) += rbf(r.z, r.x, 0) * abf(r.z, r.y, 0);
 
@@ -174,11 +194,25 @@ void radialAngularBasis(Func & sumU, Func & U,
 
   U.bound(c, 0, 4);
 
-  U.compute_root();
-  //nothing?  18736.008 ms -- .011 ms 5%
-  // U.compute_at(U, n);
-  sumU.compute_root();
+  /*
+  U.reorder(c, m, k, n);
+  U.store_root().compute_root();
+  sumU.reorder(m, k, ne);
+  sumU.update(0).reorder(r.x, r.y, r.z);
+  sumU.store_root().compute_root();
+  //sumU.compute_with(U, m);
+  //sumU.update(0).compute_with();
+  */
 
+  U.reorder(c, n, k, m);
+  U.store_root().compute_root();
+  sumU.reorder(ne, k, m);
+  sumU.store_root().compute_root();
+  //sumU.compute_with(U, k);
+
+  U.update(0).reorder(c, r.z, r.y, r.x).unroll(c);
+  sumU.update(0).reorder(r.z, r.y, r.x);
+  //sumU.update(0).compute_with(U.update(0), r.y);
 }
 
 void twoBodyDescDeriv(Func & d2, Func & dd2, Func rbf,  Func tj, Expr N, Expr Ne, Expr nrbf2)
@@ -226,6 +260,8 @@ void tallyTwoBodyLocalForce(Func & fij, Func & e, Func coeff2, Func rbf, Func tj
   fij.bound(n, 0, N);
   fij.bound(dim, 0, 3);
 
+  fij.reorder(dim, n);
+  fij.update(0).reorder(dim, r.x);
   // fij.compute_root();
   e.compute_root();
 }
@@ -459,6 +495,7 @@ void buildAngularBasis(Expr k3, Expr npairs, Func pq, Func rij,
   Func uvw("uvw");
   uvw(pair, selected) = select(selected == 1, u, select(selected==2, v, select(selected==3, w, Expr((double) 0.0))));
   tm(pair, rn.x, rn.y) = tm(pair, m, rn.y) * uvw(pair, d) + select(d == rn.y, tm(pair, m, 0), zero);
+  // TODO: maybe something we can do with select statement -- ordering seems to be correct
   //abf4(pair, abfi, c) = zero;
 
   /*
@@ -542,6 +579,7 @@ void buildAngularBasis(Expr k3, Expr npairs, Func pq, Func rij,
   //tm.update(0).reorder(abfip, pair);
   tm.compute_at(abf4, pair);
   */
+  tm.reorder(c, abfip, pair);
   tm.store_root().compute_root();
   abf4.reorder(c, abfi, pair).unroll(c, 4);
   abf4.store_root().compute_root();
@@ -569,10 +607,12 @@ public:
       Var c("c");
       Func prod("prod");
       prod(c, k, i, j) = Phi(k, i) * rbf4_in(j, k, c);
+      /*
       prod.bound(c, 0, 4);
       prod.bound(k, 0, nrbfmax);
       prod.bound(j, 0, npairs);
       prod.bound(i, 0, npairs);
+      */
       rbf4_o(j, i, c) = Expr((double) 0.0);
       RDom r(0, ns);
       rbf4_o(j, i, c) += prod(c, r, i, j);
@@ -654,6 +694,7 @@ void tallyLocalForce(Func & fij, Func atomtype, Func cU, Func U, Expr nrbf3, Exp
     Expr i2 = atomtype(r.z) - 1;
     Expr c = cU(clamp(i2, 0, nelements - 1), r.y, r.x);
     fij(r.z, dim) += c * U(r.z, r.y, r.x, dim + 1);
+    fij.update(1).reorder(dim, r.z);
 }
 
 void threeBodyCoeff(Func & cU, Func & e, Func coeff3, Func sumU, Func pn3, Func pc3, Expr npairs, Var ne, Var k3, Var rbf3,
@@ -845,16 +886,19 @@ public:
         Var c("c");
         Func prod("prod");
         prod(c, k, i, j) = Phi(k, i) * rbft(j, k, c);
+	/*
         prod.bound(c, 0, 4);
         prod.bound(k, 0, nrbfmax);
         prod.bound(j, 0, npairs);
         prod.bound(i, 0, npairs);
+	*/
         Func rbf("rbf");
         rbf(j, i, c) = Expr((double) 0.0);
         RDom r(0, ns);
         rbf(j, i, c) += prod(c, r, i, j);
 
 	    // rbf.compute_root(); // 19410.314 ms -- .004 ms 2%
+	rbf.update(0).reorder(c, r, i, j);
         rbf.store_root().compute_root(); // 19353.843750 ms -- .003 ms 1%
         // Nothing? 36 seconds .004 ms 1%
 
@@ -979,8 +1023,9 @@ public:
     e3_o() = e3();
 
     tallyLocalForce(fij, tj, cU, U, nrbf3, k3, npairs, nelements, dim);
-    fij.compute_root();
+    fij.store_root().compute_root();
     fij_o(n, dim) = fij(n, dim);
+    fij_o.reorder(dim, n);
     fij_o.dim(0).set_bounds(0, npairs).set_stride(3);
     fij_o.dim(1).set_bounds(0, 3).set_stride(1);
     }
