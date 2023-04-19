@@ -510,70 +510,69 @@ void buildTwoBody(double *rijs, double *besselparams, int nbesselpars, int bdegr
   Halide::Runtime::Buffer<int> pb4_buffer(pb4, {{0, q4, 1}, {0, 3, q4}});
   Halide::Runtime::Buffer<int> pc4_buffer(pc4, q4);
   poddescTwoBody(rijs_buffer, besselparams_buffer, nbesselpars, bdegree, adegree, npairs, nrbfmax, rin, rcut, phi_buffer, ns, coeff2_buffer, ti_buffer, tj_buffer, nrbf2, k3, k4, q4, pq_buffer, pn3_buffer, pc3_buffer, pa4_buffer, pb4_buffer, pc4_buffer, elemindex_buffer, nrbf3, nrbf4, nelements, nd23, nd33, nd34, n32, n23, n33, n43, n34, n44, nabf3, nabf4, nrbf23, nrbf33, nrbf34, nrbf44, nabf23, nabf33, nabf34, nabf44, coeff3_buffer, coeff23_buffer, coeff33_buffer, coeff4_buffer, coeff34_buffer, coeff44_buffer, fij_buffer, e2_buffer, sumU_buffer, U_buffer, d2_buffer, dd2_buffer, d3_buffer, dd3_buffer, cU_buffer, e3_buffer);
-// }
+}
 
-// double FASTPOD::peratomenergyforce(double *fij, double *rij, double *temp,
-//         int *ti, int *tj, int Nj)
-// {
-//   double *coeff1 = &newcoeff[0];
-//   double *coeff2 = &newcoeff[nl1*nelements];
-//   double *coeff3 = &newcoeff[(nl1 + nl2)*nelements];
-//   double *coeff4 = &newcoeff[(nl1 + nl2 + nl3)*nelements];
-//   double *coeff23 = &newcoeff[(nl1 + nl2 + nl3 + nl4)*nelements];
-//   double *coeff33 = &newcoeff[(nl1 + nl2 + nl3 + nl4 + nl23)*nelements];
-//   double *coeff34 = &newcoeff[(nl1 + nl2 + nl3 + nl4 + nl23 + nl33)*nelements];
-//   double *coeff44 = &newcoeff[(nl1 + nl2 + nl3 + nl4 + nl23 + nl33 + nl34)*nelements];
+double FASTPOD::peratomenergyforce(double *fij, double *rij, double *temp,
+        int *ti, int *tj, int Nj)
+{
+  double *coeff1 = &newcoeff[0];
+  double *coeff2 = &newcoeff[nl1*nelements];
+  double *coeff3 = &newcoeff[(nl1 + nl2)*nelements];
+  double *coeff4 = &newcoeff[(nl1 + nl2 + nl3)*nelements];
+  double *coeff23 = &newcoeff[(nl1 + nl2 + nl3 + nl4)*nelements];
+  double *coeff33 = &newcoeff[(nl1 + nl2 + nl3 + nl4 + nl23)*nelements];
+  double *coeff34 = &newcoeff[(nl1 + nl2 + nl3 + nl4 + nl23 + nl33)*nelements];
+  double *coeff44 = &newcoeff[(nl1 + nl2 + nl3 + nl4 + nl23 + nl33 + nl34)*nelements];
 
-//   int t0 = ti[0]-1;
-//   int n1 = Nj*K3*nrbf3;
-//   int n2 = Nj*nrbfmax;
-//   int n3 = Nj*ns;
-//   int n4 = Nj*K3;
-//   int n5 = K3*nrbf3*nelements;
+  int t0 = ti[0]-1;
+  int n1 = Nj*K3*nrbf3;
+  int n2 = Nj*nrbfmax;
+  int n3 = Nj*ns;
+  int n4 = Nj*K3;
+  int n5 = K3*nrbf3*nelements;
 
-//   double *U = &temp[0]; // Nj*K3*nrbf3
-//   double *Ux = &temp[n1]; // Nj*K3*nrbf3
-//   double *Uy = &temp[2*n1]; // Nj*K3*nrbf3
-//   double *Uz = &temp[3*n1]; // Nj*K3*nrbf3
-//   double *sumU = &temp[4*n1]; // K3*nrbf3*nelements
+  double *U = &temp[0]; // Nj*K3*nrbf3
+  double *Ux = &temp[n1]; // Nj*K3*nrbf3
+  double *Uy = &temp[2*n1]; // Nj*K3*nrbf3
+  double *Uz = &temp[3*n1]; // Nj*K3*nrbf3
+  double *sumU = &temp[4*n1]; // K3*nrbf3*nelements
 
-//   double *rbf = &temp[4*n1 + n5]; // Nj*nrbf2
-//   double *rbfx = &temp[4*n1 + n5 + n2]; // Nj*nrbf2
-//   double *rbfy = &temp[4*n1 + n5 + 2*n2]; // Nj*nrbf2
-//   double *rbfz = &temp[4*n1 + n5 + 3*n2]; // Nj*nrbf2
+  double *rbf = &temp[4*n1 + n5]; // Nj*nrbf2
+  double *rbfx = &temp[4*n1 + n5 + n2]; // Nj*nrbf2
+  double *rbfy = &temp[4*n1 + n5 + 2*n2]; // Nj*nrbf2
+  double *rbfz = &temp[4*n1 + n5 + 3*n2]; // Nj*nrbf2
 
-//   double *rbft = &temp[4*n1 + n5 + 4*n2]; // Nj*ns
-//   double *rbfxt = &temp[4*n1 + n5 + 4*n2 + n3]; // Nj*ns
-//   double *rbfyt = &temp[4*n1 + n5 + 4*n2 + 2*n3]; // Nj*ns
-//   double *rbfzt = &temp[4*n1 + n5 + 4*n2 + 3*n3]; // Nj*ns
+  double *rbft = &temp[4*n1 + n5 + 4*n2]; // Nj*ns
+  double *rbfxt = &temp[4*n1 + n5 + 4*n2 + n3]; // Nj*ns
+  double *rbfyt = &temp[4*n1 + n5 + 4*n2 + 2*n3]; // Nj*ns
+  double *rbfzt = &temp[4*n1 + n5 + 4*n2 + 3*n3]; // Nj*ns
 
-//   // ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-//   // ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-//   bool useHalide;
-//   #ifdef HALIDEPOD
-//   useHalide = true;
-//   #else
-//   useHalide = false;
-//   #endif
-//   if (nd3 > 0 && nd23 > 0 && useHalide) {
-//     for (int j=0; j<3*Nj; j++) fij[j] = 0.0;
-//     double e1=0, e2=0, e3=0, e4=0, e23=0, e33=0, e34=0, e44=0;
-//     e1 = coeff1[t0];
-//     double *abf = &temp[4*n1 + n5 + 4*n2]; // Nj*K3
-//     double *abfx = &temp[4*n1 + n5 + 4*n2 + n4]; // Nj*K3
-//     double *abfy = &temp[4*n1 + n5 + 4*n2 + 2*n4]; // Nj*K3
-//     double *abfz = &temp[4*n1 + n5 + 4*n2 + 3*n4]; // Nj*K3
-//     double *tm = &temp[4*n1 + n5 + 4*n2 + 4*n4]; // 4*K3
-//     double *d2 =  &temp[4*n1 + n5 + 4*n2]; // nl2
-//     double *dd2 = &temp[4*n1 + n5 + 4*n2 + nl2]; // 3*Nj*nl2
-//     double *d3 =  &temp[4*n1 + n5 + 4*n2 + nl2 + 3*Nj*nl2]; // nl3
-//     double *dd3 = &temp[4*n1 + n5 + 4*n2 + nl2 + 3*Nj*nl2 + nl3]; // 3*Nj*nl3
-//     double *d4 =  &temp[4*n1 + n5 + 4*n2 + nl2 + 3*Nj*nl2 + nl3 + 3*Nj*nl3]; // nl4
-//     double *dd4 = &temp[4*n1 + n5 + 4*n2 + nl2 + 3*Nj*nl2 + nl3 + 3*Nj*nl3 + nl4]; // 3*Nj*nl4
-//     double *cU = &temp[4*n1 + n5 + 4*n2 + nl2 + 3*Nj*nl2 + nl3 + 3*Nj*nl3 + nl4 + 3*Nj*nl4];
+  // ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  // ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  bool useHalide;
+  #ifdef HALIDEPOD
+  useHalide = true;
+  #else
+  useHalide = false;
+  #endif
+  if (nd3 > 0 && nd23 > 0 && useHalide) {
+    for (int j=0; j<3*Nj; j++) fij[j] = 0.0;
+    double e1=0, e2=0, e3=0, e4=0, e23=0, e33=0, e34=0, e44=0;
+    e1 = coeff1[t0];
+    double *abf = &temp[4*n1 + n5 + 4*n2]; // Nj*K3
+    double *abfx = &temp[4*n1 + n5 + 4*n2 + n4]; // Nj*K3
+    double *abfy = &temp[4*n1 + n5 + 4*n2 + 2*n4]; // Nj*K3
+    double *abfz = &temp[4*n1 + n5 + 4*n2 + 3*n4]; // Nj*K3
+    double *tm = &temp[4*n1 + n5 + 4*n2 + 4*n4]; // 4*K3
+    double *d2 =  &temp[4*n1 + n5 + 4*n2]; // nl2
+    double *dd2 = &temp[4*n1 + n5 + 4*n2 + nl2]; // 3*Nj*nl2
+    double *d3 =  &temp[4*n1 + n5 + 4*n2 + nl2 + 3*Nj*nl2]; // nl3
+    double *dd3 = &temp[4*n1 + n5 + 4*n2 + nl2 + 3*Nj*nl2 + nl3]; // 3*Nj*nl3
+    double *d4 =  &temp[4*n1 + n5 + 4*n2 + nl2 + 3*Nj*nl2 + nl3 + 3*Nj*nl3]; // nl4
+    double *dd4 = &temp[4*n1 + n5 + 4*n2 + nl2 + 3*Nj*nl2 + nl3 + 3*Nj*nl3 + nl4]; // 3*Nj*nl4
+    double *cU = &temp[4*n1 + n5 + 4*n2 + nl2 + 3*Nj*nl2 + nl3 + 3*Nj*nl3 + nl4 + 3*Nj*nl4];
 
-//     buildTwoBody(rij, besselparams, nbesselpars, pdegree[0], pdegree[1], Nj, nrbfmax, rin, rcut, Phi, ns, &coeff2[nl2*t0], &coeff3[nl3*t0], coeff23, coeff33, coeff4, coeff34, coeff44, ti, tj, pq3, pn3, pc3, pa4, pb4, pc4, elemindex, nrbf2, K3, K4, Q4,
-		 nrbf3, nrbf4, nelements, nd23, nd33, nd34,n32, n23, n33, n43, n34, n44, nabf3, nabf4, nrbf23, nrbf33, nrbf34, nrbf44, nabf23, nabf33, nabf34, nabf44, fij, &e2, &e3, sumU, U, d2, dd2, d3, dd3, cU);
+    buildTwoBody(rij, besselparams, nbesselpars, pdegree[0], pdegree[1], Nj, nrbfmax, rin, rcut, Phi, ns, &coeff2[nl2*t0], &coeff3[nl3*t0], coeff23, coeff33, coeff4, coeff34, coeff44, ti, tj, pq3, pn3, pc3, pa4, pb4, pc4, elemindex, nrbf2, K3, K4, Q4, nrbf3, nrbf4, nelements, nd23, nd33, nd34,n32, n23, n33, n43, n34, n44, nabf3, nabf4, nrbf23, nrbf33, nrbf34, nrbf44, nabf23, nabf33, nabf34, nabf44, fij, &e2, &e3, sumU, U, d2, dd2, d3, dd3, cU);
 
     if ((nd23>0) || (nd33>0) || (nd34>0)) {
       
