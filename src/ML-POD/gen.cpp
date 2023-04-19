@@ -458,6 +458,59 @@ void threeBodyCoeff(Func & cU, Func & e, Func coeff3, Func sumU, Func pn3, Func 
     cU(r.z, r.x, r[4]) += pc3(r.x) * c2 * c3;
 }
 
+void fourbodycoeff(Func & e4, Func  & cU4,
+		   Func coeff4, Func  sumU4, Func ti, Func pa4, Func pb4, Func pc4,
+		   Expr nrbf4, Expr nabf4, Expr nelements, Expr k4, Expr Q4){
+
+  Var ne("ne");
+  Var kv("kv");
+  Var rbf("rbf");
+  Expr acc = clamp(ti(0) - 1, 0, nelements - 1);
+  Expr zero = Expr((double) 0.0);
+  cU4(ne, kv, rbf) = zero;
+  cU4.bound(ne,0, nelements).bound(kv, 0, k4).bound(rbf, 0, nrbf4);
+  e4() = zero;
+  Expr q = pa4(nabf4);
+  RDom r(0, nelements, 0, nelements, 0, nelements, 0, Q4, 0, nabf4, 0, nrbf4);
+  Expr rbfr = r[5];
+  Expr p = r[4];
+  Expr n1 = pa4(p);
+  Expr n2 = pa4(p+1);
+  Expr nn = n2 - n1;
+  Expr n1pq = r[3];
+  r.where(n1 <= n1pq);
+  r.where(n1pq < n2);
+  Expr c = pc4(n1pq);
+  Expr j1 = unsafe_promise_clamped(pb4(n1pq, 0), 0, k4);
+  Expr j2 = unsafe_promise_clamped(pb4(n1pq, 1), 0, k4);
+  Expr j3 = unsafe_promise_clamped(pb4(n1pq, 2), 0, k4);
+  Expr i1 = r[0];
+  Expr i2 = r[1];
+  Expr i3 = r[2];
+  r.where(i1 >= i2 && i2 >= i3);
+  Expr sym3NE = (nelements) * (nelements+1) * (nelements+2)/6;
+  Expr k = unsafe_promise_clamped((i1*(i1+1)*(i1+2)/6) + (i2*(i2+1)/2) + i3, 0, sym3NE);
+
+  Expr c1 = c * sumU4(i1, j1, rbfr);
+  Expr c0 = sumU4(i2, j2, rbfr);
+  Expr c2 = c * c0;
+  Expr c4 = c1 * c0;
+  Expr c5 = coeff4(p, rbfr, k, acc);
+  Expr c6 = c5 * sumU4(i3, j3, rbfr);
+
+  e4() += c4 * c6;
+  Expr scat = scatter(0, 1, 2);
+  cU4(mux(scat, {i3, i2, i1}), mux(scat, {j3, j2, j1}), rbf) = gather(c5*c4, c6*c1, c6*c2);
+  
+
+  //Get (i1, i2, i3)
+  //Scatter
+  //gather products
+  //reduce to energy 
+    
+  
+}
+
 void threeBodyDescDeriv(Func & dd3, Func sumU, Func U, Func atomtype, Func pn3, Func pc3,
         Func elemindex, Expr npairs, Expr q, Expr nelements, Var dim, Var nj, Var abf3, Expr nabf3, 
         Var rbf3, Expr nrbf3, Var kme, Expr me, RDom r)
@@ -622,6 +675,7 @@ void fivebodystuff(Func & fij, Func & e33,
   RDom r(0, n33, 0, n33);
   r.where(r.x >= r.y);
   //col + row*(M-1)-row*(row-1)/2
+  //https://stackoverflow.com/questions/242711/algorithm-for-index-numbers-of-triangular-matrix-coefficients
   Expr temp = clamp(r.x + r.y * (n33 - 1) - r.y * (r.y-1)/2, 0, symN33 - 1);
   Expr k =  print_when(temp < 0 || temp > symN33- 1, temp, "error!"); //(print(temp, symN33, r.x, r.y));
   
@@ -732,7 +786,7 @@ public:
   Input<Buffer<double>> coeff3{"coeff3", 3};
   Input<Buffer<double>> coeff23{"coeff23", 3};
   Input<Buffer<double>> coeff33{"coeff33", 2};
-  Input<Buffer<double>> coeff4{"coeff4", 1};
+  Input<Buffer<double>> coeff4{"coeff4", 4};
   Input<Buffer<double>> coeff34{"coeff34", 1};
   Input<Buffer<double>> coeff44{"coeff44", 1};
 
@@ -936,6 +990,32 @@ public:
 		  npairs, n33, nelements, nabf3, nrbf3, me,
 		  n);
     e3_o() += e33();
+
+    //fourbodyenergy
+    //tally locally fource
+    //specialize nelements/some force scheduling...
+    //per pair or per atom output
+    //
+
+    Func sumU4("sumU4");
+    Func U4("u4");
+    Var m4v("m4");
+    Var k4v("k4");
+    Var e4v("e4");
+    Var dim4v("dim4");
+
+
+    sumU4(m4v, k4v, e4v) = sumU(m4v, k4v, e4v);
+    sumU4.bound(m4v, 0, nelements).bound(k4v, 0, min(k3, k4)).bound(e4v, 0, min(nrbf4, nrbf3));
+    U4(m4v, k4v, e4v, dim4v) = U(m4v, k4v, e4v, dim4v);
+    U4.bound(m4v, 0, npairs).bound(k4v, 0, min(k3, k4)).bound(e4v, 0, min(nrbf4, nrbf3)).bound(dim4v, 0, 4);
+
+    Func cu4("cu4");
+    Func e4("e4");
+    fourbodycoeff(e4, cu4,
+		  coeff4, sumU4, ti, pa4, pb4, pc4,
+		  nrbf4, nabf4, nelements, k4, q4);
+    e3_o()+= e4();
 
 
     fij.store_root().compute_root();

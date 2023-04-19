@@ -32,6 +32,7 @@
 #include <cmath>
 #include <chrono>
 #include <iostream>
+#include <assert.h>     /* assert */
 #include <stdlib.h>     /* exit, EXIT_FAILURE */
 
 using namespace LAMMPS_NS;
@@ -496,7 +497,8 @@ void buildTwoBody(double *rijs, double *besselparams, int nbesselpars, int bdegr
   Halide::Runtime::Buffer<double> coeff23_buffer(coeff23, {{0, n23, 1}, {0, n32, n23}, {0, nelements, n23 * n32}});
   int s33 = n33 * (n33+1)/2;
   Halide::Runtime::Buffer<double> coeff33_buffer(coeff33, {{0, s33, 1}, {0, nelements, s33}});
-  Halide::Runtime::Buffer<double> coeff4_buffer(coeff4, {1});
+  int sym3Ne = nelements*(nelements+1)*(nelements+2)/6;
+  Halide::Runtime::Buffer<double> coeff4_buffer(coeff4, {{0, nabf4, 1}, {0, nrbf4, nabf4}, {0, sym3Ne, nabf4 * nrbf4}, {0, nelements, sym3Ne * nrbf4 * nabf4}});
   Halide::Runtime::Buffer<double> coeff34_buffer(coeff34, {1});
   Halide::Runtime::Buffer<double> coeff44_buffer(coeff44, {1});
   auto e3_buffer = Halide::Runtime::Buffer<double, 0>::make_scalar(e3);
@@ -511,6 +513,7 @@ void buildTwoBody(double *rijs, double *besselparams, int nbesselpars, int bdegr
   Halide::Runtime::Buffer<int> pc4_buffer(pc4, q4);
   poddescTwoBody(rijs_buffer, besselparams_buffer, nbesselpars, bdegree, adegree, npairs, nrbfmax, rin, rcut, phi_buffer, ns, coeff2_buffer, ti_buffer, tj_buffer, nrbf2, k3, k4, q4, pq_buffer, pn3_buffer, pc3_buffer, pa4_buffer, pb4_buffer, pc4_buffer, elemindex_buffer, nrbf3, nrbf4, nelements, nd23, nd33, nd34, n32, n23, n33, n43, n34, n44, nabf3, nabf4, nrbf23, nrbf33, nrbf34, nrbf44, nabf23, nabf33, nabf34, nabf44, coeff3_buffer, coeff23_buffer, coeff33_buffer, coeff4_buffer, coeff34_buffer, coeff44_buffer, fij_buffer, e2_buffer, sumU_buffer, U_buffer, d2_buffer, dd2_buffer, d3_buffer, dd3_buffer, cU_buffer, e3_buffer);
 }
+
 
 double FASTPOD::peratomenergyforce(double *fij, double *rij, double *temp,
         int *ti, int *tj, int Nj)
@@ -616,23 +619,27 @@ double FASTPOD::peratomenergyforce(double *fij, double *rij, double *temp,
       }
 
       if ((nd34>0) || (nd44>0)) {
-        fourbodydescderiv(d4, dd4, sumU, Ux, Uy, Uz, tj, Nj);
+	assert(0);
+	//        fourbodydescderiv(d4, dd4, sumU, Ux, Uy, Uz, tj, Nj);
+	
       }
-      e4 = fourbodycoeff(cU, sumU, &coeff4[nl4*t0], Nj);
+      //      e4 = fourbodycoeff(cU, sumU, &coeff4[nl4*t0], Nj);
       tallylocalforce(fij, cU, Ux, Uy, Uz, tj, Nj, K4, nrbf4, nelements);
 
       if (nd34>0) {
-        double *d34 = &temp[0];
-        sixbodydesc34(d34, d3, d4);
-        e34 = dotproduct(&coeff34[nl34*t0], d34, nl34);
-        sixbodyfij34(fij, temp, &coeff34[nl34*t0], d3, d4, dd3, dd4, 3*Nj);
+	assert(0);
+        // double *d34 = &temp[0];
+        // sixbodydesc34(d34, d3, d4);
+        // e34 = dotproduct(&coeff34[nl34*t0], d34, nl34);
+        // sixbodyfij34(fij, temp, &coeff34[nl34*t0], d3, d4, dd3, dd4, 3*Nj);
       }
 
       if (nd44>0) {
-        double *d44 = &temp[0];
-        sevenbodydesc44(d44, d4);
-        e44 = dotproduct(&coeff44[nl44*t0], d44, nl44);
-        sevenbodyfij44(fij, temp, &coeff44[nl44*t0], d4, dd4, 3*Nj);
+	assert(0);
+        // double *d44 = &temp[0];
+        // sevenbodydesc44(d44, d4);
+        // e44 = dotproduct(&coeff44[nl44*t0], d44, nl44);
+        // sevenbodyfij44(fij, temp, &coeff44[nl44*t0], d4, dd4, 3*Nj);
       }
     }
    return (e1+e2+e3+e4+e23+e33+e34+e44);
