@@ -692,9 +692,14 @@ public:
   Output<double> e_o{"e_o"};
 
   Input<int> k3{"k3", 1};
+  Input<int> k4{"k4", 1};
+  Input<int> q4{"q4", 1};
   Input<Buffer<int>> pq{"pq", 1};
   Input<Buffer<int>> pn3{"pn3", 1};
   Input<Buffer<int>> pc3{"pc3", 1};
+  Input<Buffer<int>> pa4{"pa4", 1};
+  Input<Buffer<int>> pb4{"pb4", 2};
+  Input<Buffer<int>> pc4{"pc4", 1};
   Input<Buffer<int>> elemindex{"elemindex", 2};
 
 
