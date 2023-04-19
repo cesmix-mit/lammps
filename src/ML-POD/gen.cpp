@@ -871,6 +871,7 @@ void fivebodystuff(Func & fij, Func & e33,
   Var j("j");
   cf133(j) = Expr((double) 0.0);
   cf133(r.y) += d3(abfacc1, rbfacc1, meacc1) * coeff33(k, acc);
+  cf133.compute_root();
 
   RDom rn33(0, n33);
   Expr abfacc3 = unsafe_promise_clamped(ind33(rn33, 0), 0, nabf3 - 1);
@@ -883,6 +884,7 @@ void fivebodystuff(Func & fij, Func & e33,
   Var i("j");
   cf233(i) = Expr((double) 0.0);
   cf233(r.x) += d3(abfacc2, rbfacc2, meacc2) * coeff33(k, acc);
+  cf233.compute_root();
 
   fij(pairindex, dim) += cf233(rn33) * dd3(dim, pairindex, abfacc3, rbfacc3, meacc3);
   
