@@ -602,20 +602,20 @@ double FASTPOD::peratomenergyforce(double *fij, double *rij, double *temp,
 
     if (nd4 > 0) {      
       if (K4 < K3) {
-        for (int m=0; m<nrbf4; m++)
-          for (int k=0; k<K4; k++)
-            for (int i=0; i<nelements; i++)
-              sumU[i + nelements*k + nelements*K4*m] = sumU[i + nelements*k + nelements*K3*m];
+        // for (int m=0; m<nrbf4; m++)
+        //   for (int k=0; k<K4; k++)
+        //     for (int i=0; i<nelements; i++)
+        //       sumU[i + nelements*k + nelements*K4*m] = sumU[i + nelements*k + nelements*K3*m];
 
-        for (int m=0; m<nrbf4; m++)
-          for (int k=0; k<K4; k++)
-            for (int i=0; i<Nj; i++) {
-              int ii = i + Nj*k + Nj*K4*m;
-              int jj = i + Nj*k + Nj*K3*m;
-              Ux[ii] = Ux[jj];
-              Uy[ii] = Uy[jj];
-              Uz[ii] = Uz[jj];
-            }
+        // for (int m=0; m<nrbf4; m++)
+        //   for (int k=0; k<K4; k++)
+        //     for (int i=0; i<Nj; i++) {
+        //       int ii = i + Nj*k + Nj*K4*m;
+        //       int jj = i + Nj*k + Nj*K3*m;
+        //       Ux[ii] = Ux[jj];
+        //       Uy[ii] = Uy[jj];
+        //       Uz[ii] = Uz[jj];
+        //     }
       }
 
       if ((nd34>0) || (nd44>0)) {
@@ -624,7 +624,7 @@ double FASTPOD::peratomenergyforce(double *fij, double *rij, double *temp,
 	
       }
       //      e4 = fourbodycoeff(cU, sumU, &coeff4[nl4*t0], Nj);
-      tallylocalforce(fij, cU, Ux, Uy, Uz, tj, Nj, K4, nrbf4, nelements);
+      //      tallylocalforce(fij, cU, Ux, Uy, Uz, tj, Nj, K4, nrbf4, nelements);
 
       if (nd34>0) {
 	assert(0);

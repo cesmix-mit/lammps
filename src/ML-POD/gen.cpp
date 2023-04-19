@@ -429,6 +429,17 @@ void tallyLocalForce(Func & fij, Func atomtype, Func cU, Func U, Expr nrbf3, Exp
     fij.update(1).reorder(dim, r.z, r.y, r.x);
 }
 
+void tallyLocalForceRev(Func & fij, Func atomtype, Func cU, Func U, Expr nrbf3, Expr K3, Expr npairs, Expr nelements, Var dim, int up)
+{
+    RDom r(0, nrbf3, 0, K3, 0, npairs);
+    Expr i2 = atomtype(r.z) - 1;
+    Expr c = cU(clamp(i2, 0, nelements - 1), r.y, r.x);
+    fij(r.z, dim) += c * U(r.z, r.y, r.x, dim + 1);
+    if (up != -1){
+      fij.update(up).reorder(dim, r.z, r.y, r.x);
+    }
+}
+
 void threeBodyCoeff(Func & cU, Func & e, Func coeff3, Func sumU, Func pn3, Func pc3, Expr npairs, Var ne, Var k3, Var rbf3,
 		Expr nelements, Expr K3, Expr nrbf3, Expr nabf3, Expr me)
 {
@@ -468,7 +479,7 @@ void fourbodycoeff(Func & e4, Func  & cU4,
   Expr acc = clamp(ti(0) - 1, 0, nelements - 1);
   Expr zero = Expr((double) 0.0);
   cU4(ne, kv, rbf) = zero;
-  cU4.bound(ne,0, nelements).bound(kv, 0, k4).bound(rbf, 0, nrbf4);
+  cU4.bound(ne,0, nelements).bound(kv, 0, k4 + 1).bound(rbf, 0, nrbf4);
   e4() = zero;
   Expr q = pa4(nabf4);
   RDom r(0, nelements, 0, nelements, 0, nelements, 0, Q4, 0, nabf4, 0, nrbf4);
@@ -1016,6 +1027,8 @@ public:
 		  coeff4, sumU4, ti, pa4, pb4, pc4,
 		  nrbf4, nabf4, nelements, k4, q4);
     e3_o()+= e4();
+
+    tallyLocalForceRev(fij, tj, cu4, U4, nrbf4, k4, npairs, nelements, dim, -1);
 
 
     fij.store_root().compute_root();
