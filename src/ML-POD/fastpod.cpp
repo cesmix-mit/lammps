@@ -658,7 +658,7 @@ double FASTPOD::peratomenergyforce(double *fij, double *rij, double *temp,
       double *d33 = &temp[0];
       // fivebodydesc33(d33, d3);
       // e33 = dotproduct(&coeff33[nl33*t0], d33, nl33);
-      fivebodyfij33(fij, temp, &coeff33[nl33*t0], d3, dd3, 3*Nj);
+      //      fivebodyfij33(fij, temp, &coeff33[nl33*t0], d3, dd3, 3*Nj);
     }
 
     if (nd4 > 0) {      

@@ -833,7 +833,7 @@ void fourbodystuff(Func & fij, Func & e23,
 
 
 void fivebodystuff(Func & fij, Func & e33,
-		   Func ind33, Func coeff33, Func d3, Func ti,
+		   Func ind33, Func coeff33, Func d3, Func ti, Func dd3,
 		   Expr npairs, Expr n33, Expr nelements, Expr nabf3, Expr nrbf3, Expr me,
 		   Var pairindex)
 {
@@ -841,6 +841,7 @@ void fivebodystuff(Func & fij, Func & e33,
   Expr symN33 = n33 * (n33+1)/2;
   Func d33("d33");
   Var kv("k");
+  Var dim("dim");
   d33(kv) = Expr((double) 0.0);
   d33.bound(kv, 0, symN33);
   RDom r(0, n33, 0, n33);
@@ -864,17 +865,31 @@ void fivebodystuff(Func & fij, Func & e33,
   Expr acc = clamp(ti(0) - 1, 0, nelements - 1);
   e33() = Expr((double) 0.0);
   e33() += d33(rdot) * coeff33(rdot, acc);
-  
-      //k is a trian
-    //(n*(n-1)/2) - (n-i)*((n-i)-1)/2 + j - i - 1
-    //Formula for indexing
-    //https://stackoverflow.com/questions/27086195/linear-index-upper-triangular-matrix
 
+
+  Func cf133("cf133");
+  Var j("j");
+  cf133(j) = Expr((double) 0.0);
+  cf133(r.y) += d3(abfacc1, rbfacc1, meacc1) * coeff33(k, acc);
+
+  RDom rn33(0, n33);
+  Expr abfacc3 = unsafe_promise_clamped(ind33(rn33, 0), 0, nabf3 - 1);
+  Expr rbfacc3 = unsafe_promise_clamped(ind33(rn33, 1), 0, nrbf3 - 1);
+  Expr meacc3 = unsafe_promise_clamped(ind33(rn33, 2), 0, symMe - 1);
+
+  fij(pairindex, dim) += cf133(rn33) * dd3(dim, pairindex, abfacc3, rbfacc3, meacc3);
+
+  Func cf233("cf233");
+  Var i("j");
+  cf233(i) = Expr((double) 0.0);
+  cf233(r.x) += d3(abfacc2, rbfacc2, meacc2) * coeff33(k, acc);
+
+  fij(pairindex, dim) += cf233(rn33) * dd3(dim, pairindex, abfacc3, rbfacc3, meacc3);
   
 
 }
 
-class poddescTwoBody : public Halide::Generator<poddescTwoBody> {
+class  poddescTwoBody : public Halide::Generator<poddescTwoBody> {
 public:
 
   Input<Buffer<double>> rijs{"rijs", 2};
@@ -1134,18 +1149,19 @@ public:
     Func e23("e23");
     fourbodystuff(fij, e23, ind23, ind32, coeff23, d2, d3, dd3, dd2, ti, npairs, n23, n32, nelements, nrbf2, nrbf3, nabf3,me, n);
     e3_o() += e23();
-    fij.compute_root();
-    fij_o(n, dim) = fij(n, dim);
-    fij_o.dim(0).set_bounds(0, npairs).set_stride(3);
-    fij_o.dim(1).set_bounds(0, 3).set_stride(1);
 
     Func e33("e33");
     fivebodystuff(fij, e33,
-		  ind33, coeff33, d3, ti,
+		  ind33, coeff33, d3, ti, dd3,
 		  npairs, n33, nelements, nabf3, nrbf3, me,
 		  n);
     e3_o() += e33();
 
+
+    fij.compute_root();
+    fij_o(n, dim) = fij(n, dim);
+    fij_o.dim(0).set_bounds(0, npairs).set_stride(3);
+    fij_o.dim(1).set_bounds(0, 3).set_stride(1);
 
 
 
