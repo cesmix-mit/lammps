@@ -561,7 +561,8 @@ void buildTwoBody(double *rijs, double *besselparams, int nbesselpars, int bdegr
   Halide::Runtime::Buffer<double> dd3_buffer(dd3, {{0, 3, 1}, {0, npairs, 3}, {0, nabf3, 3 * npairs}, {0, nrbf3, 3 * npairs * nabf3}, {0, me, 3 * npairs * nabf3 * nrbf3}});
   Halide::Runtime::Buffer<double> coeff3_buffer(coeff3, {{0, nabf3, 1}, {0, nrbf3, nabf3}, {0, me, nabf3 * nrbf3}});
   Halide::Runtime::Buffer<double> coeff23_buffer(coeff23, {{0, n23, 1}, {0, n32, n23}, {0, nelements, n23 * n32}});
-  Halide::Runtime::Buffer<double> coeff33_buffer(coeff33, {1});
+  int s33 = n33 * (n33+1)/2;
+  Halide::Runtime::Buffer<double> coeff33_buffer(coeff33, {{0, s33, 1}, {0, nelements, s33}});
   Halide::Runtime::Buffer<double> coeff4_buffer(coeff4, {1});
   Halide::Runtime::Buffer<double> coeff34_buffer(coeff34, {1});
   Halide::Runtime::Buffer<double> coeff44_buffer(coeff44, {1});
@@ -655,8 +656,8 @@ double FASTPOD::peratomenergyforce(double *fij, double *rij, double *temp,
 
     if (nd33>0) {      
       double *d33 = &temp[0];
-      fivebodydesc33(d33, d3);
-      e33 = dotproduct(&coeff33[nl33*t0], d33, nl33);
+      // fivebodydesc33(d33, d3);
+      // e33 = dotproduct(&coeff33[nl33*t0], d33, nl33);
       fivebodyfij33(fij, temp, &coeff33[nl33*t0], d3, dd3, 3*Nj);
     }
 

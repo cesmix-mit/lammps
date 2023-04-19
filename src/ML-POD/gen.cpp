@@ -831,6 +831,49 @@ void fourbodystuff(Func & fij, Func & e23,
   
 }
 
+
+void fivebodystuff(Func & fij, Func & e33,
+		   Func ind33, Func coeff33, Func d3, Func ti,
+		   Expr npairs, Expr n33, Expr nelements, Expr nabf3, Expr nrbf3, Expr me,
+		   Var pairindex)
+{
+  Expr symMe = nelements*(nelements+1)/2;
+  Expr symN33 = n33 * (n33+1)/2;
+  Func d33("d33");
+  Var kv("k");
+  d33(kv) = Expr((double) 0.0);
+  d33.bound(kv, 0, symN33);
+  RDom r(0, n33, 0, n33);
+  r.where(r.x >= r.y);
+  //col + row*(M-1)-row*(row-1)/2
+  Expr temp = clamp(r.x + r.y * (n33 - 1) - r.y * (r.y-1)/2, 0, symN33 - 1);
+  Expr k =  print_when(temp < 0 || temp > symN33- 1, temp, "error!"); //(print(temp, symN33, r.x, r.y));
+  
+  //abf, rbf, me
+  Expr abfacc1 = unsafe_promise_clamped(ind33(r.x, 0), 0, nabf3 - 1);
+  Expr abfacc2 = unsafe_promise_clamped(ind33(r.y, 0), 0, nabf3 - 1);
+  Expr rbfacc1 = unsafe_promise_clamped(ind33(r.x, 1), 0, nrbf3 - 1);
+  Expr rbfacc2 = unsafe_promise_clamped(ind33(r.y, 1), 0, nrbf3 - 1);
+  Expr meacc1 = unsafe_promise_clamped(ind33(r.x, 2), 0, symMe - 1);
+  Expr meacc2 = unsafe_promise_clamped(ind33(r.y, 2), 0, symMe - 1);
+  d33(k) += d3(abfacc2, rbfacc2, meacc2) * d3(abfacc1, rbfacc1, meacc1);
+
+  d33.compute_root();
+
+  RDom rdot(0, symN33);
+  Expr acc = clamp(ti(0) - 1, 0, nelements - 1);
+  e33() = Expr((double) 0.0);
+  e33() += d33(rdot) * coeff33(rdot, acc);
+  
+      //k is a trian
+    //(n*(n-1)/2) - (n-i)*((n-i)-1)/2 + j - i - 1
+    //Formula for indexing
+    //https://stackoverflow.com/questions/27086195/linear-index-upper-triangular-matrix
+
+  
+
+}
+
 class poddescTwoBody : public Halide::Generator<poddescTwoBody> {
 public:
 
@@ -891,7 +934,7 @@ public:
   
   Input<Buffer<double>> coeff3{"coeff3", 3};
   Input<Buffer<double>> coeff23{"coeff23", 3};
-  Input<Buffer<double>> coeff33{"coeff33", 1};
+  Input<Buffer<double>> coeff33{"coeff33", 2};
   Input<Buffer<double>> coeff4{"coeff4", 1};
   Input<Buffer<double>> coeff34{"coeff34", 1};
   Input<Buffer<double>> coeff44{"coeff44", 1};
@@ -912,8 +955,11 @@ public:
 
        Func ind23("ind23");
        Func ind32("ind32");
+       Func ind33("ind33");
+       Expr symMe = nelements*(nelements+1)/2;
        indexMap3(ind23, Expr(1), nrbf23, nelements, Expr(1), nrbf2);
-       indexMap3(ind32, nabf23, nrbf23, nelements*(nelements+1)/2, nabf3, nrbf3);
+       indexMap3(ind32, nabf23, nrbf23, symMe, nabf3, nrbf3);
+       indexMap3(ind33, nabf33, nrbf33, symMe, nabf3, nrbf3);
 
     
     rijs.dim(0).set_bounds(0, 3).set_stride(1);
@@ -968,6 +1014,9 @@ public:
     coeff23.dim(2).set_bounds(0, nelements).set_stride(n23 * n32);
     coeff23.dim(1).set_bounds(0, n32).set_stride(n23);
     coeff23.dim(0).set_bounds(0, n23).set_stride(1);
+
+    coeff33.dim(0).set_bounds(0, n33 * (n33+1)/2).set_stride(1);
+    coeff33.dim(1).set_bounds(0, nelements).set_stride(n33 * (n33+1)/2);
 
     Func fij("fij"), e("e");
     tallyTwoBodyLocalForce(fij, e, coeff2, rbf, tj, nrbf2, npairs);
@@ -1089,6 +1138,13 @@ public:
     fij_o(n, dim) = fij(n, dim);
     fij_o.dim(0).set_bounds(0, npairs).set_stride(3);
     fij_o.dim(1).set_bounds(0, 3).set_stride(1);
+
+    Func e33("e33");
+    fivebodystuff(fij, e33,
+		  ind33, coeff33, d3, ti,
+		  npairs, n33, nelements, nabf3, nrbf3, me,
+		  n);
+    e3_o() += e33();
 
 
 
