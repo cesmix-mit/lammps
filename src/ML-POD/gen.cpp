@@ -120,15 +120,15 @@ void buildRBF( Func & rbfall,
   rbfall(r2.x, get_abf_index(r2.y, rbf_info_length), r2.z + 1) = dabf(r2.y, r2.x, r2.z);
 
   /*
-  rbfall(r1.z, r1.y + r1.x * bdegree, 1) = drbf(r1.x, r1.y, r1.z, 0);
-  rbfall(r2.x, get_abf_index(r2.y, rbf_info_length), 1) = dabf(r2.y, r2.x, 0);
-  rbfall(r1.z, r1.y + r1.x * bdegree, 2) = drbf(r1.x, r1.y, r1.z, 1);
-  rbfall(r2.x, get_abf_index(r2.y, rbf_info_length), 2) = dabf(r2.y, r2.x, 1);
-  rbfall(r1.z, r1.y + r1.x * bdegree, 3) = drbf(r1.x, r1.y, r1.z, 2);
-  rbfall(r2.x, get_abf_index(r2.y, rbf_info_length), 3) = dabf(r2.y, r2.x, 2);
+    rbfall(r1.z, r1.y + r1.x * bdegree, 1) = drbf(r1.x, r1.y, r1.z, 0);
+    rbfall(r2.x, get_abf_index(r2.y, rbf_info_length), 1) = dabf(r2.y, r2.x, 0);
+    rbfall(r1.z, r1.y + r1.x * bdegree, 2) = drbf(r1.x, r1.y, r1.z, 1);
+    rbfall(r2.x, get_abf_index(r2.y, rbf_info_length), 2) = dabf(r2.y, r2.x, 1);
+    rbfall(r1.z, r1.y + r1.x * bdegree, 3) = drbf(r1.x, r1.y, r1.z, 2);
+    rbfall(r2.x, get_abf_index(r2.y, rbf_info_length), 3) = dabf(r2.y, r2.x, 2);
   */
 
-// This seems like it was the most important thing that needed to be changed 
+  // This seems like it was the most important thing that needed to be changed 
   // rbfall.compute_root();  // 19353.844 ms .001 ms 0%
   rbfall.reorder(rbfty, rbf_abf_info, np);
   rbfall.update(0).reorder(r1.w, r1.z);
@@ -158,13 +158,13 @@ void radialAngularBasis(Func & sumU, Func & U,
   // Uy(m, k, n) = abfy(k, n) * c1 + c2 * rbfy(m, n);
   // Uz(m, k, n) = abfz(k, n) * c1 + c2 * rbfz(m, n);
   /*
-  Expr c1 = rbf(n, m, 0);
-  Expr c2 = abf(n, k, 0);
-  U(n, k, m, c) = select(c == 0, c1 * c2,
-			 select(c == 1, abf(n, k, 1) * c1 + c2 * rbf(n, m, 1),
-				select(c== 2, abf(n, k, 2) * c1 + c2 * rbf(n, m, 2) ,
-				       select(c==3, abf(n, k, 3) * c1+ c2 * rbf(n, m, 3), Expr((double) 0.0)))));
-				       */
+    Expr c1 = rbf(n, m, 0);
+    Expr c2 = abf(n, k, 0);
+    U(n, k, m, c) = select(c == 0, c1 * c2,
+    select(c == 1, abf(n, k, 1) * c1 + c2 * rbf(n, m, 1),
+    select(c== 2, abf(n, k, 2) * c1 + c2 * rbf(n, m, 2) ,
+    select(c==3, abf(n, k, 3) * c1+ c2 * rbf(n, m, 3), Expr((double) 0.0)))));
+  */
   U(n, k, m, c) = zero;
   // Ux(m, k, n) = abfx(n, k) * c1 + c2 * rbfx(n, m);
     
@@ -177,9 +177,9 @@ void radialAngularBasis(Func & sumU, Func & U,
   Expr in = atomtype(r.z) - 1;
 
   U(r.z, r.y, r.x, c) = select(c == 0, c1 * c2,
-			 select(c == 1, abf(r.z, r.y, 1) * c1 + c2 * rbf(r.z, r.x, 1),
-				select(c== 2, abf(r.z, r.y, 2) * c1 + c2 * rbf(r.z, r.x, 2) ,
-				       select(c==3, abf(r.z, r.y, 3) * c1+ c2 * rbf(r.z, r.x, 3), Expr((double) 0.0)))));
+			       select(c == 1, abf(r.z, r.y, 1) * c1 + c2 * rbf(r.z, r.x, 1),
+				      select(c== 2, abf(r.z, r.y, 2) * c1 + c2 * rbf(r.z, r.x, 2) ,
+					     select(c==3, abf(r.z, r.y, 3) * c1+ c2 * rbf(r.z, r.x, 3), Expr((double) 0.0)))));
   // sumU(r.x, r.y, clamp(in, 0, Ne - 1)) += rbf(r.x, r.z) * abf(r.y, r.z);
   sumU(clamp(in, 0, Ne - 1), r.y, r.x) += rbf(r.z, r.x, 0) * abf(r.z, r.y, 0);
 
@@ -195,14 +195,14 @@ void radialAngularBasis(Func & sumU, Func & U,
   U.bound(c, 0, 4);
 
   /*
-  U.reorder(c, m, k, n);
-  U.store_root().compute_root();
-  sumU.reorder(m, k, ne);
-  sumU.update(0).reorder(r.x, r.y, r.z);
-  sumU.store_root().compute_root();
-  //sumU.compute_with(U, m);
-  //sumU.update(0).compute_with();
-  */
+    U.reorder(c, m, k, n);
+    U.store_root().compute_root();
+    sumU.reorder(m, k, ne);
+    sumU.update(0).reorder(r.x, r.y, r.z);
+    sumU.store_root().compute_root();
+    //sumU.compute_with(U, m);
+    //sumU.update(0).compute_with();
+    */
 
   U.reorder(c, n, k, m);
   U.store_root().compute_root();
@@ -304,18 +304,18 @@ void buildAngularBasis(Expr k3, Expr npairs, Func pq, Func rij,
   Expr zero = Expr((double) 0.0);
 
   /*
-  Func abf4tm("abf4tm");
-  Var tmp("tmp");
-  abf4tm(pair, abfi, abfip, c, tmp) = zero;
-  abf4tm(pair, abfi, 0, 0, 1) = Expr((double) 1.0);
-  RDom rn(1, k3 + 1, 0, 4);
-  Expr m = clamp(pq(rn.x) - 1, 0, 3 * k3 - 1);
-  Expr prev0 = abf4tm(pair, abfi, m, 0, 1);
-  Expr d = clamp(pq(rn.x + k3), 1, 3);
-  Var selected("selected");
-  Func uvw("uvw");
-  uvw(pair, selected) = select(selected == 1, u, select(selected==2, v, select(selected==3, w, Expr((double) 0.0))));
-  abf4tm(pair, abfi, rn.x, rn.y, 1) = abf4tm(pair, abfi, m, rn.y, 1) * uvw(pair, d) + select(d == rn.y, abf4tm(pair, abfi, m, 0, 1), zero);
+    Func abf4tm("abf4tm");
+    Var tmp("tmp");
+    abf4tm(pair, abfi, abfip, c, tmp) = zero;
+    abf4tm(pair, abfi, 0, 0, 1) = Expr((double) 1.0);
+    RDom rn(1, k3 + 1, 0, 4);
+    Expr m = clamp(pq(rn.x) - 1, 0, 3 * k3 - 1);
+    Expr prev0 = abf4tm(pair, abfi, m, 0, 1);
+    Expr d = clamp(pq(rn.x + k3), 1, 3);
+    Var selected("selected");
+    Func uvw("uvw");
+    uvw(pair, selected) = select(selected == 1, u, select(selected==2, v, select(selected==3, w, Expr((double) 0.0))));
+    abf4tm(pair, abfi, rn.x, rn.y, 1) = abf4tm(pair, abfi, m, rn.y, 1) * uvw(pair, d) + select(d == rn.y, abf4tm(pair, abfi, m, 0, 1), zero);
   */
 
   tm(pair, abfip, c) = zero;
@@ -332,66 +332,66 @@ void buildAngularBasis(Expr k3, Expr npairs, Func pq, Func rij,
   //abf4(pair, abfi, c) = zero;
 
   /*
-  tm(pair, abfi, abfip, c) = zero;
-  tm(pair, abfi, 0, 0) = Expr((double) 1.0);
-  RDom rn(1, k3 + 1, 0, 4);
-  Expr m = clamp(pq(rn.x) - 1, 0, 3 * k3 - 1);
-  Expr prev0 = tm(pair, abfi, m, 0);
-  Expr d = clamp(pq(rn.x + k3), 1, 3);
-  Var selected("selected");
-  Func uvw("uvw");
-  uvw(pair, selected) = select(selected == 1, u, select(selected==2, v, select(selected==3, w, Expr((double) 0.0))));
-  tm(pair, abfi, rn.x, rn.y) = tm(pair, abfi, m, rn.y) * uvw(pair, d) + select(d == rn.y, tm(pair, abfi, m, 0), zero);
-  abf4(pair, abfi, c) = zero;
+    tm(pair, abfi, abfip, c) = zero;
+    tm(pair, abfi, 0, 0) = Expr((double) 1.0);
+    RDom rn(1, k3 + 1, 0, 4);
+    Expr m = clamp(pq(rn.x) - 1, 0, 3 * k3 - 1);
+    Expr prev0 = tm(pair, abfi, m, 0);
+    Expr d = clamp(pq(rn.x + k3), 1, 3);
+    Var selected("selected");
+    Func uvw("uvw");
+    uvw(pair, selected) = select(selected == 1, u, select(selected==2, v, select(selected==3, w, Expr((double) 0.0))));
+    tm(pair, abfi, rn.x, rn.y) = tm(pair, abfi, m, rn.y) * uvw(pair, d) + select(d == rn.y, tm(pair, abfi, m, 0), zero);
+    abf4(pair, abfi, c) = zero;
 
-  uvw.bound(selected, 1, 3);
-  abf4(pair, abfi, 0) = tm(pair, abfi, abfi, 0);
-  abf4(pair, abfi, 1) = tm(pair, abfi, abfi, 1) * dudx + tm(pair, abfi, abfi, 2) * dvdx + tm(pair, abfi, abfi, 3) * dwdx;
-  abf4(pair, abfi, 2) = tm(pair, abfi, abfi, 1) * dudy + tm(pair, abfi, abfi, 2) * dvdy + tm(pair, abfi, abfi, 3) * dwdy;
-  abf4(pair, abfi, 3) = tm(pair, abfi, abfi, 1) * dudz + tm(pair, abfi, abfi, 2) * dvdz + tm(pair, abfi, abfi, 3) * dwdz;  */
+    uvw.bound(selected, 1, 3);
+    abf4(pair, abfi, 0) = tm(pair, abfi, abfi, 0);
+    abf4(pair, abfi, 1) = tm(pair, abfi, abfi, 1) * dudx + tm(pair, abfi, abfi, 2) * dvdx + tm(pair, abfi, abfi, 3) * dwdx;
+    abf4(pair, abfi, 2) = tm(pair, abfi, abfi, 1) * dudy + tm(pair, abfi, abfi, 2) * dvdy + tm(pair, abfi, abfi, 3) * dwdy;
+    abf4(pair, abfi, 3) = tm(pair, abfi, abfi, 1) * dudz + tm(pair, abfi, abfi, 2) * dvdz + tm(pair, abfi, abfi, 3) * dwdz;  */
 
 
   Func jacobian("jacobian");
   Var dim("dim"), dim_p("dim_p");
   jacobian(pair, dim, dim_p) =
-      select(dim == 0,
-          select(dim_p == 0,
-              dudx,
-          select(dim_p == 1,
-              dvdx,
-          select(dim_p == 2,
-              dwdx, zero))), 
-      select(dim == 1,
-          select(dim_p == 0,
-              dudy,
-          select(dim_p == 1,
-              dvdy,
-          select(dim_p == 2,
-              dwdy, zero))),
-      select(dim == 2,
-          select(dim_p == 0,
-              dudz,
-          select(dim_p == 1,
-              dvdz,
-          select(dim_p == 2,
-              dwdz, zero))), zero)));
+    select(dim == 0,
+	   select(dim_p == 0,
+		  dudx,
+		  select(dim_p == 1,
+			 dvdx,
+			 select(dim_p == 2,
+				dwdx, zero))), 
+	   select(dim == 1,
+		  select(dim_p == 0,
+			 dudy,
+			 select(dim_p == 1,
+				dvdy,
+				select(dim_p == 2,
+				       dwdy, zero))),
+		  select(dim == 2,
+			 select(dim_p == 0,
+				dudz,
+				select(dim_p == 1,
+				       dvdz,
+				       select(dim_p == 2,
+					      dwdz, zero))), zero)));
   //abf4(pair, abfi, c) = select(c == 0, tm(pair, abfi, abfi, 0),
   //                      tm(pair, abfi, abfi, 1) * jacobian(pair, c-1, 0) + tm(pair, abfi, abfi, 2) * jacobian(pair, c-1, 1) + tm(pair, abfi, abfi, 3) * jacobian(pair, c-1, 2));   
   abf4(pair, abfi, c) = select(c == 0, tm(pair, abfi, 0),
-                        tm(pair, abfi, 1) * jacobian(pair, c-1, 0) + tm(pair, abfi, 2) * jacobian(pair, c-1, 1) + tm(pair, abfi, 3) * jacobian(pair, c-1, 2));   
+			       tm(pair, abfi, 1) * jacobian(pair, c-1, 0) + tm(pair, abfi, 2) * jacobian(pair, c-1, 1) + tm(pair, abfi, 3) * jacobian(pair, c-1, 2));   
   /*
-  abf4tm(pair, abfi, 0, c, 0) = select(c == 0, abf4tm(pair, abfi, abfi, 0, 1),
-                        abf4tm(pair, abfi, abfi, 1, 1) * jacobian(pair, c-1, 0) + abf4tm(pair, abfi, abfi, 2, 1) * jacobian(pair, c-1, 1) + abf4tm(pair, abfi, abfi, 3, 1) * jacobian(pair, c-1, 2));   
+    abf4tm(pair, abfi, 0, c, 0) = select(c == 0, abf4tm(pair, abfi, abfi, 0, 1),
+    abf4tm(pair, abfi, abfi, 1, 1) * jacobian(pair, c-1, 0) + abf4tm(pair, abfi, abfi, 2, 1) * jacobian(pair, c-1, 1) + abf4tm(pair, abfi, abfi, 3, 1) * jacobian(pair, c-1, 2));   
   */
 
   /*
-  abf4tm(pair, abfi, 0, 0, 0) = abf4tm(pair, abfi, abfi, 0, 1);
-  abf4tm(pair, abfi, 0, 1, 0) = abf4tm(pair, abfi, abfi, 1, 1) * jacobian(pair, 0, 0) +
-      abf4tm(pair, abfi, abfi, 2, 1) + jacobian(pair, 0, 1) + abf4tm(pair, abfi, abfi, 3, 1) * jacobian(pair, 0, 2);
-  abf4tm(pair, abfi, 0, 2, 0) = abf4tm(pair, abfi, abfi, 1, 1) * jacobian(pair, 1, 0) +
-      abf4tm(pair, abfi, abfi, 2, 1) * jacobian(pair, 1, 1) + abf4tm(pair, abfi, abfi, 3, 1) * jacobian(pair, 1, 2);
-  abf4tm(pair, abfi, 0, 3, 0) = abf4tm(pair, abfi, abfi, 1, 1) * jacobian(pair, 2, 0) +
-      abf4tm(pair, abfi, abfi, 2, 1) + jacobian(pair, 2, 1) + abf4tm(pair, abfi, abfi, 3, 1) * jacobian(pair, 2, 2);
+    abf4tm(pair, abfi, 0, 0, 0) = abf4tm(pair, abfi, abfi, 0, 1);
+    abf4tm(pair, abfi, 0, 1, 0) = abf4tm(pair, abfi, abfi, 1, 1) * jacobian(pair, 0, 0) +
+    abf4tm(pair, abfi, abfi, 2, 1) + jacobian(pair, 0, 1) + abf4tm(pair, abfi, abfi, 3, 1) * jacobian(pair, 0, 2);
+    abf4tm(pair, abfi, 0, 2, 0) = abf4tm(pair, abfi, abfi, 1, 1) * jacobian(pair, 1, 0) +
+    abf4tm(pair, abfi, abfi, 2, 1) * jacobian(pair, 1, 1) + abf4tm(pair, abfi, abfi, 3, 1) * jacobian(pair, 1, 2);
+    abf4tm(pair, abfi, 0, 3, 0) = abf4tm(pair, abfi, abfi, 1, 1) * jacobian(pair, 2, 0) +
+    abf4tm(pair, abfi, abfi, 2, 1) + jacobian(pair, 2, 1) + abf4tm(pair, abfi, abfi, 3, 1) * jacobian(pair, 2, 2);
   */
                        
     
@@ -408,9 +408,9 @@ void buildAngularBasis(Expr k3, Expr npairs, Func pq, Func rij,
   // abf4.store_root().compute_root();
 
   /*
-  uvw.compute_at(tm, pair);
-  //tm.update(0).reorder(abfip, pair);
-  tm.compute_at(abf4, pair);
+    uvw.compute_at(tm, pair);
+    //tm.update(0).reorder(abfip, pair);
+    tm.compute_at(abf4, pair);
   */
   tm.reorder(c, abfip, pair);
   tm.store_root().compute_root();
@@ -422,51 +422,51 @@ void buildAngularBasis(Expr k3, Expr npairs, Func pq, Func rij,
 
 void tallyLocalForce(Func & fij, Func atomtype, Func cU, Func U, Expr nrbf3, Expr K3, Expr npairs, Expr nelements, Var dim)
 {
-    RDom r(0, nrbf3, 0, K3, 0, npairs);
-    Expr i2 = atomtype(r.z) - 1;
-    Expr c = cU(clamp(i2, 0, nelements - 1), r.y, r.x);
-    fij(r.z, dim) += c * U(r.z, r.y, r.x, dim + 1);
-    fij.update(1).reorder(dim, r.z, r.y, r.x);
+  RDom r(0, nrbf3, 0, K3, 0, npairs);
+  Expr i2 = atomtype(r.z) - 1;
+  Expr c = cU(clamp(i2, 0, nelements - 1), r.y, r.x);
+  fij(r.z, dim) += c * U(r.z, r.y, r.x, dim + 1);
+  fij.update(1).reorder(dim, r.z, r.y, r.x);
 }
 
 void tallyLocalForceRev(Func & fij, Func atomtype, Func cU, Func U, Expr nrbf3, Expr K3, Expr npairs, Expr nelements, Var dim, int up)
 {
-    RDom r(0, nrbf3, 0, K3, 0, npairs);
-    Expr i2 = atomtype(r.z) - 1;
-    Expr c = cU(clamp(i2, 0, nelements - 1), r.y, r.x);
-    fij(r.z, dim) += c * U(r.z, r.y, r.x, dim + 1);
-    if (up != -1){
-      fij.update(up).reorder(dim, r.z, r.y, r.x);
-    }
+  RDom r(0, nrbf3, 0, K3, 0, npairs);
+  Expr i2 = atomtype(r.z) - 1;
+  Expr c = cU(clamp(i2, 0, nelements - 1), r.y, r.x);
+  fij(r.z, dim) += c * U(r.z, r.y, r.x, dim + 1);
+  if (up != -1){
+    fij.update(up).reorder(dim, r.z, r.y, r.x);
+  }
 }
 
 void threeBodyCoeff(Func & cU, Func & e, Func coeff3, Func sumU, Func pn3, Func pc3, Func ti, Expr npairs, Var ne, Var k3, Var rbf3,
-		Expr nelements, Expr K3, Expr nrbf3, Expr nabf3, Expr me)
+		    Expr nelements, Expr K3, Expr nrbf3, Expr nabf3, Expr me)
 {
-    Expr zero = Expr((double) 0.0);
+  Expr zero = Expr((double) 0.0);
 
-    cU(ne, k3, rbf3) = zero;
+  cU(ne, k3, rbf3) = zero;
 
-    cU.bound(ne, 0, nelements);
-    cU.bound(k3, 0, K3);
-    cU.bound(rbf3, 0, nrbf3);
+  cU.bound(ne, 0, nelements);
+  cU.bound(k3, 0, K3);
+  cU.bound(rbf3, 0, nrbf3);
 
-    //RDom r(0, nabf3, 0, K3, 0, nelements, 0, nelements, 0, nrbf3);
-    RDom r(0, K3, 0, nabf3, 0, nelements, 0, nelements, 0, nrbf3);
-    Expr n1 = pn3(r.y);
-    Expr n2 = pn3(r.y + 1);
-    r.where(n1 <= r.x);
-    r.where(r.x < n2);
-    r.where(r[3] >=  r.z);
+  //RDom r(0, nabf3, 0, K3, 0, nelements, 0, nelements, 0, nrbf3);
+  RDom r(0, K3, 0, nabf3, 0, nelements, 0, nelements, 0, nrbf3);
+  Expr n1 = pn3(r.y);
+  Expr n2 = pn3(r.y + 1);
+  r.where(n1 <= r.x);
+  r.where(r.x < n2);
+  r.where(r[3] >=  r.z);
     
-    Expr k = (2 * nelements - 3 - r.z) * (r.z/ 2) + r[3] - 1; //mem  - ki + kij;
-    Expr t1 = pc3(r.x) * sumU(r.z, r.x, r[4]);
-    Expr c2 = sumU(r[3], r.x, r[4]);
-    Expr c3 = coeff3(r.y, r[4], clamp(k, 0, me - 1), clamp(ti(0) - 1, 0, nelements - 1));
-    Expr t2 = c3 * t1;
-    e() += t2 * c2;
-    cU(r[3], r.x, r[4]) += t2;
-    cU(r.z, r.x, r[4]) += pc3(r.x) * c2 * c3;
+  Expr k = (2 * nelements - 3 - r.z) * (r.z/ 2) + r[3] - 1; //mem  - ki + kij;
+  Expr t1 = pc3(r.x) * sumU(r.z, r.x, r[4]);
+  Expr c2 = sumU(r[3], r.x, r[4]);
+  Expr c3 = coeff3(r.y, r[4], clamp(k, 0, me - 1), clamp(ti(0) - 1, 0, nelements - 1));
+  Expr t2 = c3 * t1;
+  e() += t2 * c2;
+  cU(r[3], r.x, r[4]) += t2;
+  cU(r.z, r.x, r[4]) += pc3(r.x) * c2 * c3;
 }
 
 void fourbodycoeff(Func & e4, Func  & cU4,
@@ -523,41 +523,41 @@ void fourbodycoeff(Func & e4, Func  & cU4,
 }
 
 void threeBodyDescDeriv(Func & dd3, Func sumU, Func U, Func atomtype, Func pn3, Func pc3,
-        Func elemindex, Expr npairs, Expr q, Expr nelements, Var dim, Var nj, Var abf3, Expr nabf3, 
-        Var rbf3, Expr nrbf3, Var kme, Expr me, RDom r)
+			Func elemindex, Expr npairs, Expr q, Expr nelements, Var dim, Var nj, Var abf3, Expr nabf3, 
+			Var rbf3, Expr nrbf3, Var kme, Expr me, RDom r)
 {
-    Expr zero = Expr((double) 0.0);
+  Expr zero = Expr((double) 0.0);
     
-    //Var rbfTres("rbftres");
-    //dd3(dim, nj, abf3, rbfTres, kme) = zero;
-    dd3(dim, nj, abf3, rbf3, kme) = zero;
+  //Var rbfTres("rbftres");
+  //dd3(dim, nj, abf3, rbfTres, kme) = zero;
+  dd3(dim, nj, abf3, rbf3, kme) = zero;
     
-    dd3.bound(dim, 0, 3);
-    dd3.bound(nj, 0, npairs);
-    dd3.bound(abf3, 0, nabf3);
-    //dd3.bound(rbfTres, 0, nrbf3);
-    dd3.bound(rbf3, 0, nrbf3);
-    dd3.bound(kme, 0, me);
+  dd3.bound(dim, 0, 3);
+  dd3.bound(nj, 0, npairs);
+  dd3.bound(abf3, 0, nabf3);
+  //dd3.bound(rbfTres, 0, nrbf3);
+  dd3.bound(rbf3, 0, nrbf3);
+  dd3.bound(kme, 0, me);
     
-    //RDom r(0, nabf3, 0, q, 0, nelements, 0, npairs);
-    //RDom r(0, q, 0, nabf3, 0, nelements, 0, npairs);
-    Expr n1 = pn3(r.y);
-    Expr n2 = pn3(r.y + 1);
-    r.where(n1 <= r.x); 
-    r.where(r.x < n2);
-    RVar ry = r.y;
-    RVar rx = r.x;
-    RVar rz = r.z;
-    RVar rzz = r[3];
+  //RDom r(0, nabf3, 0, q, 0, nelements, 0, npairs);
+  //RDom r(0, q, 0, nabf3, 0, nelements, 0, npairs);
+  Expr n1 = pn3(r.y);
+  Expr n2 = pn3(r.y + 1);
+  r.where(n1 <= r.x); 
+  r.where(r.x < n2);
+  RVar ry = r.y;
+  RVar rx = r.x;
+  RVar rz = r.z;
+  RVar rzz = r[3];
     
-    //Expr t1 = pc3(rx) * sumU(rz, rx, rbfTres);
-    Expr t1 = pc3(rx) * sumU(rz, rx, rbf3);
-    Expr i2 = atomtype(rzz) - 1;
-    Expr k = elemindex(clamp(i2, 0, nelements - 1), rz);
-    Expr f = select(rz == i2, 2 * t1, t1);
+  //Expr t1 = pc3(rx) * sumU(rz, rx, rbfTres);
+  Expr t1 = pc3(rx) * sumU(rz, rx, rbf3);
+  Expr i2 = atomtype(rzz) - 1;
+  Expr k = elemindex(clamp(i2, 0, nelements - 1), rz);
+  Expr f = select(rz == i2, 2 * t1, t1);
     
-    //dd3(dim, rzz, ry, rbfTres, clamp(k, 0, me - 1)) += f * U(rzz, rx, rbfTres, dim + 1);
-    dd3(dim, rzz, ry, rbf3, clamp(k, 0, me - 1)) += f * U(rzz, rx, rbf3, dim + 1);
+  //dd3(dim, rzz, ry, rbfTres, clamp(k, 0, me - 1)) += f * U(rzz, rx, rbfTres, dim + 1);
+  dd3(dim, rzz, ry, rbf3, clamp(k, 0, me - 1)) += f * U(rzz, rx, rbf3, dim + 1);
 }
 
 void threeBodyDesc(Func & d3,
@@ -597,10 +597,10 @@ void threeBodyDesc(Func & d3,
   Expr t2 = sumU(rzz, rx, rbf3);
   d3(ry, rbf3, clamp(k, 0, me -1)) += t1 * t2;
   
-    //k is a trian
-    //(n*(n-1)/2) - (n-i)*((n-i)-1)/2 + j - i - 1
-    //Formula for indexing
-    //https://stackoverflow.com/questions/27086195/linear-index-upper-triangular-matrix
+  //k is a trian
+  //(n*(n-1)/2) - (n-i)*((n-i)-1)/2 + j - i - 1
+  //Formula for indexing
+  //https://stackoverflow.com/questions/27086195/linear-index-upper-triangular-matrix
 
 }
 
@@ -659,8 +659,8 @@ void fourbodystuff(Func & fij, Func & e23,
 
   // RDom r2(0, n32);
   // fij(pairindex, dim) += cf1(r2.x) * dd3(dim, pairindex, ind32(r2.x,0), ind32(r2.x,1), ind32(r2.x,2));
-    RDom r2(0, n32);
-    fij(pairindex, dim) += cf1(r2.x) * dd3(dim, pairindex,   unsafe_promise_clamped(ind32(r2.x, 0), 0, nabf3- 1), unsafe_promise_clamped(ind32(r2.x, 1),0, nrbf3 - 1), unsafe_promise_clamped(ind32(r2.x, 2), 0, me -1));
+  RDom r2(0, n32);
+  fij(pairindex, dim) += cf1(r2.x) * dd3(dim, pairindex,   unsafe_promise_clamped(ind32(r2.x, 0), 0, nabf3- 1), unsafe_promise_clamped(ind32(r2.x, 1),0, nrbf3 - 1), unsafe_promise_clamped(ind32(r2.x, 2), 0, me -1));
 
   Func cf2("cf2");
   Var i("i");
@@ -809,13 +809,13 @@ public:
 
   void generate() {
 
-       Func ind23("ind23");
-       Func ind32("ind32");
-       Func ind33("ind33");
-       Expr symMe = nelements*(nelements+1)/2;
-       indexMap3(ind23, Expr(1), nrbf23, nelements, Expr(1), nrbf2);
-       indexMap3(ind32, nabf23, nrbf23, symMe, nabf3, nrbf3);
-       indexMap3(ind33, nabf33, nrbf33, symMe, nabf3, nrbf3);
+    Func ind23("ind23");
+    Func ind32("ind32");
+    Func ind33("ind33");
+    Expr symMe = nelements*(nelements+1)/2;
+    indexMap3(ind23, Expr(1), nrbf23, nelements, Expr(1), nrbf2);
+    indexMap3(ind32, nabf23, nrbf23, symMe, nabf3, nrbf3);
+    indexMap3(ind33, nabf33, nrbf33, symMe, nabf3, nrbf3);
 
     
     rijs.dim(0).set_bounds(0, 3).set_stride(1);
@@ -1002,7 +1002,7 @@ public:
     // dd3_o.dim(3).set_bounds(0, nrbf3).set_stride(3 * npairs * nabf3);
     // dd3_o.dim(4).set_bounds(0, me).set_stride(3 * npairs * nabf3 * nrbf3);
 
-        // cU_o(copy1, copy2, copy3) = cU(copy1, copy2, copy3);
+    // cU_o(copy1, copy2, copy3) = cU(copy1, copy2, copy3);
     // cU_o.dim(0).set_bounds(0, nelements).set_stride(1);
     // cU_o.dim(1).set_bounds(0, k3).set_stride(nelements);
     // cU_o.dim(2).set_bounds(0, nrbf3).set_stride(nelements * k3);
