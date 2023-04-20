@@ -473,27 +473,21 @@ int FASTPOD::read_coeff_file(std::string coeff_file)
 
 
 
-void buildTwoBody(double *rijs, double *besselparams, int nbesselpars, int bdegree, int adegree, int npairs, int nrbfmax, double rin, double rcut, double *phi, int ns, double *coeff2, double *coeff3, double * coeff23, double *coeff33, double * coeff4, double *coeff34, double *coeff44,  int * ti, int *tj, int *pq, int * pn3, int * pc3, int * pa4, int * pb4, int* pc4, int * elemindex, int nrbf2, int k3, int k4, int q4, int nrbf3, int nrbf4, int nelements, int nd23, int nd33, int nd34, int n32, int n23, int n33, int n43, int n34, int n44,int nabf3, int nabf4, int nrbf23, int nrbf33, int nrbf34, int nrbf44, int nabf23, int nabf33, int nabf34, int nabf44, double *fij, double *e2, double *e3, double *sumU, double *U, double *d2, double *dd2, double * d3, double * dd3, double * cU) {
+void buildTwoBody(double *rijs, double *besselparams, int nbesselpars, int bdegree, int adegree, int npairs, int nrbfmax, double rin, double rcut, double *phi, int ns, double *coeff2, double *coeff3, double * coeff23, double *coeff33, double * coeff4, double *coeff34, double *coeff44,  int * ti, int *tj, int *pq, int * pn3, int * pc3, int * pa4, int * pb4, int* pc4, int * elemindex, int nrbf2, int k3, int k4, int q4, int nrbf3, int nrbf4, int nelements, int nd23, int nd33, int nd34, int n32, int n23, int n33, int n43, int n34, int n44,int nabf3, int nabf4, int nrbf23, int nrbf33, int nrbf34, int nrbf44, int nabf23, int nabf33, int nabf34, int nabf44, double *fij, double *e2, double *e3){
   // rijs is different now
   Halide::Runtime::Buffer<double> rijs_buffer(rijs, {{0, 3, 1}, {0, npairs, 3}});
   Halide::Runtime::Buffer<double> besselparams_buffer(besselparams, nbesselpars);
   Halide::Runtime::Buffer<double> phi_buffer(phi, {{0, ns, 1}, {0, ns, ns}});
-  Halide::Runtime::Buffer<double> coeff2_buffer(coeff2, {{0, npairs, nrbf2}, {0, nrbf2, 1}});
+  Halide::Runtime::Buffer<double> coeff2_buffer(coeff2, {{0, npairs, nrbf2}, {0, nrbf2, 1}, {0, nelements, nrbf2 * npairs}});
   Halide::Runtime::Buffer<int> tj_buffer(tj, npairs);
   Halide::Runtime::Buffer<int> ti_buffer(ti, npairs);
   Halide::Runtime::Buffer<int> pq_buffer(pq, k3*3);
   Halide::Runtime::Buffer<double> fij_buffer(fij, {{0, npairs, 3}, {0, 3, 1}});
   auto e2_buffer = Halide::Runtime::Buffer<double, 0>::make_scalar(e2);
-  Halide::Runtime::Buffer<double> sumU_buffer(sumU, {{0, nelements, 1}, {0, k3, nelements}, {0, nrbf3, k3 * nelements}});
-  Halide::Runtime::Buffer<double> U_buffer(U, {{0, npairs, 1}, {0, k3, npairs}, {0, nrbf3, k3 * npairs}, {0, 4, nrbf3 * k3 * npairs}});
-  Halide::Runtime::Buffer<double> d2_buffer(d2, {{0, nelements, nrbf2}, {0, nrbf2, 1}});
-  Halide::Runtime::Buffer<double> dd2_buffer(dd2, {{0, nelements, 3 * npairs * nrbf2}, {0, nrbf2, 3 * npairs}, {0, npairs, 3}, {0, 3, 1}});
 
   int me = nelements * (nelements + 1)/2;
 
-  Halide::Runtime::Buffer<double> d3_buffer(d3, {{0, nabf3, 1}, {0, nrbf3, nabf3}, {0, me, nabf3 * nrbf3}});
-  Halide::Runtime::Buffer<double> dd3_buffer(dd3, {{0, 3, 1}, {0, npairs, 3}, {0, nabf3, 3 * npairs}, {0, nrbf3, 3 * npairs * nabf3}, {0, me, 3 * npairs * nabf3 * nrbf3}});
-  Halide::Runtime::Buffer<double> coeff3_buffer(coeff3, {{0, nabf3, 1}, {0, nrbf3, nabf3}, {0, me, nabf3 * nrbf3}});
+  Halide::Runtime::Buffer<double> coeff3_buffer(coeff3, {{0, nabf3, 1}, {0, nrbf3, nabf3}, {0, me, nabf3 * nrbf3}, {0, nelements, me * nabf3 * nrbf3}});
   Halide::Runtime::Buffer<double> coeff23_buffer(coeff23, {{0, n23, 1}, {0, n32, n23}, {0, nelements, n23 * n32}});
   int s33 = n33 * (n33+1)/2;
   Halide::Runtime::Buffer<double> coeff33_buffer(coeff33, {{0, s33, 1}, {0, nelements, s33}});
@@ -502,7 +496,6 @@ void buildTwoBody(double *rijs, double *besselparams, int nbesselpars, int bdegr
   Halide::Runtime::Buffer<double> coeff34_buffer(coeff34, {1});
   Halide::Runtime::Buffer<double> coeff44_buffer(coeff44, {1});
   auto e3_buffer = Halide::Runtime::Buffer<double, 0>::make_scalar(e3);
-  Halide::Runtime::Buffer<double> cU_buffer(cU, {{0, nelements, 1}, {0, k3, nelements}, {0, nrbf3, nelements * k3}});
 
   Halide::Runtime::Buffer<int> pn3_buffer(pn3, nabf3 + 1);
   Halide::Runtime::Buffer<int> pc3_buffer(pc3, k3 + 1);
@@ -511,7 +504,7 @@ void buildTwoBody(double *rijs, double *besselparams, int nbesselpars, int bdegr
   Halide::Runtime::Buffer<int> pa4_buffer(pa4, nabf4 + 1);
   Halide::Runtime::Buffer<int> pb4_buffer(pb4, {{0, q4, 1}, {0, 3, q4}});
   Halide::Runtime::Buffer<int> pc4_buffer(pc4, q4);
-  poddescTwoBody(rijs_buffer, besselparams_buffer, nbesselpars, bdegree, adegree, npairs, nrbfmax, rin, rcut, phi_buffer, ns, coeff2_buffer, ti_buffer, tj_buffer, nrbf2, k3, k4, q4, pq_buffer, pn3_buffer, pc3_buffer, pa4_buffer, pb4_buffer, pc4_buffer, elemindex_buffer, nrbf3, nrbf4, nelements, nd23, nd33, nd34, n32, n23, n33, n43, n34, n44, nabf3, nabf4, nrbf23, nrbf33, nrbf34, nrbf44, nabf23, nabf33, nabf34, nabf44, coeff3_buffer, coeff23_buffer, coeff33_buffer, coeff4_buffer, coeff34_buffer, coeff44_buffer, fij_buffer, e2_buffer, sumU_buffer, U_buffer, d2_buffer, dd2_buffer, d3_buffer, dd3_buffer, cU_buffer, e3_buffer);
+  poddescTwoBody(rijs_buffer, besselparams_buffer, nbesselpars, bdegree, adegree, npairs, nrbfmax, rin, rcut, phi_buffer, ns, coeff2_buffer, ti_buffer, tj_buffer, nrbf2, k3, k4, q4, pq_buffer, pn3_buffer, pc3_buffer, pa4_buffer, pb4_buffer, pc4_buffer, elemindex_buffer, nrbf3, nrbf4, nelements, nd23, nd33, nd34, n32, n23, n33, n43, n34, n44, nabf3, nabf4, nrbf23, nrbf33, nrbf34, nrbf44, nabf23, nabf33, nabf34, nabf44, coeff3_buffer, coeff23_buffer, coeff33_buffer, coeff4_buffer, coeff34_buffer, coeff44_buffer, fij_buffer, e2_buffer, e3_buffer);
 }
 
 
@@ -567,16 +560,16 @@ double FASTPOD::peratomenergyforce(double *fij, double *rij, double *temp,
     double *abfy = &temp[4*n1 + n5 + 4*n2 + 2*n4]; // Nj*K3
     double *abfz = &temp[4*n1 + n5 + 4*n2 + 3*n4]; // Nj*K3
     double *tm = &temp[4*n1 + n5 + 4*n2 + 4*n4]; // 4*K3
-    double *d2 =  &temp[4*n1 + n5 + 4*n2]; // nl2
-    double *dd2 = &temp[4*n1 + n5 + 4*n2 + nl2]; // 3*Nj*nl2
-    double *d3 =  &temp[4*n1 + n5 + 4*n2 + nl2 + 3*Nj*nl2]; // nl3
-    double *dd3 = &temp[4*n1 + n5 + 4*n2 + nl2 + 3*Nj*nl2 + nl3]; // 3*Nj*nl3
-    double *d4 =  &temp[4*n1 + n5 + 4*n2 + nl2 + 3*Nj*nl2 + nl3 + 3*Nj*nl3]; // nl4
-    double *dd4 = &temp[4*n1 + n5 + 4*n2 + nl2 + 3*Nj*nl2 + nl3 + 3*Nj*nl3 + nl4]; // 3*Nj*nl4
-    double *cU = &temp[4*n1 + n5 + 4*n2 + nl2 + 3*Nj*nl2 + nl3 + 3*Nj*nl3 + nl4 + 3*Nj*nl4];
+    // double *d2 =  &temp[4*n1 + n5 + 4*n2]; // nl2
+    // double *dd2 = &temp[4*n1 + n5 + 4*n2 + nl2]; // 3*Nj*nl2
+    // double *d3 =  &temp[4*n1 + n5 + 4*n2 + nl2 + 3*Nj*nl2]; // nl3
+    // double *dd3 = &temp[4*n1 + n5 + 4*n2 + nl2 + 3*Nj*nl2 + nl3]; // 3*Nj*nl3
+    // double *d4 =  &temp[4*n1 + n5 + 4*n2 + nl2 + 3*Nj*nl2 + nl3 + 3*Nj*nl3]; // nl4
+    // double *dd4 = &temp[4*n1 + n5 + 4*n2 + nl2 + 3*Nj*nl2 + nl3 + 3*Nj*nl3 + nl4]; // 3*Nj*nl4
+    // double *cU = &temp[4*n1 + n5 + 4*n2 + nl2 + 3*Nj*nl2 + nl3 + 3*Nj*nl3 + nl4 + 3*Nj*nl4];
 
-    buildTwoBody(rij, besselparams, nbesselpars, pdegree[0], pdegree[1], Nj, nrbfmax, rin, rcut, Phi, ns, &coeff2[nl2*t0], &coeff3[nl3*t0], coeff23, coeff33, coeff4, coeff34, coeff44, ti, tj, pq3, pn3, pc3, pa4, pb4, pc4, elemindex, nrbf2, K3, K4, Q4, nrbf3, nrbf4, nelements, nd23, nd33, nd34,n32, n23, n33, n43, n34, n44, nabf3, nabf4, nrbf23, nrbf33, nrbf34, nrbf44, nabf23, nabf33, nabf34, nabf44, fij, &e2, &e3, sumU, U, d2, dd2, d3, dd3, cU);
-
+    buildTwoBody(rij, besselparams, nbesselpars, pdegree[0], pdegree[1], Nj, nrbfmax, rin, rcut, Phi, ns, coeff2, coeff3, coeff23, coeff33, coeff4, coeff34, coeff44, ti, tj, pq3, pn3, pc3, pa4, pb4, pc4, elemindex, nrbf2, K3, K4, Q4, nrbf3, nrbf4, nelements, nd23, nd33, nd34,n32, n23, n33, n43, n34, n44, nabf3, nabf4, nrbf23, nrbf33, nrbf34, nrbf44, nabf23, nabf33, nabf34, nabf44, fij, &e2, &e3);
+    //sumU, U, d2, dd2, d3, dd3, cU
     if ((nd23>0) || (nd33>0) || (nd34>0)) {
       
       //      threebodydesc(d3, sumU, Nj);

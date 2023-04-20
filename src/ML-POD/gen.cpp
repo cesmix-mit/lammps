@@ -243,7 +243,7 @@ void twoBodyDescDeriv(Func & d2, Func & dd2, Func rbf,  Func tj, Expr N, Expr Ne
 }
 
 
-void tallyTwoBodyLocalForce(Func & fij, Func & e, Func coeff2, Func rbf, Func tj, Expr nbf, Expr N)
+void tallyTwoBodyLocalForce(Func & fij, Func & e, Func coeff2, Func rbf, Func tj, Func ti, Expr nbf, Expr N, Expr nelements)
 {
   Expr zero = Expr((double) 0.0);
 
@@ -253,7 +253,7 @@ void tallyTwoBodyLocalForce(Func & fij, Func & e, Func coeff2, Func rbf, Func tj
 
   RDom r(0, N, 0, nbf);
 
-  Expr c = coeff2(clamp(tj(r.x), 1, N - 1) - 1, r.y);
+  Expr c = coeff2(clamp(tj(r.x), 1, N - 1) - 1, r.y, clamp(ti(0) - 1, 0, nelements - 1));
   e() += c * rbf(r.x, r.y, 0);
   fij(r.x, dim) += c * rbf(r.x, r.y, dim + 1);
 
@@ -440,7 +440,7 @@ void tallyLocalForceRev(Func & fij, Func atomtype, Func cU, Func U, Expr nrbf3, 
     }
 }
 
-void threeBodyCoeff(Func & cU, Func & e, Func coeff3, Func sumU, Func pn3, Func pc3, Expr npairs, Var ne, Var k3, Var rbf3,
+void threeBodyCoeff(Func & cU, Func & e, Func coeff3, Func sumU, Func pn3, Func pc3, Func ti, Expr npairs, Var ne, Var k3, Var rbf3,
 		Expr nelements, Expr K3, Expr nrbf3, Expr nabf3, Expr me)
 {
     Expr zero = Expr((double) 0.0);
@@ -462,7 +462,7 @@ void threeBodyCoeff(Func & cU, Func & e, Func coeff3, Func sumU, Func pn3, Func 
     Expr k = (2 * nelements - 3 - r.z) * (r.z/ 2) + r[3] - 1; //mem  - ki + kij;
     Expr t1 = pc3(r.x) * sumU(r.z, r.x, r[4]);
     Expr c2 = sumU(r[3], r.x, r[4]);
-    Expr c3 = coeff3(r.y, r[4], clamp(k, 0, me - 1));
+    Expr c3 = coeff3(r.y, r[4], clamp(k, 0, me - 1), clamp(ti(0) - 1, 0, nelements - 1));
     Expr t2 = c3 * t1;
     e() += t2 * c2;
     cU(r[3], r.x, r[4]) += t2;
@@ -636,7 +636,10 @@ void fourbodystuff(Func & fij, Func & e23,
   //Use unsafe_promise_clamped
   // j is n32
   //i is n23
-  d23(d23i, d23j) = d2(unsafe_promise_clamped(ind23(d23i, 1), 0, nelements -1), unsafe_promise_clamped(ind23(d23i, 2), 0, nrbf2 -1)) * d3(unsafe_promise_clamped(ind32(d23j, 0), 0, nabf3- 1), unsafe_promise_clamped(ind32(d23j, 1),0, nrbf3 - 1), unsafe_promise_clamped(ind32(d23j, 2), 0, me -1));
+  d23(d23i, d23j) = d2(unsafe_promise_clamped(ind23(d23i, 1), 0, nelements -1),
+		       unsafe_promise_clamped(ind23(d23i, 2), 0, nrbf2 -1)) * d3(unsafe_promise_clamped(ind32(d23j, 0), 0, nabf3- 1),
+										 unsafe_promise_clamped(ind32(d23j, 1),0, nrbf3 - 1),
+										 unsafe_promise_clamped(ind32(d23j, 2), 0, me -1));
   d23.bound(d23i, 0, n23);
   d23.bound(d23j, 0, n32);
 
@@ -747,7 +750,7 @@ public:
   Input<Buffer<double>> Phi{"Phi", 2};
   Input<int> ns{"ns", 1};
 
-  Input<Buffer<double>> coeff2{"coeff2", 2};
+  Input<Buffer<double>> coeff2{"coeff2", 3};
   Input<Buffer<int>> ti{"ti", 1};
   Input<Buffer<int>> tj{"tj", 1};
   
@@ -794,23 +797,14 @@ public:
 
   
   
-  Input<Buffer<double>> coeff3{"coeff3", 3};
+  Input<Buffer<double>> coeff3{"coeff3", 4};
   Input<Buffer<double>> coeff23{"coeff23", 3};
   Input<Buffer<double>> coeff33{"coeff33", 2};
   Input<Buffer<double>> coeff4{"coeff4", 4};
   Input<Buffer<double>> coeff34{"coeff34", 1};
   Input<Buffer<double>> coeff44{"coeff44", 1};
 
-  
-  Output<Buffer<double>> sumU_o{"sumU_o", 3};
-  Output<Buffer<double>> U_o{"U_o", 4};
 
-  Output<Buffer<double>> d2_o{"d2_o", 2};
-  Output<Buffer<double>> dd2_o{"dd2_o", 4};
-
-  Output<Buffer<double>> d3_o{"d3_o", 3};
-  Output<Buffer<double>> dd3_o{"dd3_o", 5};
-  Output<Buffer<double>> cU_o{"cU_o", 3};
   Output<double> e3_o{"e3_o"};
 
   void generate() {
@@ -826,8 +820,20 @@ public:
     
     rijs.dim(0).set_bounds(0, 3).set_stride(1);
     rijs.dim(1).set_bounds(0, npairs).set_stride(3);
-
+    Phi.dim(0).set_bounds(0, ns).set_stride(1);
+    Phi.dim(1).set_bounds(0, ns).set_stride(ns);
+    coeff2.dim(0).set_bounds(0, npairs).set_stride(nrbf2);
+    coeff2.dim(1).set_bounds(0, nrbf2).set_stride(1);
+    coeff2.dim(2).set_bounds(0, nelements).set_stride(nrbf2 * npairs);
+    coeff23.dim(2).set_bounds(0, nelements).set_stride(n23 * n32);
+    coeff23.dim(1).set_bounds(0, n32).set_stride(n23);
+    coeff23.dim(0).set_bounds(0, n23).set_stride(1);
+    coeff33.dim(0).set_bounds(0, n33 * (n33+1)/2).set_stride(1);
+    coeff33.dim(1).set_bounds(0, nelements).set_stride(n33 * (n33+1)/2);
     besselparams.dim(0).set_bounds(0, nbesselparams);
+
+    Expr me = nelements * (nelements + 1)/2;
+    
     Var bfi("basis function index");
     Var bfp("basis function param");
     Var np("pairindex");
@@ -840,9 +846,6 @@ public:
 	     bfi, bfp, np, dim);
 
     // MatMul
-    Phi.dim(0).set_bounds(0, ns).set_stride(1);
-    Phi.dim(1).set_bounds(0, ns).set_stride(ns);
-
     //rbft.dim(2).set_bounds(0, 4).set_stride(npairs * ns);
     //rbft.dim(1).set_bounds(0, ns).set_stride(npairs);
     //rbft.dim(0).set_bounds(0, npairs).set_stride(1);
@@ -852,38 +855,18 @@ public:
     Var c("c");
     Func prod("prod");
     prod(c, k, i, j) = Phi(k, i) * rbft(j, k, c);
-    /*
-    prod.bound(c, 0, 4);
-    prod.bound(k, 0, nrbfmax);
-    prod.bound(j, 0, npairs);
-    prod.bound(i, 0, npairs);
-    */
     Func rbf("rbf");
     rbf(j, i, c) = Expr((double) 0.0);
     RDom r(0, ns);
     rbf(j, i, c) += prod(c, r, i, j);
-
+    //j is num pairs so we sum over basis functions here...
     //rbf.update(0).reorder(c, r, i, j); // TODO
     rbf.store_root().compute_root();
 
-    // end MatMul
-
-    coeff2.dim(0).set_bounds(0, npairs).set_stride(nrbf2);
-    coeff2.dim(1).set_bounds(0, nrbf2).set_stride(1);
-    //coeff3
-    coeff23.dim(2).set_bounds(0, nelements).set_stride(n23 * n32);
-    coeff23.dim(1).set_bounds(0, n32).set_stride(n23);
-    coeff23.dim(0).set_bounds(0, n23).set_stride(1);
-
-    coeff33.dim(0).set_bounds(0, n33 * (n33+1)/2).set_stride(1);
-    coeff33.dim(1).set_bounds(0, nelements).set_stride(n33 * (n33+1)/2);
-
     Func fij("fij"), e("e");
-    tallyTwoBodyLocalForce(fij, e, coeff2, rbf, tj, nrbf2, npairs);
-
-    Var n("n");
+    tallyTwoBodyLocalForce(fij, e, coeff2, rbf, tj, ti, nrbf2, npairs, nelements);
     e_o() = e();
-
+    Var n("n");
     Func abf4("abf4");
     Func tm("tm");
     Var abfi("abfi");
@@ -892,56 +875,14 @@ public:
 		      abf4, tm,
 		      c, np,  abfi, abfip
 		      );
-    // abf4.compute_root();
+
 
     Func sumU("sumU"), U("U");
-    Var copy1, copy2, copy3, copy4;
     radialAngularBasis(sumU, U, rbf, abf4,
 		       tj, npairs, k3, nrbf3, nelements);
-    sumU_o(copy1, copy2, copy3) = sumU(copy1, copy2, copy3);
-    U_o(copy1, copy2, copy3, copy4)= U(copy1, copy2, copy3, copy4);
-    sumU_o.dim(0).set_bounds(0, nelements).set_stride(1);
-    sumU_o.dim(1).set_bounds(0, k3).set_stride(nelements);
-    sumU_o.dim(2).set_bounds(0, nrbf3).set_stride(nelements * k3);
-    U_o.dim(0).set_bounds(0, npairs).set_stride(1);
-    U_o.dim(1).set_bounds(0, k3).set_stride(npairs);
-    U_o.dim(2).set_bounds(0, nrbf3).set_stride(npairs * k3);
-    U_o.dim(3).set_bounds(0, 4).set_stride(npairs * k3 * nrbf3);
 
-    //U_o.compute_root();
-    sumU_o.compute_root();
-
-    //     abf4.dim(2).set_bounds(0, 4).set_stride(k3* npairs);
-    // abf4.dim(1).set_bounds(0, k3).set_stride(npairs);
-    // abf4.dim(0).set_bounds(0, npairs).set_stride(1);
-    // sumU_o.dim(0).set_bounds(0, nelements).set_stride(1);
-    // sumU_o.dim(1).set_bounds(0, k3).set_stride(nelements);
-    // sumU_o.dim(2).set_bounds(0, nrbf3).set_stride(nelements * k3);
-    // U_o.dim(0).set_bounds(0, npairs).set_stride(1);
-    // U_o.dim(1).set_bounds(0, k3).set_stride(npairs);
-    // U_o.dim(2).set_bounds(0, nrbf3).set_stride(npairs * k3);
-    // U_o.dim(3).set_bounds(0, 4).set_stride(npairs * k3 * nrbf3);
-
-    // // if nd23 > 0
     Func d2("d2"), dd2("dd2");
     twoBodyDescDeriv(d2, dd2, rbf, tj, npairs, nelements, nrbf2);
-    // d2.compute_root();
-    // dd2.compute_root();
-
-
-
-    d2_o(copy1, copy2) = d2(copy1, copy2);
-    dd2_o(copy1, copy2, copy3, copy4) = dd2(copy1, copy2, copy3, copy4);
-
-    d2_o.dim(0).set_bounds(0, nelements).set_stride(nrbf2);
-    d2_o.dim(1).set_bounds(0, nrbf2).set_stride(1);
-    
-
-    dd2_o.dim(0).set_bounds(0, nelements).set_stride(3 * npairs * nrbf2);
-    dd2_o.dim(1).set_bounds(0, nrbf2).set_stride(3 * npairs);
-    dd2_o.dim(2).set_bounds(0, npairs).set_stride(3);
-    dd2_o.dim(3).set_bounds(0, 3).set_stride(1);
-
 
     Func d3("d3");
     Var abfThree("abfThree");
@@ -952,11 +893,6 @@ public:
 		  abfThree, rbfThree, kme);
 
     d3.compute_root();
-    Expr me = nelements * (nelements + 1)/2;
-    d3_o(copy1, copy2, copy3) = d3(copy1, copy2, copy3);
-    d3_o.dim(0).set_bounds(0, nabf3).set_stride(1);
-    d3_o.dim(1).set_bounds(0, nrbf3).set_stride(nabf3);
-    d3_o.dim(2).set_bounds(0, me).set_stride(nabf3 * nrbf3);
     
     Func dd3("dd3");
     Var nj("nj");    
@@ -964,30 +900,18 @@ public:
     threeBodyDescDeriv(dd3, sumU, U, tj, pn3, pc3,
 		       elemindex, npairs, k3, nelements, dim, nj, abfThree, nabf3, 
 		       rbfThree, nrbf3, kme, me, r3body);
-    //dd3.update(0).reorder(rbfThree, r3body.y, r3body.x, r3body[3], dim);
+
     dd3.update(0).reorder(dim, r3body[3], r3body.x, r3body.y, rbfThree);
     dd3.compute_root();
-    dd3_o(dim, nj, copy1, copy2, copy3) = dd3(dim, nj, copy1, copy2, copy3);
-    dd3_o.dim(0).set_bounds(0, 3).set_stride(1);
-    dd3_o.dim(1).set_bounds(0, npairs).set_stride(3);
-    dd3_o.dim(2).set_bounds(0, nabf3).set_stride(3 * npairs);
-    dd3_o.dim(3).set_bounds(0, nrbf3).set_stride(3 * npairs * nabf3);
-    dd3_o.dim(4).set_bounds(0, me).set_stride(3 * npairs * nabf3 * nrbf3);
-
-
  
     Func cU("cU");
     Func e3("e3");
     Var ne("ne"), k3var("k3var");
    
-    threeBodyCoeff(cU, e3, coeff3, sumU, pn3, pc3, nj, ne, k3var, rbfThree,
+    threeBodyCoeff(cU, e3, coeff3, sumU, pn3, pc3, ti, nj, ne, k3var, rbfThree,
 		   nelements, k3, nrbf3, nabf3, me);
     cU.compute_root();
     e3.compute_root();
-    cU_o(copy1, copy2, copy3) = cU(copy1, copy2, copy3);
-    cU_o.dim(0).set_bounds(0, nelements).set_stride(1);
-    cU_o.dim(1).set_bounds(0, k3).set_stride(nelements);
-    cU_o.dim(2).set_bounds(0, nrbf3).set_stride(nelements * k3);
     e3_o() = e3();
 
     tallyLocalForce(fij, tj, cU, U, nrbf3, k3, npairs, nelements, dim);
@@ -1001,12 +925,6 @@ public:
 		  npairs, n33, nelements, nabf3, nrbf3, me,
 		  n);
     e3_o() += e33();
-
-    //fourbodyenergy
-    //tally locally fource
-    //specialize nelements/some force scheduling...
-    //per pair or per atom output
-    //
 
     Func sumU4("sumU4");
     Func U4("u4");
@@ -1038,6 +956,56 @@ public:
     fij_o.dim(0).set_bounds(0, npairs).set_stride(3);
     fij_o.dim(1).set_bounds(0, 3).set_stride(1);
 
+    // sumU_o(copy1, copy2, copy3) = sumU(copy1, copy2, copy3);
+    // U_o(copy1, copy2, copy3, copy4)= U(copy1, copy2, copy3, copy4);
+    // sumU_o.dim(0).set_bounds(0, nelements).set_stride(1);
+    // sumU_o.dim(1).set_bounds(0, k3).set_stride(nelements);
+    // sumU_o.dim(2).set_bounds(0, nrbf3).set_stride(nelements * k3);
+    // U_o.dim(0).set_bounds(0, npairs).set_stride(1);
+    // U_o.dim(1).set_bounds(0, k3).set_stride(npairs);
+    // U_o.dim(2).set_bounds(0, nrbf3).set_stride(npairs * k3);
+    // U_o.dim(3).set_bounds(0, 4).set_stride(npairs * k3 * nrbf3);
+
+    // //U_o.compute_root();
+    // sumU_o.compute_root();
+
+    //     abf4.dim(2).set_bounds(0, 4).set_stride(k3* npairs);
+    // abf4.dim(1).set_bounds(0, k3).set_stride(npairs);
+    // abf4.dim(0).set_bounds(0, npairs).set_stride(1);
+    // sumU_o.dim(0).set_bounds(0, nelements).set_stride(1);
+    // sumU_o.dim(1).set_bounds(0, k3).set_stride(nelements);
+    // sumU_o.dim(2).set_bounds(0, nrbf3).set_stride(nelements * k3);
+    // U_o.dim(0).set_bounds(0, npairs).set_stride(1);
+    // U_o.dim(1).set_bounds(0, k3).set_stride(npairs);
+    // U_o.dim(2).set_bounds(0, nrbf3).set_stride(npairs * k3);
+    // U_o.dim(3).set_bounds(0, 4).set_stride(npairs * k3 * nrbf3);
+    // d2_o(copy1, copy2) = d2(copy1, copy2);
+    // dd2_o(copy1, copy2, copy3, copy4) = dd2(copy1, copy2, copy3, copy4);
+
+    // d2_o.dim(0).set_bounds(0, nelements).set_stride(nrbf2);
+    // d2_o.dim(1).set_bounds(0, nrbf2).set_stride(1);
+    
+
+    // dd2_o.dim(0).set_bounds(0, nelements).set_stride(3 * npairs * nrbf2);
+    // dd2_o.dim(1).set_bounds(0, nrbf2).set_stride(3 * npairs);
+    // dd2_o.dim(2).set_bounds(0, npairs).set_stride(3);
+    // dd2_o.dim(3).set_bounds(0, 3).set_stride(1);
+    // d3_o(copy1, copy2, copy3) = d3(copy1, copy2, copy3);
+    // d3_o.dim(0).set_bounds(0, nabf3).set_stride(1);
+    // d3_o.dim(1).set_bounds(0, nrbf3).set_stride(nabf3);
+    // d3_o.dim(2).set_bounds(0, me).set_stride(nabf3 * nrbf3);
+
+    // dd3_o(dim, nj, copy1, copy2, copy3) = dd3(dim, nj, copy1, copy2, copy3);
+    // dd3_o.dim(0).set_bounds(0, 3).set_stride(1);
+    // dd3_o.dim(1).set_bounds(0, npairs).set_stride(3);
+    // dd3_o.dim(2).set_bounds(0, nabf3).set_stride(3 * npairs);
+    // dd3_o.dim(3).set_bounds(0, nrbf3).set_stride(3 * npairs * nabf3);
+    // dd3_o.dim(4).set_bounds(0, me).set_stride(3 * npairs * nabf3 * nrbf3);
+
+        // cU_o(copy1, copy2, copy3) = cU(copy1, copy2, copy3);
+    // cU_o.dim(0).set_bounds(0, nelements).set_stride(1);
+    // cU_o.dim(1).set_bounds(0, k3).set_stride(nelements);
+    // cU_o.dim(2).set_bounds(0, nrbf3).set_stride(nelements * k3);
 
 
   }
