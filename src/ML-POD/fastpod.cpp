@@ -27,6 +27,7 @@
 #include "memory.h"
 #include "tokenizer.h"
 #include "poddescTwoBody.h"
+#include "poddescOuter.h"
 #include "HalideBuffer.h"
 
 #include <cmath>
@@ -483,6 +484,7 @@ void buildTwoBody(double *rijs, double *besselparams, int nbesselpars, int bdegr
   Halide::Runtime::Buffer<int> ti_buffer(ti, npairs);
   Halide::Runtime::Buffer<int> pq_buffer(pq, k3*3);
   Halide::Runtime::Buffer<double> fij_buffer(fij, {{0, npairs, 3}, {0, 3, 1}});
+
   auto e2_buffer = Halide::Runtime::Buffer<double, 0>::make_scalar(e2);
 
   int me = nelements * (nelements + 1)/2;
@@ -757,7 +759,118 @@ double FASTPOD::peratomenergyforce(double *fij, double *rij, double *temp,
 double FASTPOD::energyforce(double *force, double *x, int *atomtype, int *alist,
           int *jlist, int *pairnumsum, int natom)
 {
+  
   double etot = 0.0;
+#ifdef HALIDEPOD
+  double *coeff1 = &newcoeff[0];
+  double *coeff2 = &newcoeff[nl1*nelements];
+  double *coeff3 = &newcoeff[(nl1 + nl2)*nelements];
+  double *coeff4 = &newcoeff[(nl1 + nl2 + nl3)*nelements];
+  double *coeff23 = &newcoeff[(nl1 + nl2 + nl3 + nl4)*nelements];
+  double *coeff33 = &newcoeff[(nl1 + nl2 + nl3 + nl4 + nl23)*nelements];
+  double *coeff34 = &newcoeff[(nl1 + nl2 + nl3 + nl4 + nl23 + nl33)*nelements];
+  double *coeff44 = &newcoeff[(nl1 + nl2 + nl3 + nl4 + nl23 + nl33 + nl34)*nelements];
+  int natoms = natom;
+  int npairs = pairnumsum[natom];
+  int nijmax = 0;
+  for (int i=0; i<natom; i++) {
+    nijmax = std::max(pairnumsum[i+1] - pairnumsum[i], nijmax); // # neighbors around atom i
+  }
+  int bdegree = pdegree[0];
+  int adegree = pdegree[1];
+  //  memory->destroy(tmpmem);
+  //  memory->destroy(tmpint);
+  memory->grow(tmpmem, 3 * npairs + 4 * natoms , "tmpmem");
+  memory->grow(tmpint, 4*npairs, "tmpint");
+  
+  double *rij = &tmpmem[0];    // 3*Nj
+  double *fij = &tmpmem[3 * npairs]; // 3*natoms
+  double *eo = &tmpmem[3 * npairs + 3 * natoms]; //natoms
+
+ 
+  int *ai = &tmpint[0];        // npairs
+  int *aj = &tmpint[npairs];       // npairs
+  int *ti = &tmpint[2*npairs];     // npairs
+  int *tj = &tmpint[3*npairs];     // npairs
+  //  int *tA = &tmpint[4*npairs];     // natoms
+  
+    //	       ti_buffer, tj_buffer, ai_buffer, aj_buffer, ta_buffer
+   myneighborsfull(rij, x, ai, aj, ti, tj, jlist, pairnumsum, atomtype, alist, natom);
+
+  Halide::Runtime::Buffer<int> tj_buffer(tj, npairs);
+  Halide::Runtime::Buffer<int> ti_buffer(ti, npairs);
+  Halide::Runtime::Buffer<int> aj_buffer(aj, npairs);
+  Halide::Runtime::Buffer<int> ai_buffer(ai, npairs);
+  Halide::Runtime::Buffer<int> tA_buffer(atomtype, natom);
+  
+  Halide::Runtime::Buffer<double> rijs_buffer(rij, {{0, 3, 1}, {0, npairs, 3}});
+  Halide::Runtime::Buffer<double> besselparams_buffer(besselparams, nbesselpars);
+  Halide::Runtime::Buffer<double> phi_buffer(Phi, {{0, ns, 1}, {0, ns, ns}});
+  Halide::Runtime::Buffer<int> offset_buffer(pairnumsum, natom+1);
+
+
+  Halide::Runtime::Buffer<int> pq_buffer(pq3, K3*3);
+  Halide::Runtime::Buffer<int> pn3_buffer(pn3, nabf3 + 1);
+  Halide::Runtime::Buffer<int> pc3_buffer(pc3, K3 + 1);
+  Halide::Runtime::Buffer<int> pa4_buffer(pa4, nabf4 + 1);
+  Halide::Runtime::Buffer<int> pb4_buffer(pb4, {{0, Q4, 1}, {0, 3, Q4}});
+  Halide::Runtime::Buffer<int> pc4_buffer(pc4, Q4);
+
+  Halide::Runtime::Buffer<int> elemindex_buffer(elemindex, {{0, nelements, 1}, {0, nelements, nelements}});
+  int me = nelements * (nelements + 1)/2;
+  int s33 = n33 * (n33+1)/2;
+  int sym3Ne = nelements*(nelements+1)*(nelements+2)/6;
+  Halide::Runtime::Buffer<double> coeff1_buffer(coeff1, nelements);
+  Halide::Runtime::Buffer<double> coeff2_buffer(coeff2, {{0, npairs, nrbf2}, {0, nrbf2, 1}, {0, nelements, nrbf2 * npairs}});
+  Halide::Runtime::Buffer<double> coeff3_buffer(coeff3, {{0, nabf3, 1}, {0, nrbf3, nabf3}, {0, me, nabf3 * nrbf3}, {0, nelements, me * nabf3 * nrbf3}});
+  Halide::Runtime::Buffer<double> coeff23_buffer(coeff23, {{0, n23, 1}, {0, n32, n23}, {0, nelements, n23 * n32}});
+  Halide::Runtime::Buffer<double> coeff33_buffer(coeff33, {{0, s33, 1}, {0, nelements, s33}});
+  Halide::Runtime::Buffer<double> coeff4_buffer(coeff4, {{0, nabf4, 1}, {0, nrbf4, nabf4}, {0, sym3Ne, nabf4 * nrbf4}, {0, nelements, sym3Ne * nrbf4 * nabf4}});
+  Halide::Runtime::Buffer<double> coeff34_buffer(coeff34, {1});
+  Halide::Runtime::Buffer<double> coeff44_buffer(coeff44, {1});
+
+  Halide::Runtime::Buffer<double> fij_o_buffer(fij, {{0, natoms, 3}, {0, 3, 1}});
+  Halide::Runtime::Buffer<double> e_o_buffer(eo, natoms);
+  auto etot_buffer = Halide::Runtime::Buffer<double, 0>::make_scalar(&etot);
+  poddescOuter(rijs_buffer, besselparams_buffer,
+	       nbesselpars, bdegree, adegree, npairs, natoms, nrbfmax, nijmax,
+	       rin, rcut,
+	       phi_buffer, ns,
+	       ti_buffer, tj_buffer, ai_buffer, aj_buffer,
+	       offset_buffer, tA_buffer,
+	       K3, K4,Q4,
+	       pq_buffer, pn3_buffer, pc3_buffer, pa4_buffer, pb4_buffer, pc4_buffer,
+	       elemindex_buffer,
+	       nrbf2, nrbf3, nrbf4,
+	       nelements,
+	       nd23, nd33, nd34, n32, n23, n33, n43, n34, n44,
+	       nabf3, nabf4, nrbf23, nrbf33, nrbf34, nrbf44,
+	       nabf23, nabf33, nabf34, nabf44,
+	       coeff1_buffer, coeff2_buffer, coeff3_buffer, coeff23_buffer, coeff33_buffer, coeff4_buffer,coeff34_buffer, coeff44_buffer,
+	       fij_o_buffer, e_o_buffer, etot_buffer
+	       );
+
+    //int poddescTwoBody(struct halide_buffer_t *_rijs_buffer, struct halide_buffer_t *_besselparams_buffer,
+    // int32_t _nbesselpars, int32_t _bdegree, int32_t _adegree, int32_t _npairs, int32_t _natoms, int32_t _nrbfmax, int32_t _nijmax,
+    // double _rin, double _rcut,
+    // struct halide_buffer_t *_Phi_buffer, int32_t _ns,
+    // struct halide_buffer_t *_ti_buffer, struct halide_buffer_t *_tj_buffer, struct halide_buffer_t *_ai_buffer, struct halide_buffer_t *_aj_buffer,
+    // struct halide_buffer_t *_offsets_buffer, struct halide_buffer_t *_tA_buffer,
+    // int32_t _k3, int32_t _k4, int32_t _q4,
+    // struct halide_buffer_t *_pq_buffer, struct halide_buffer_t *_pn3_buffer, struct halide_buffer_t *_pc3_buffer, struct halide_buffer_t *_pa4_buffer,
+    // struct halide_buffer_t *_pb4_buffer, struct halide_buffer_t *_pc4_buffer,
+    // struct halide_buffer_t *_elemindex_buffer,
+    // int32_t _nrbf2, int32_t _nrbf3, int32_t _nrbf4,
+    // int32_t _nelements,
+    // int32_t _nd23, int32_t _nd33, int32_t _nd34, int32_t _n32, int32_t _n23, int32_t _n33, int32_t _n43, int32_t _n34, int32_t _n44,
+    // int32_t _nabf3, int32_t _nabf4, int32_t _nrbf23, int32_t _nrbf33, int32_t _nrbf34, int32_t _nrbf44,
+    // int32_t _nabf23, int32_t _nabf33, int32_t _nabf34, int32_t _nabf44,
+    // struct halide_buffer_t *_coeff1_buffer, struct halide_buffer_t *_coeff2_buffer, struct halide_buffer_t *_coeff3_buffer, struct halide_buffer_t *_coeff23_buffer, struct halide_buffer_t *_coeff33_buffer, struct halide_buffer_t *_coeff4_buffer, struct halide_buffer_t *_coeff34_buffer, struct halide_buffer_t *_coeff44_buffer,
+    // struct halide_buffer_t *_fij_o_buffer, struct halide_buffer_t *_e_o_buffer);
+#else
+    
+
+
   for (int i=0; i<3*natom; i++) force[i] = 0.0;
 
   for (int i=0; i<natom; i++) {
@@ -786,7 +899,7 @@ double FASTPOD::energyforce(double *force, double *x, int *atomtype, int *alist,
 
     tallyforce(force, fij, ai, aj, Nj);
   }
-
+#endif  
   return etot;
 }
 
@@ -1125,6 +1238,28 @@ void FASTPOD::myneighbors(double *rij, double *x, int *ai, int *aj, int *ti, int
     rij[2 + 3*l]   = x[2 + 3*j] -  x[2 + 3*i];
   }
 }
+
+void FASTPOD::myneighborsfull(double *rij, double *x, int *ai, int *aj, int *ti, int *tj,
+        int *jlist, int *pairnumsum, int *atomtype, int *alist, int natom)
+{
+  for (int i=0; i<natom; i++) {
+    int itype = atomtype[i];
+    int start = pairnumsum[i];
+    int m = pairnumsum[i+1] - start; // number of neighbors around i
+    for (int l=0; l<m ; l++) {   // loop over each atom around atom i
+      int ll = l + start;
+      int j = jlist[ll];  // atom j
+      ai[ll]        = i;
+      aj[ll]        = alist[j];
+      ti[ll]        = itype;
+      tj[ll]        = atomtype[alist[j]];
+      rij[0 + 3*ll]   = x[0 + 3*j] -  x[0 + 3*i];
+      rij[1 + 3*ll]   = x[1 + 3*j] -  x[1 + 3*i];
+      rij[2 + 3*ll]   = x[2 + 3*j] -  x[2 + 3*i];
+    }
+  }
+}
+
 
 void FASTPOD::fourbodydescderiv(double *d4, double *dd4, double *sumU, double *Ux, double *Uy,
         double *Uz, int *atomtype, int N)

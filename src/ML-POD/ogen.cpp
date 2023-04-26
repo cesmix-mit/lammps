@@ -833,6 +833,7 @@ public:
 
   Output<Buffer<double>> fij_o{"fij_o", 2};
   Output<Buffer<double>> e_o{"e_o", 1};
+  Output<Buffer<double>> etot_o{"etot", 0};
 
   //  Output<Buffer<double>> fife_o{"fij_o", 2};
 
@@ -1071,12 +1072,16 @@ public:
     rbf.compute_at(fife_o, rout.z);
     rbft.compute_at(fife_o, rout.z);
 
-    fij_o.dim(0).set_bounds(0, oatom).set_stride(3);
+    fij_o.dim(0).set_bounds(0, natoms).set_stride(3);
     fij_o.dim(1).set_bounds(0, 3).set_stride(1);
     fij_o(oatom, dim) = fife_o(oatom, dim);
     fij_o.bound(dim, 0, 3);
     fij_o.reorder(dim, oatom);
     e_o(oatom) = fife_o(oatom, 3);
+    e_o.dim(0).set_bounds(0, natoms).set_stride(1);
+
+    RDom outrdom(0, natoms, "out");
+    etot_o() += e_o(outrdom);
 
 
   }

@@ -197,49 +197,6 @@ void PairPOD::compute(int eflag, int vflag)
     double rcutsq = fastpodptr->rcut*fastpodptr->rcut;
     double evdwl = 0.0;
 
-//     fastpodptr->timing = 1;
-//     if (fastpodptr->timing == 1)
-//       for (int i=0; i<20; i++) fastpodptr->comptime[i] = 0;
-#ifdef HALIDEPOD
-    int maxtot = 0;
-    for (int ii = 0; ii < inum; ii++) {
-      int i = ilist[ii];
-      int jnum = numneigh[i];
-      maxtot+=jnum;
-    }
-    memory->grow(rij, dim * maxtot, "pair:rij");
-    memory->grow(fij, dim * maxtot, "pair:rij");
-    memory->grow(ai, maxtot, "pair:ai");
-    memory->grow(aj, maxtot, "pair:aj");
-    memory->grow(ti, maxtot, "pair:ti");
-    memory->grow(tj, maxtot, "pair:tj");
-    int nij = 0;
-    for (int ii = 0; ii < inum; ii++) {
-      int gi = ilist[ii];
-      int m = numneigh[gi];
-      for (int l = 0; l < m; l++) {           // loop over each atom around atom i
-	int gj = firstneigh[gi][l];           // atom j
-	double delx = x[gj][0] - x[gi][0];    // xj - xi
-	double dely = x[gj][1] - x[gi][1];    // xj - xi
-	double delz = x[gj][2] - x[gi][2];    // xj - xi
-	double rsq = delx * delx + dely * dely + delz * delz;
-	if (rsq < rcutsq && rsq > 1e-20) {
-	  rij[nij * 3 + 0] = delx;
-	  rij[nij * 3 + 1] = dely;
-	  rij[nij * 3 + 2] = delz;
-	  ai[nij] = gi;
-	  aj[nij] = gj;
-	  ti[nij] = itype;
-	  tj[nij] = map[atomtypes[gj]] + 1;
-	  nij++;
-	}
-      }
-    }
-    
-    //pass in these
-    //adapt these to have ai()
-
-#else
 
 
               
@@ -285,7 +242,7 @@ void PairPOD::compute(int eflag, int vflag)
       }
     }
   }
-#endif
+
 
 //   if (fastpodptr->timing == 1) {
 //     for (int i=0; i<20; i++) printf("%g  ", fastpodptr->comptime[i]);

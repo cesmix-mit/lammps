@@ -47,6 +47,8 @@ private:
 
   void myneighbors(double *rij, double *x, int *ai, int *aj, int *ti, int *tj,
         int *jlist, int *pairnumsum, int *atomtype, int *alist, int i);
+  void myneighborsfull(double *rij, double *x, int *ai, int *aj, int *ti, int *tj,
+		       int *jlist, int *pairnumsum, int *atomtype, int *alist, int natom);
 
   void twobodycoeff(double *newcoeff2, double *coeff2);
 
