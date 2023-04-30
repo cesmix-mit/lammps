@@ -780,12 +780,13 @@ double FASTPOD::energyforce(double *force, double *x, int *atomtype, int *alist,
   int adegree = pdegree[1];
   //  memory->destroy(tmpmem);
   //  memory->destroy(tmpint);
-  memory->grow(tmpmem, 3 * npairs + 4 * natoms , "tmpmem");
+  std::cout << "Allocate new mem.\n";
+  memory->grow(tmpmem, 3 * npairs +  natoms , "tmpmem");
   memory->grow(tmpint, 4*npairs, "tmpint");
   
   double *rij = &tmpmem[0];    // 3*Nj
-  double *fij = &tmpmem[3 * npairs]; // 3*natoms
-  double *eo = &tmpmem[3 * npairs + 3 * natoms]; //natoms
+  //  double *fij = &tmpmem[3 * npairs]; // 3*natoms
+  double *eo = &tmpmem[3 * npairs]; //natoms
 
  
   int *ai = &tmpint[0];        // npairs
@@ -795,7 +796,8 @@ double FASTPOD::energyforce(double *force, double *x, int *atomtype, int *alist,
   //  int *tA = &tmpint[4*npairs];     // natoms
   
     //	       ti_buffer, tj_buffer, ai_buffer, aj_buffer, ta_buffer
-   myneighborsfull(rij, x, ai, aj, ti, tj, jlist, pairnumsum, atomtype, alist, natom);
+  myneighborsfull(rij, x, ai, aj, ti, tj, jlist, pairnumsum, atomtype, alist, natom);
+  std::cout << "Build nbs.\n";
 
   Halide::Runtime::Buffer<int> tj_buffer(tj, npairs);
   Halide::Runtime::Buffer<int> ti_buffer(ti, npairs);
@@ -809,7 +811,7 @@ double FASTPOD::energyforce(double *force, double *x, int *atomtype, int *alist,
   Halide::Runtime::Buffer<int> offset_buffer(pairnumsum, natom+1);
 
 
-  Halide::Runtime::Buffer<int> pq_buffer(pq3, K3*3);
+  Halide::Runtime::Buffer<int> pq_buffer(pq3, K3*2);
   Halide::Runtime::Buffer<int> pn3_buffer(pn3, nabf3 + 1);
   Halide::Runtime::Buffer<int> pc3_buffer(pc3, K3 + 1);
   Halide::Runtime::Buffer<int> pa4_buffer(pa4, nabf4 + 1);
@@ -829,7 +831,7 @@ double FASTPOD::energyforce(double *force, double *x, int *atomtype, int *alist,
   Halide::Runtime::Buffer<double> coeff34_buffer(coeff34, {1});
   Halide::Runtime::Buffer<double> coeff44_buffer(coeff44, {1});
 
-  Halide::Runtime::Buffer<double> fij_o_buffer(fij, {{0, natoms, 3}, {0, 3, 1}});
+  Halide::Runtime::Buffer<double> fij_o_buffer(force, {{0, natoms, 3}, {0, 3, 1}});
   Halide::Runtime::Buffer<double> e_o_buffer(eo, natoms);
   auto etot_buffer = Halide::Runtime::Buffer<double, 0>::make_scalar(&etot);
   poddescOuter(rijs_buffer, besselparams_buffer,
@@ -897,7 +899,7 @@ double FASTPOD::energyforce(double *force, double *x, int *atomtype, int *alist,
 
     etot += peratomenergyforce(fij, rij, &tmpmem[6*Nj], ti, tj, Nj);
 
-    tallyforce(force, fij, ai, aj, Nj);
+    tallyforce(force, fij, ai, aj, Nj, i);
   }
 #endif  
   return etot;
@@ -2243,10 +2245,10 @@ void FASTPOD::tallylocalforce(double *fij, double *cU, double *Ux, double *Uy, d
   }
 }
 
-void FASTPOD::tallyforce(double *force, double *fij,  int *ai, int *aj, int N)
+void FASTPOD::tallyforce(double *force, double *fij,  int *ai, int *aj, int N, int me)
 {
   for (int n=0; n<N; n++) {
-    int im =  3*ai[n];
+    int im =  3*me;
     int jm =  3*aj[n];
     int nm = 3*n;
     force[0 + im] += fij[0 + nm];

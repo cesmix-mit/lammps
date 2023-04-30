@@ -169,8 +169,8 @@ void radialAngularBasis(Func & sumU, Func & U,
   Expr rzz = oatom;
   Expr rz = r.z;
   r.where(offsets(rzz) <= rz && rz < offsets(rzz + 1));
-  Expr oatomDiff = offsets(rzz + 1) - offsets(rzz);
-  Expr rzbounded = unsafe_promise_clamped(unsafe_promise_clamped(r.z, 0, N - 1), offsets(rzz), min(oatomDiff, nijmax));
+  Expr oatommax = min(offsets(rzz + 1), nijmax + offsets(oatom)) - 1;
+  Expr rzbounded = unsafe_promise_clamped(unsafe_promise_clamped(r.z, 0, N - 1), offsets(rzz), oatommax);
   Expr ry = r.y;
   Expr rx = r.x;
   Expr in = atomtype(r.z) - 1;
@@ -222,7 +222,7 @@ void twoBodyDescDeriv(Func & d2, Func & dd2,
   Func combinedD("combinedD");
   d2(ne, m, oatom) = zero;
   //  dd2(ne, m, n, dim, oatom) = zero;
-  dd2(dim, n,ne, m, oatom) = zero;
+  dd2(dim, n, ne, m, oatom) = zero;
 
   RDom r(0, nrbf2, 0, N);
   r.where(offsets(oatom) <= r.y);
@@ -231,12 +231,10 @@ void twoBodyDescDeriv(Func & d2, Func & dd2,
   
 
   //  Expr acc = unsafe_promise_clamped(aj(r.x), 0, natoms - 1);
-  Expr bound = unsafe_promise_clamped(r.y, offsets(oatom), min(offsets(oatom+1) - offsets(oatom), nijmax));
-  d2(clamp(tj(bound)-1, 0, Ne - 1), r.x, oatom) += rbf(bound, r.x, 0);
-  //dim...?
-
+  Expr oatommax = min(offsets(oatom + 1), nijmax + offsets(oatom)) - 1;
+  Expr bound = unsafe_promise_clamped(r.y, offsets(oatom), oatommax);
   Expr ty = clamp(tj(bound)-1, 0, Ne - 1);
-
+  d2(ty, r.x, oatom) += rbf(bound, r.x, 0);
   dd2(dim, bound, ty, r.x, oatom) += rbf(bound, r.x, dim + 1);
 
   //dd2.reorder_storage(dim, n, m, ne, oatom);
@@ -272,7 +270,8 @@ void tallyTwoBodyLocalForce(Func & fij, Func & e,
 
   RDom r(0, nijmax, 0, nbf, "fij2atomrdom");
   r.where(r.x < offsets(oatom + 1) - offsets(oatom));
-  Expr bound = unsafe_promise_clamped(unsafe_promise_clamped(r.x + offsets(oatom), 0, N - 1), offsets(oatom), min(offsets(oatom+1) - offsets(oatom), nijmax));
+  Expr oatommax = min(offsets(oatom + 1), nijmax + offsets(oatom)) - 1;
+  Expr bound = unsafe_promise_clamped(unsafe_promise_clamped(r.x + offsets(oatom), 0, N - 1), offsets(oatom), oatommax);
   
   Expr c = coeff2(clamp(tj(bound), 1, N - 1) - 1, r.y, clamp(clamp(tA(oatom), 0, natoms -1) - 1, 0, nelements - 1));
   e(oatom) += c * rbf(bound, r.y, 0);
@@ -325,7 +324,7 @@ void buildAngularBasis(Expr k3, Expr npairs, Func pq, Func rij,
 
   tm(pair, abfip, c) = zero;
   tm(pair, 0, 0) = Expr((double) 1.0);
-  RDom rn(1, k3 + 1, 0, 4);
+  RDom rn(1, k3 - 1, 0, 4);
   Expr m = clamp(pq(rn.x) - 1, 0, 3 * k3 - 1);
   Expr prev0 = tm(pair, m, 0);
   Expr d = clamp(pq(rn.x + k3), 1, 3);
@@ -411,7 +410,8 @@ void tallyLocalForceRev(Func & fij,
   //  Expr c = cU(clamp(i2, 0, nelements - 1), r.y, r.x);
   Expr c = cU(clamp(i2, 0, nelements - 1), r.y, r.x, oatom);
   Expr oatomDiff = offsets(oatom + 1) - offsets(oatom);
-  Expr rzbounded = unsafe_promise_clamped(unsafe_promise_clamped(r.z, 0, npairs - 1), offsets(oatom), min(oatomDiff, nijmax));
+  Expr oatommax = min(offsets(oatom + 1), nijmax + offsets(oatom)) - 1;
+  Expr rzbounded = unsafe_promise_clamped(unsafe_promise_clamped(r.z, 0, npairs - 1), offsets(oatom), oatommax);
   fij(dim, unsafe_promise_clamped(r.z - offsets(oatom), 0, nijmax - 1), oatom) += c * U(rzbounded, r.y, r.x, dim + 1);
   if (up != -1){
     fij.update(up).reorder(dim, r.z, r.y, r.x, oatom);
@@ -538,7 +538,7 @@ void threeBodyDescDeriv(Func & dd3,
   RVar rzz = r[3];
 
   Expr oatomDiff = min(offsets(oatom + 1) - offsets(oatom), nijmax);
-  Expr rzbounded = unsafe_promise_clamped(unsafe_promise_clamped(rzz, 0, npairs - 1), offsets(oatom), oatomDiff);
+  Expr rzbounded = unsafe_promise_clamped(unsafe_promise_clamped(rzz, 0, npairs - 1), offsets(oatom), oatomDiff - 1);
 
   //  Expr rzz = clamp(clamp(rzzPre, offsets(oatom), offsets(oatom) + nijmax), 0, npairs);
   //Expr t1 = pc3(rx) * sumU(rz, rx, rbfTres);
@@ -571,7 +571,7 @@ void threeBodyDesc(Func & d3,
   //  d3.bound(oatom, 0, natoms);
 
   //RDom r(0, nabf3, 0, k3, 0, nelements, 0, nelements);
-    RDom r(0, k3, 0, nabf3, 0, nelements, 0, nelements);
+  RDom r(0, k3, 0, nabf3, 0, nelements, 0, nelements);
   Expr n1 = pn3(r.y);
   Expr n2 = pn3(r.y + 1);
   r.where(n1 <= r.x);
@@ -612,6 +612,7 @@ void indexMap3(Func & indexmap, Expr n1, Expr n2, Expr n3, Expr N1, Expr N2){
   indexmap.bound(k, 0, n1 * n2 * n3);
   indexmap.bound(c, 0, 3);
   indexmap.compute_root();
+  //  indexmap.
 }
 
 
@@ -677,7 +678,7 @@ void fourbodystuff(Func & fij, Func & e23, Func & d23,
 
   //needs to inverse pairindex to atom...
   Expr offBound = min(offsets(oatom + 1) - offsets(oatom), nijmax);
-  Expr offsetedAcc = unsafe_promise_clamped(unsafe_promise_clamped(r1f.y + offsets(oatom), 0, npairs),  offsets(oatom), offBound);
+  Expr offsetedAcc = unsafe_promise_clamped(unsafe_promise_clamped(r1f.y + offsets(oatom), 0, npairs),  offsets(oatom), offBound - 1);
   fij(dim, r1f.y, oatom) += cf2(r1f.x, oatom) * dd2(dim, offsetedAcc,
 						    unsafe_promise_clamped(ind23(r1f.x, 1), 0, nelements -1),
 						    unsafe_promise_clamped(ind23(r1f.x, 2), 0, nrbf2 -1),
@@ -1039,6 +1040,7 @@ public:
     rout.where(rout.x < offsets(rout.z + 1) - offsets(rout.z));
     Expr npp = clamp(rout.x + offsets(rout.z), 0, npairs - 1);
     Expr app = clamp(aj(npp), 0, natoms - 1);
+    
     //0,1,2 = force
     //3,4,5 = force again
     //6 = energy
@@ -1046,16 +1048,22 @@ public:
 
     Func fife_o("fife_o");
     fife_o(oatom, dim) = Expr((double) 0.0);
+    Expr lhs = fife_o(select(rout.y == 6, rout.z,
+			     select(rout.y > 2 && rout.y < 6, app,
+				    select(rout.y <= 2, rout.z, 0))),
+		      select(rout.y == 6, 3, dimp)
+		      );
     fife_o(select(rout.y == 6, rout.z,
 		  select(rout.y > 2 && rout.y < 6, app,
 			 select(rout.y <= 2, rout.z, 0))),
 	   select(rout.y == 6, 3, dimp)
 	   ) = select(rout.y == 6, etemp(rout.z),
-		      select(rout.y > 2 && rout.y < 6, -fijAtom(dimp, rout.x, rout.z),
-			     select(rout.y <= 2, fijAtom(dimp, rout.x, rout.z), Expr((double) 0.0))));
-
+		      select(rout.y > 2 && rout.y < 6, lhs + -1 * fijAtom(dimp, rout.x, rout.z),
+			     select(rout.y <= 2, lhs+fijAtom(dimp, rout.x, rout.z), Expr((double) -1.0))));
+    
 
     fife_o.compute_root();
+    fife_o.update(0).unroll(rout.y);
     etemp.compute_at(fife_o, rout.z);
     fijAtom.compute_at(fife_o, rout.z);
     cu4.compute_at(fife_o, rout.z);

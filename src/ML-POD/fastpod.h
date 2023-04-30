@@ -226,7 +226,7 @@ public:
   double energyforce(double *force, double *x, int *atomtype, int *alist,
           int *jlist, int *pairnumsum, int natom);
 
-  void tallyforce(double *force, double *fij,  int *ai, int *aj, int N);
+  void tallyforce(double *force, double *fij,  int *ai, int *aj, int N, int me);
   void tallyforce(double **force, double *fij,  int *ai, int *aj, int N);
 
   void fourbodydesc23(double* d23, double* d2, double *d3);
