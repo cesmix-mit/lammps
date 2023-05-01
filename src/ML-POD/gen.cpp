@@ -8,8 +8,14 @@ Expr get_abf_index(Expr original_index, Expr rbf_info_length) {
   return rbf_info_length + original_index;
 }
 //Func & rbf_f, Func & rbfx_f, Func & rbfy_f, Func & rbfz_f,
+/*
 void buildRBF( Func & rbfall,
 	       Func xij, Func besselparams, Expr rin, Expr rmax,
+	       Expr bdegree, Expr adegree, Expr nbparams, Expr npairs, Expr ns,
+	       Var bfi, Var bfp, Var np, Var dim)
+*/
+void buildRBF( Func & rbfall,
+	       Func xij, Func dij, Func idij, Func fcut, Func dfcut, Func besselparams, Expr rin, Expr rmax,
 	       Expr bdegree, Expr adegree, Expr nbparams, Expr npairs, Expr ns,
 	       Var bfi, Var bfp, Var np, Var dim)
 {
@@ -23,6 +29,8 @@ void buildRBF( Func & rbfall,
   Expr xij3 = xij(2, np);
 
   Expr s = xij1*xij1 + xij2*xij2 + xij3*xij3;
+  // -------
+  /*
   Expr dij = sqrt(s);
   Expr dr1 = xij1/dij;    
   Expr dr2 = xij2/dij;    
@@ -49,7 +57,7 @@ void buildRBF( Func & rbfall,
 
   Func rbf("rbf"), drbf("drbf_f"), abf("abf_f"), dabf("dabf_f");
 
-  rbf(bfp, bfi, np) = b * fcut * sin(a*x)/r;
+  rbf(bfp, bfi, np) = b * fcut(np) * sin(a*x)/r;
   // rbf.trace_stores();
   rbf.bound(bfp, 0, nbparams);
   rbf.bound(bfi, 0, bdegree);
@@ -69,6 +77,58 @@ void buildRBF( Func & rbfall,
   abf.bound(np, 0, npairs);
   Expr drbfdr_a = dfcut/c - (bfi+one)*fcut/(c*dij);
   dabf(bfi, np, dim) = (xij(dim, np)/dij) * drbfdr_a;
+  */
+  // -------
+  dij(np) = sqrt(s);
+  idij(np) = one / dij(np); // Not sure if Halide will be able to do these in parallel if written like this
+  Expr dr1 = xij1 * idij(np);
+  Expr dr2 = xij2 * idij(np);
+  Expr dr3 = xij3 * idij(np);
+  Expr irmax = one / rmax;
+
+  Expr r = = dij(np) - rin;
+  Expr y = r * irmax;    
+  Expr y2 = y*y;
+  Expr y3 = one - y2*y;
+  Expr y4 = y3*y3 + Expr((double) 1e-6);
+  Expr y5 = sqrt(y4); //pow(y4, 0.5);
+  Expr y6 = exp(-one/y5);
+  Expr y7 = pow(y4, onefive);
+  fcut(np) = y6/exp(-one);
+  dfcut(np) = (((3 * one)/(rmax*exp(-one)))*(y2)*y6*(y*y2 - one))/y7;
+  
+  Expr alpha = max(Expr((double)1e-3), besselparams(bfp));
+  Expr x =  (one - exp(-alpha*r * irmax))/(one-exp(-alpha));
+  Expr dx = (alpha * irmax)*exp(-(alpha*r * irmax))/(one - exp(-alpha));
+
+  Expr a = (bfi + 1) * PI;
+  Expr b = sqrt(2 * one * irmax)/(bfi + 1);
+  Expr c = pow(dij(np), bfi + 1);
+
+  Func rbf("rbf"), drbf("drbf_f"), abf("abf_f"), dabf("dabf_f");
+
+  rbf(bfp, bfi, np) = b * fcut(np) * sin(a*x)/r;
+  // rbf.trace_stores();
+  rbf.bound(bfp, 0, nbparams);
+  rbf.bound(bfi, 0, bdegree);
+  rbf.bound(np, 0, npairs);
+  Expr drbfdr = b*(dfcut(np)*sin(a*x)/r - fcut(np)*sin(a*x)/(r*r) + a*cos(a*x)*fcut(np)*dx/r);
+  drbf(bfp, bfi, np, dim) = (xij(dim, np) * idij(np)) * drbfdr;
+  // drbf.trace_stores();
+  drbf.bound(dim, 0, 3);
+  drbf.bound(bfp, 0, nbparams);
+  drbf.bound(bfi, 0, bdegree);
+  drbf.bound(np, 0, npairs);
+
+  Expr power = pow(dij(np), bfi+one);
+  abf(bfi, np) = fcut(np)/power;;
+  // abf.trace_stores();
+  abf.bound(bfi, 0, adegree);
+  abf.bound(np, 0, npairs);
+  Expr drbfdr_a = dfcut(np)/c - (bfi+one)*fcut(np)*idij(np)/c;
+  dabf(bfi, np, dim) = (xij(dim, np) * idij(np)) * drbfdr_a;
+
+  // -------
   // dabf.trace_stores();
   dabf.bound(dim, 0, 3);
   dabf.bound(bfi, 0, adegree);
@@ -268,7 +328,12 @@ void tallyTwoBodyLocalForce(Func & fij, Func & e, Func coeff2, Func rbf, Func tj
 
 
 
+/*
 void buildAngularBasis(Expr k3, Expr npairs, Func pq, Func rij,
+		       Func & abf4, Func & tm,
+		       Var c, Var pair, Var abfi,Var abfip){
+               */
+void buildAngularBasis(Expr k3, Expr npairs, Func pq, Func rij, Func idij,
 		       Func & abf4, Func & tm,
 		       Var c, Var pair, Var abfi,Var abfip){
       
@@ -283,11 +348,13 @@ void buildAngularBasis(Expr k3, Expr npairs, Func pq, Func rij,
   Expr xz = x*z;
   Expr yz = y*z;
 
+  // --------------------
+  /*
   Expr dij = sqrt(xx + yy + zz);
   Expr u = x/dij;
   Expr v = y/dij;
   Expr w = z/dij;
-    
+
   Expr dij3 = dij*dij*dij;
   Expr dudx = (yy+zz)/dij3;
   Expr dudy = -xy/dij3;
@@ -300,6 +367,25 @@ void buildAngularBasis(Expr k3, Expr npairs, Func pq, Func rij,
   Expr dwdx = -xz/dij3;
   Expr dwdy = -yz/dij3;
   Expr dwdz = (xx+yy)/dij3;
+  */
+  // --------------------
+  Expr u = x * idij(pair);
+  Expr v = y * idij(pair);
+  Expr w = z * idij(pair);
+    
+  Expr idij3 = idij(pair)*idij(pair)*idij(pair);
+  Expr dudx = (yy+zz)*idij3;
+  Expr dudy = -xy*idij3;
+  Expr dudz = -xz*idij3;
+
+  Expr dvdx = -xy*idij3;
+  Expr dvdy = (xx+zz)*idij3;
+  Expr dvdz = -yz*idij3;
+
+  Expr dwdx = -xz*idij3;
+  Expr dwdy = -yz*idij3;
+  Expr dwdz = (xx+yy)*idij3;
+  // ---------------------
 
   Expr zero = Expr((double) 0.0);
 
@@ -841,7 +927,13 @@ public:
     Var dim("dim");
 
     Func rbft("rbft");
+    Func dij("dij"), Func idij("idij"), Func fcut("fcut"), Func dfcut("dfcut");
+    /*
     buildRBF(rbft, rijs, besselparams, rin, rcut-rin,
+	     bdegree, adegree, nbesselparams, npairs, ns,
+	     bfi, bfp, np, dim);
+         */
+    buildRBF(rbft, rijs, dij, idij, fcut, dfcut, besselparams, rin, rcut-rin,
 	     bdegree, adegree, nbesselparams, npairs, ns,
 	     bfi, bfp, np, dim);
 
@@ -871,7 +963,13 @@ public:
     Func tm("tm");
     Var abfi("abfi");
     Var abfip("abfip");
+    /*
     buildAngularBasis(k3, npairs, pq, rijs,
+		      abf4, tm,
+		      c, np,  abfi, abfip
+		      );
+              */
+    buildAngularBasis(k3, npairs, pq, rijs, idij,
 		      abf4, tm,
 		      c, np,  abfi, abfip
 		      );
