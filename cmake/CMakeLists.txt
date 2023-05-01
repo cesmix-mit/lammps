@@ -659,11 +659,13 @@ if (PKG_ML-POD)
    add_executable(mygen ${LAMMPS_SOURCE_DIR}/ML-POD/gen.cpp)
    target_link_libraries(mygen PRIVATE Halide::Generator)
    if (HALIDEPROF)
-	   add_halide_library(poddescTwoBody FROM mygen GENERATOR poddescTwoBody FEATURES  TARGETS x86-64-linux-avx-avx2-f16c-fma-sse41-profile STMT_HTML)	
+       #add_halide_library(poddescTwoBody FROM mygen GENERATOR poddescTwoBody FEATURES  TARGETS x86-64-linux-avx-avx2-f16c-fma-sse41-profile STMT_HTML)
+	   add_halide_library(poddescTwoBody FROM mygen GENERATOR poddescTwoBody FEATURES  TARGETS x86-64-linux-sse41-profile STMT_HTML)
    else()
-      add_halide_library(poddescTwoBody FROM mygen GENERATOR poddescTwoBody FEATURES no_bounds_query TARGETS x86-64-linux-avx-avx2-f16c-fma-ssec41 STMT_HTML)
+       #add_halide_library(poddescTwoBody FROM mygen GENERATOR poddescTwoBody FEATURES no_bounds_query TARGETS x86-64-linux-avx-avx2-f16c-fma-ssec41 STMT_HTML)
+      add_halide_library(poddescTwoBody FROM mygen GENERATOR poddescTwoBody FEATURES TARGETS x86-64-linux-sse41-debug STMT_HTML)
    endif()
-   
+
    target_link_libraries(lammps PRIVATE poddescTwoBody)
  endif()
 

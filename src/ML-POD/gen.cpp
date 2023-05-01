@@ -86,7 +86,7 @@ void buildRBF( Func & rbfall,
   Expr dr3 = xij3 * idij(np);
   Expr irmax = one / rmax;
 
-  Expr r = = dij(np) - rin;
+  Expr r = dij(np) - rin;
   Expr y = r * irmax;    
   Expr y2 = y*y;
   Expr y3 = one - y2*y;
@@ -927,7 +927,7 @@ public:
     Var dim("dim");
 
     Func rbft("rbft");
-    Func dij("dij"), Func idij("idij"), Func fcut("fcut"), Func dfcut("dfcut");
+    Func dij("dij"), idij("idij"), fcut("fcut"), dfcut("dfcut");
     /*
     buildRBF(rbft, rijs, besselparams, rin, rcut-rin,
 	     bdegree, adegree, nbesselparams, npairs, ns,
