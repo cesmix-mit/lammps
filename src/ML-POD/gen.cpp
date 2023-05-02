@@ -7,13 +7,7 @@ using namespace Halide;
 Expr get_abf_index(Expr original_index, Expr rbf_info_length) {
   return rbf_info_length + original_index;
 }
-//Func & rbf_f, Func & rbfx_f, Func & rbfy_f, Func & rbfz_f,
-/*
-void buildRBF( Func & rbfall,
-	       Func xij, Func besselparams, Expr rin, Expr rmax,
-	       Expr bdegree, Expr adegree, Expr nbparams, Expr npairs, Expr ns,
-	       Var bfi, Var bfp, Var np, Var dim)
-*/
+
 void buildRBF( Func & rbfall,
 	       Func xij, Func dij, Func idij, Func fcut, Func dfcut, Func besselparams, Expr rin, Expr rmax,
 	       Expr bdegree, Expr adegree, Expr nbparams, Expr npairs, Expr ns,
@@ -29,63 +23,14 @@ void buildRBF( Func & rbfall,
   Expr xij3 = xij(2, np);
 
   Expr s = xij1*xij1 + xij2*xij2 + xij3*xij3;
-  // -------
-  /*
-  Expr dij = sqrt(s);
-  Expr dr1 = xij1/dij;    
-  Expr dr2 = xij2/dij;    
-  Expr dr3 = xij3/dij;    
-
-  Expr r = dij - rin;        
-  Expr y = r/rmax;    
-  Expr y2 = y*y;
-  Expr y3 = one - y2*y;
-  Expr y4 = y3*y3 + Expr((double) 1e-6);
-  Expr y5 = sqrt(y4); //pow(y4, 0.5);
-  Expr y6 = exp(-one/y5);
-  Expr y7 = pow(y4, onefive);
-  Expr fcut = y6/exp(-one);
-  Expr dfcut = (((3 * one)/(rmax*exp(-one)))*(y2)*y6*(y*y2 - one))/y7;
-
-  Expr alpha = max(Expr((double)1e-3), besselparams(bfp));
-  Expr x =  (one - exp(-alpha*r/rmax))/(one-exp(-alpha));
-  Expr dx = (alpha/rmax)*exp(-(alpha*r/rmax))/(one - exp(-alpha));
-
-  Expr a = (bfi + 1) * PI;
-  Expr b = sqrt(2 * one/rmax)/(bfi + 1);
-  Expr c = pow(dij, bfi + 1);
-
-  Func rbf("rbf"), drbf("drbf_f"), abf("abf_f"), dabf("dabf_f");
-
-  rbf(bfp, bfi, np) = b * fcut(np) * sin(a*x)/r;
-  // rbf.trace_stores();
-  rbf.bound(bfp, 0, nbparams);
-  rbf.bound(bfi, 0, bdegree);
-  rbf.bound(np, 0, npairs);
-  Expr drbfdr = b*(dfcut*sin(a*x)/r - fcut*sin(a*x)/(r*r) + a*cos(a*x)*fcut*dx/r);
-  drbf(bfp, bfi, np, dim) = (xij(dim, np)/dij) * drbfdr;
-  // drbf.trace_stores();
-  drbf.bound(dim, 0, 3);
-  drbf.bound(bfp, 0, nbparams);
-  drbf.bound(bfi, 0, bdegree);
-  drbf.bound(np, 0, npairs);
-
-  Expr power = pow(dij, bfi+one);
-  abf(bfi, np) = fcut/power;;
-  // abf.trace_stores();
-  abf.bound(bfi, 0, adegree);
-  abf.bound(np, 0, npairs);
-  Expr drbfdr_a = dfcut/c - (bfi+one)*fcut/(c*dij);
-  dabf(bfi, np, dim) = (xij(dim, np)/dij) * drbfdr_a;
-  */
-  // -------
   dij(np) = sqrt(s);
-  idij(np) = one / dij(np); // Not sure if Halide will be able to do these in parallel if written like this
+  idij(np) = one / dij(np); 
   Expr dr1 = xij1 * idij(np);
   Expr dr2 = xij2 * idij(np);
   Expr dr3 = xij3 * idij(np);
   Expr irmax = one / rmax;
 
+  Func y7("y7");
   Expr r = dij(np) - rin;
   Expr y = r * irmax;    
   Expr y2 = y*y;
@@ -93,46 +38,29 @@ void buildRBF( Func & rbfall,
   Expr y4 = y3*y3 + Expr((double) 1e-6);
   Expr y5 = sqrt(y4); //pow(y4, 0.5);
   Expr y6 = exp(-one/y5);
-  Expr y7 = pow(y4, onefive);
+  y7(np) = one / pow(y4, onefive);
   fcut(np) = y6/exp(-one);
-  dfcut(np) = (((3 * one)/(rmax*exp(-one)))*(y2)*y6*(y*y2 - one))/y7;
+  dfcut(np) = (((3 * one)/(rmax*exp(-one)))*(y2)*y6*(y*y2 - one)) * y7(np);
   
   Expr alpha = max(Expr((double)1e-3), besselparams(bfp));
   Expr x =  (one - exp(-alpha*r * irmax))/(one-exp(-alpha));
   Expr dx = (alpha * irmax)*exp(-(alpha*r * irmax))/(one - exp(-alpha));
 
+  Func c("c");
   Expr a = (bfi + 1) * PI;
   Expr b = sqrt(2 * one * irmax)/(bfi + 1);
-  Expr c = pow(dij(np), bfi + 1);
+  c(np, bfi) = one / pow(dij(np), bfi + 1);
 
   Func rbf("rbf"), drbf("drbf_f"), abf("abf_f"), dabf("dabf_f");
 
   rbf(bfp, bfi, np) = b * fcut(np) * sin(a*x)/r;
-  // rbf.trace_stores();
-  rbf.bound(bfp, 0, nbparams);
-  rbf.bound(bfi, 0, bdegree);
-  rbf.bound(np, 0, npairs);
+
   Expr drbfdr = b*(dfcut(np)*sin(a*x)/r - fcut(np)*sin(a*x)/(r*r) + a*cos(a*x)*fcut(np)*dx/r);
   drbf(bfp, bfi, np, dim) = (xij(dim, np) * idij(np)) * drbfdr;
-  // drbf.trace_stores();
-  drbf.bound(dim, 0, 3);
-  drbf.bound(bfp, 0, nbparams);
-  drbf.bound(bfi, 0, bdegree);
-  drbf.bound(np, 0, npairs);
 
-  Expr power = pow(dij(np), bfi+one);
-  abf(bfi, np) = fcut(np)/power;;
-  // abf.trace_stores();
-  abf.bound(bfi, 0, adegree);
-  abf.bound(np, 0, npairs);
-  Expr drbfdr_a = dfcut(np)/c - (bfi+one)*fcut(np)*idij(np)/c;
+  abf(bfi, np) = fcut(np) * c(np, bfi);
+  Expr drbfdr_a = (dfcut(np) - (bfi+one)*fcut(np)*idij(np)) * c(np, bfi);
   dabf(bfi, np, dim) = (xij(dim, np) * idij(np)) * drbfdr_a;
-
-  // -------
-  // dabf.trace_stores();
-  dabf.bound(dim, 0, 3);
-  dabf.bound(bfi, 0, adegree);
-  dabf.bound(np, 0, npairs);
 
   rbf.reorder(bfi, bfp, np);
   rbf.compute_root();
@@ -148,12 +76,6 @@ void buildRBF( Func & rbfall,
 
   rbf.compute_with(drbf, bfi);
   dabf.compute_with(abf, bfi);
-
-  // Loop order bfi first was 7ish seconds
-  //rbf.compute_with(abf, bfi).compute_with(drbf,bfi).compute_with(dabf, bfi);
-  
-  
-  
 
   // rbf.size() = nbparams * bdegree * npairs
   // drbf[x].size() = nbparams * bdegree * npairs
@@ -179,24 +101,12 @@ void buildRBF( Func & rbfall,
   rbfall(r1.z, r1.y + r1.x * bdegree, r1[3] + 1) = drbf(r1.x, r1.y, r1.z, r1[3]);
   rbfall(r2.x, get_abf_index(r2.y, rbf_info_length), r2.z + 1) = dabf(r2.y, r2.x, r2.z);
 
-  /*
-    rbfall(r1.z, r1.y + r1.x * bdegree, 1) = drbf(r1.x, r1.y, r1.z, 0);
-    rbfall(r2.x, get_abf_index(r2.y, rbf_info_length), 1) = dabf(r2.y, r2.x, 0);
-    rbfall(r1.z, r1.y + r1.x * bdegree, 2) = drbf(r1.x, r1.y, r1.z, 1);
-    rbfall(r2.x, get_abf_index(r2.y, rbf_info_length), 2) = dabf(r2.y, r2.x, 1);
-    rbfall(r1.z, r1.y + r1.x * bdegree, 3) = drbf(r1.x, r1.y, r1.z, 2);
-    rbfall(r2.x, get_abf_index(r2.y, rbf_info_length), 3) = dabf(r2.y, r2.x, 2);
-  */
-
-  // This seems like it was the most important thing that needed to be changed 
-  // rbfall.compute_root();  // 19353.844 ms .001 ms 0%
   rbfall.reorder(rbfty, rbf_abf_info, np);
   rbfall.update(0).reorder(r1.w, r1.z);
   rbfall.update(1).reorder(r2.z, r2.y, r2.x);
   rbfall.update(2).reorder(r1.x, r1.y, r1.z);
   rbfall.update(3).reorder(r2.z, r2.y, r2.x);
-  rbfall.store_root().compute_root();  // 19247.139 ms .001 ms 0%
-  // nothing? TERRIBLE TERRIBLE TERRIBLE, possibly bottleneck from earlier? 295 seconds total! with rbft taking 2.378 ms (77%)
+  rbfall.store_root().compute_root(); 
 }
 
 
