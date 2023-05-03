@@ -49,7 +49,7 @@ void buildRBF( Func & rbfall,
   Func c("c");
   Expr a = (bfi + 1) * PI;
   Expr b = sqrt(2 * one * irmax)/(bfi + 1);
-  c(np, bfi) = one / pow(dij(np), bfi + 1);
+  c(np, bfi) = one / pow(dij(np), bfi + 1); 
 
   Func rbf("rbf"), drbf("drbf_f"), abf("abf_f"), dabf("dabf_f");
 
@@ -59,6 +59,7 @@ void buildRBF( Func & rbfall,
   drbf(bfp, bfi, np, dim) = (xij(dim, np) * idij(np)) * drbfdr;
 
   abf(bfi, np) = fcut(np) * c(np, bfi);
+
   Expr drbfdr_a = (dfcut(np) - (bfi+one)*fcut(np)*idij(np)) * c(np, bfi);
   dabf(bfi, np, dim) = (xij(dim, np) * idij(np)) * drbfdr_a;
 
@@ -153,6 +154,8 @@ void twoBodyDescDeriv(Func & d2, Func & dd2, Func rbf,  Func tj, Expr N, Expr Ne
     
   d2.compute_root();
   dd2.compute_root();
+  d2.update(0).reorder(r.x, r.y);
+  dd2.update(0).reorder(r.x, r.y);
 }
 
 
@@ -174,7 +177,7 @@ void tallyTwoBodyLocalForce(Func & fij, Func & e, Func coeff2, Func rbf, Func tj
   fij.bound(dim, 0, 3);
 
   fij.reorder(dim, n);
-  fij.update(0).reorder(dim, r.y, r.x);
+  fij.update(0).reorder(dim, r.x, r.y);
   e.compute_root();
 }
 
