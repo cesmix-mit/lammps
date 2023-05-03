@@ -820,13 +820,14 @@ double FASTPOD::energyforce(double *force, double *x, int *atomtype, int *alist,
 
   Halide::Runtime::Buffer<int> elemindex_buffer(elemindex, {{0, nelements, 1}, {0, nelements, nelements}});
   int me = nelements * (nelements + 1)/2;
-  int s33 = n33 * (n33+1)/2;
+  int s33 = std::max(n33 * (n33+1)/2, 0);
+  int nelemsn33 = n33 > 0  ? nelements : 0;
   int sym3Ne = nelements*(nelements+1)*(nelements+2)/6;
   Halide::Runtime::Buffer<double> coeff1_buffer(coeff1, nelements);
   Halide::Runtime::Buffer<double> coeff2_buffer(coeff2, {{0, npairs, nrbf2}, {0, nrbf2, 1}, {0, nelements, nrbf2 * npairs}});
   Halide::Runtime::Buffer<double> coeff3_buffer(coeff3, {{0, nabf3, 1}, {0, nrbf3, nabf3}, {0, me, nabf3 * nrbf3}, {0, nelements, me * nabf3 * nrbf3}});
   Halide::Runtime::Buffer<double> coeff23_buffer(coeff23, {{0, n23, 1}, {0, n32, n23}, {0, nelements, n23 * n32}});
-  Halide::Runtime::Buffer<double> coeff33_buffer(coeff33, {{0, s33, 1}, {0, nelements, s33}});
+  Halide::Runtime::Buffer<double> coeff33_buffer(coeff33, {{0, s33, std::min(s33, 1)}, {0, nelemsn33, s33}});
   Halide::Runtime::Buffer<double> coeff4_buffer(coeff4, {{0, nabf4, 1}, {0, nrbf4, nabf4}, {0, sym3Ne, nabf4 * nrbf4}, {0, nelements, sym3Ne * nrbf4 * nabf4}});
   Halide::Runtime::Buffer<double> coeff34_buffer(coeff34, {1});
   Halide::Runtime::Buffer<double> coeff44_buffer(coeff44, {1});
@@ -869,6 +870,7 @@ double FASTPOD::energyforce(double *force, double *x, int *atomtype, int *alist,
     // int32_t _nabf23, int32_t _nabf33, int32_t _nabf34, int32_t _nabf44,
     // struct halide_buffer_t *_coeff1_buffer, struct halide_buffer_t *_coeff2_buffer, struct halide_buffer_t *_coeff3_buffer, struct halide_buffer_t *_coeff23_buffer, struct halide_buffer_t *_coeff33_buffer, struct halide_buffer_t *_coeff4_buffer, struct halide_buffer_t *_coeff34_buffer, struct halide_buffer_t *_coeff44_buffer,
     // struct halide_buffer_t *_fij_o_buffer, struct halide_buffer_t *_e_o_buffer);
+  return etot;
 #else
     
 
@@ -901,8 +903,9 @@ double FASTPOD::energyforce(double *force, double *x, int *atomtype, int *alist,
 
     tallyforce(force, fij, ai, aj, Nj, i);
   }
-#endif  
   return etot;
+#endif  
+  
 }
 
 void FASTPOD::descriptors(double *gd, double *gdd, double *x, int *atomtype, int *alist,
