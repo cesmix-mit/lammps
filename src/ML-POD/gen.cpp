@@ -65,9 +65,12 @@ void buildRBF( Func & rbfall,
 
   rbf.reorder(bfi, bfp, np);
   rbf.compute_root();
+  //rbf.compute_root().specialize(nbparams == 1).specialize(nbparams == 2).specialize(nbparams == 3);
+  //Func rbf is scheduled to be computed with drbf_f, so it must not have any specializations.
 
   drbf.reorder(dim, bfi, bfp, np).unroll(dim, 3);
   drbf.compute_root();
+  //drbf.compute_root().specialize(nbparams == 1).specialize(nbparams == 2).specialize(nbparams == 3);
 
   abf.reorder(bfi, np);
   abf.compute_root();
@@ -115,7 +118,7 @@ void radialAngularBasis(Func & sumU, Func & U,
   Expr zero = Expr((double) 0.0);
 
   Var n("n"), k("k"), m("m"), ne("ne"), c("crab");
-  sumU(ne, k, m) = zero;
+  sumU(n, k, m) = zero;
 
   U(n, k, m, c) = zero;
 
@@ -133,13 +136,13 @@ void radialAngularBasis(Func & sumU, Func & U,
   U.reorder(c, n, k, m);
   U.store_root().compute_root();
   U.reorder_storage(c, n, k, m);
-  sumU.reorder(ne, k, m);
+  sumU.reorder(n, k, m);
   sumU.store_root().compute_root();
-  sumU.reorder_storage(ne, k, m);
-  sumU.compute_with(U, k);
+  sumU.reorder_storage(n, k, m);
+  sumU.compute_with(U, n);
 
-  U.update(0).reorder(c, r.z, r.y, r.x).unroll(c, 4);
-  sumU.update(0).reorder(r.z, r.y, r.x);
+  U.update(0).reorder(c, r.z, r.y, r.x).unroll(c, 4).specialize(Ne == 1);
+  sumU.update(0).reorder(r.z, r.y, r.x).specialize(Ne == 1);
 }
 
 void twoBodyDescDeriv(Func & d2, Func & dd2, Func rbf,  Func tj, Expr N, Expr Ne, Expr nrbf2)
@@ -153,9 +156,12 @@ void twoBodyDescDeriv(Func & d2, Func & dd2, Func rbf,  Func tj, Expr N, Expr Ne
   RDom r(0, N, 0, nrbf2);
 
   d2(clamp(tj(r.x)-1, 0, Ne - 1), r.y) += rbf(r.x, r.y, 0);
+  dd2(clamp(tj(r.x)-1, 0, Ne - 1), r.y, r.x, dim) += rbf(r.x, r.y, dim + 1);
+  /*
   dd2(clamp(tj(r.x)-1, 0, Ne - 1), r.y, r.x, 0) += rbf(r.x, r.y, 1);
   dd2(clamp(tj(r.x)-1, 0, Ne - 1), r.y, r.x, 1) += rbf(r.x, r.y, 2);
   dd2(clamp(tj(r.x)-1, 0, Ne - 1), r.y, r.x, 2) += rbf(r.x, r.y, 3);
+  */
     
   // These provide wrong answers ...
   d2.compute_root();
@@ -163,9 +169,12 @@ void twoBodyDescDeriv(Func & d2, Func & dd2, Func rbf,  Func tj, Expr N, Expr Ne
   dd2.compute_root();
   //dd2.reorder_storage(dim, n, m, ne);
   d2.update(0).reorder(r.x, r.y);
-  dd2.update(0).reorder(r.x, r.y);
-  dd2.update(1).reorder(r.x, r.y);
-  dd2.update(2).reorder(r.x, r.y);
+  dd2.update(0).reorder(dim, r.x, r.y).unroll(dim);
+  d2.update(0).compute_with(dd2.update(0), r.y);
+  //dd2.update(1).reorder(r.x, r.y);
+  //dd2.update(2).reorder(r.x, r.y).compute_with(dd2.update(1), r.x).
+  //    compute_with(dd2.update(0), r.x).compute_with(d2.update(0), r.y);
+  //d2.update(0).compute_with(dd2.update(0), r.y);
   //d2.compute_at(dd2, n);
 }
 
@@ -188,11 +197,21 @@ void tallyTwoBodyLocalForce(Func & fij, Func & e, Func coeff2, Func rbf, Func tj
   fij.bound(dim, 0, 3);
 
   fij.reorder(dim, n);
-  fij.update(0).reorder(dim, r.x, r.y).unroll(dim, 3);
+  fij.update(0).reorder(dim, r.x, r.y).unroll(dim);
   fij.reorder_storage(dim, n);
-  fij.update(0).reorder(dim, r.x, r.y).unroll(dim, 3);
-  e.compute_at(fij, n);
-  //e.compute_root();
+  fij.update(0).reorder(dim, r.x, r.y).unroll(dim);
+  e.compute_root();
+  fij.compute_root();
+  //e.compute_with(fij.update(0), r.x);
+  /*
+   * Unhandled exception: Error: Func "e" is computed at the following invalid location:
+          e.compute_at(fij, n);
+        Legal locations for this function are:
+          e.compute_root();
+          e.compute_at(e_o, Var::outermost());
+        "e" is used in the following places:
+         e_o uses e
+   */
 }
 
 
@@ -269,7 +288,6 @@ void buildAngularBasis(Expr k3, Expr npairs, Func pq, Func rij, Func idij,
 			       tm(pair, abfi, 1) * jacobian(pair, c-1, 0) + tm(pair, abfi, 2) * jacobian(pair, c-1, 1) + tm(pair, abfi, 3) * jacobian(pair, c-1, 2));   
 
   tm.reorder(c, abfip, pair);
-  tm.store_root().compute_root();
   tm.reorder_storage(c, abfip, pair);
   tm.store_root().compute_at(abf4, abfi);
   tm.update(0).unscheduled();
@@ -296,7 +314,7 @@ void tallyLocalForceRev(Func & fij, Func atomtype, Func cU, Func U, Expr nrbf3, 
   Expr c = cU(clamp(i2, 0, nelements - 1), r.y, r.x);
   fij(r.z, dim) += c * U(r.z, r.y, r.x, dim + 1);
   if (up != -1){
-    fij.update(up).reorder(dim, r.z, r.y, r.x);
+    fij.update(up).reorder(dim, r.z, r.y, r.x).unroll(dim).specialize(nelements == 1);
   }
 }
 
@@ -323,6 +341,7 @@ void threeBodyCoeff(Func & cU, Func & e, Func coeff3, Func sumU, Func pn3, Func 
   cU(r[3], r.x, r[4]) += t2;
   cU(r.z, r.x, r[4]) += pc3(r.x) * c2 * c3;
 
+  cU.reorder_storage(ne, k3, rbf3);
   cU.update().reorder(r.w, r.z, r.y, r[4]);
   cU.update(1).reorder(r.w, r.z, r.y, r[4]);
   e.update().reorder(r.w, r.z, r.y, r[4]);
@@ -372,8 +391,12 @@ void fourbodycoeff(Func & e4, Func  & cU4,
   Expr scat = scatter(0, 1, 2);
   cU4(mux(scat, {i3, i2, i1}), mux(scat, {j3, j2, j1}), rbf) = gather(c5*c4, c6*c1, c6*c2);
 
-  cU4.update().unroll(r[3], 3);
-  e4.update().reorder(r[2], r[1], r[0], r[3], r[4], r[5]);
+  cU4.reorder_storage(ne, kv, rbf);
+  cU4.update().unroll(r[3], 3).specialize(nelements == 1);
+  e4.update().reorder(r[2], r[1], r[0], r[3], r[4], r[5]).specialize(nelements == 1);
+  e4.compute_at(cU4, r[2]);
+  cU4.compute_root();
+  e4.compute_root();
 }
 
 void threeBodyDescDeriv(Func & dd3, Func sumU, Func U, Func atomtype, Func pn3, Func pc3,
@@ -400,7 +423,8 @@ void threeBodyDescDeriv(Func & dd3, Func sumU, Func U, Func atomtype, Func pn3, 
     
   dd3(dim, rzz, ry, rbf3, clamp(k, 0, me - 1)) += f * U(rzz, rx, rbf3, dim + 1);
 
-  dd3.update().reorder(dim, rzz, rz, rx, ry, rbf3).unroll(dim, 3);
+  dd3.reorder_storage(dim, nj, abf3, rbf3, kme);
+  dd3.update().reorder(dim, rzz, rz, rx, ry, rbf3).unroll(dim, 3).specialize(nelements == 1);
 }
 
 void threeBodyDesc(Func & d3,
@@ -431,7 +455,8 @@ void threeBodyDesc(Func & d3,
   Expr t2 = sumU(rzz, rx, rbf3);
   d3(ry, rbf3, clamp(k, 0, me -1)) += t1 * t2;
 
-  d3.update().reorder(rzz, rz, ry, rbf3);
+  d3.reorder_storage(abf3, rbf3, kme);
+  d3.update().reorder(rzz, rz, ry, rbf3).specialize(nelements == 1);
   
   //k is a trian
   //(n*(n-1)/2) - (n-i)*((n-i)-1)/2 + j - i - 1
@@ -475,9 +500,11 @@ void fourbodystuff(Func & fij, Func & e23,
 										 unsafe_promise_clamped(ind32(d23j, 2), 0, me -1));
   d23.compute_root();
   d23.reorder(d23i, d23j);
+  d23.reorder_storage(d23i, d23j);
 
   RDom e23rdom(0, n23, 0, n32);
   e23() += d23(e23rdom.x, e23rdom.y) * coeff23(e23rdom.x, e23rdom.y, acc);
+  e23.compute_root();
 
   Expr zero = Expr((double) 0.0);
   Func cf1("cf1");
@@ -498,12 +525,16 @@ void fourbodystuff(Func & fij, Func & e23,
   fij(pairindex, dim) += cf2(r1.x) * dd2(unsafe_promise_clamped(ind23(r1.x, 1), 0, nelements -1), unsafe_promise_clamped(ind23(r1.x, 2), 0, nrbf2 -1), pairindex, dim);
 
   cf1.update().reorder(r1.x, j);
+  cf1.compute_root();
 
   fij.update(2).reorder(pairindex, r2.x);
+  fij.compute_root();
 
   cf2.update().reorder(r2.x, i);
+  cf2.compute_root();
 
   fij.update(3).reorder(pairindex, r1.x);
+  fij.compute_root();
 }
 
 
@@ -541,6 +572,7 @@ void fivebodystuff(Func & fij, Func & e33,
   Expr acc = clamp(ti(0) - 1, 0, nelements - 1);
   e33() = Expr((double) 0.0);
   e33() += d33(rdot) * coeff33(rdot, acc);
+  e33.compute_root();
 
 
   Func cf133("cf133");
@@ -762,7 +794,7 @@ public:
     e3.compute_root();
     e3_o() = e3();
 
-    tallyLocalForce(fij, tj, cU, U, nrbf3, k3, npairs, nelements, dim);
+    tallyLocalForceRev(fij, tj, cU, U, nrbf3, k3, npairs, nelements, dim, 1);
     Func e23("e23");
     fourbodystuff(fij, e23, ind23, ind32, coeff23, d2, d3, dd3, dd2, ti, npairs, n23, n32, nelements, nrbf2, nrbf3, nabf3,me, n);
     e3_o() += e23();
