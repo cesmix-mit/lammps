@@ -493,8 +493,8 @@ void buildTwoBody(double *rijs, double *besselparams, int nbesselpars, int bdegr
   Halide::Runtime::Buffer<double> coeff33_buffer(coeff33, {{0, s33, 1}, {0, nelements, s33}});
   int sym3Ne = nelements*(nelements+1)*(nelements+2)/6;
   Halide::Runtime::Buffer<double> coeff4_buffer(coeff4, {{0, nabf4, 1}, {0, nrbf4, nabf4}, {0, sym3Ne, nabf4 * nrbf4}, {0, nelements, sym3Ne * nrbf4 * nabf4}});
-  Halide::Runtime::Buffer<double> coeff34_buffer(coeff34, {1});
-  Halide::Runtime::Buffer<double> coeff44_buffer(coeff44, {1});
+  Halide::Runtime::Buffer<double> coeff34_buffer(coeff34, 1);
+  Halide::Runtime::Buffer<double> coeff44_buffer(coeff44, 1);
   auto e3_buffer = Halide::Runtime::Buffer<double, 0>::make_scalar(e3);
 
   Halide::Runtime::Buffer<int> pn3_buffer(pn3, nabf3 + 1);
