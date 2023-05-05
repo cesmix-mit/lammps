@@ -75,7 +75,7 @@ void buildRBF( Func & rbfall,
   abf.reorder(bfi, np);
   abf.compute_root();
   
-  dabf.reorder(dim, bfi, np);
+  dabf.reorder(dim, bfi, np).unroll(dim, 3);
   dabf.compute_root();
 
   rbf.compute_with(drbf, bfi);
@@ -141,7 +141,8 @@ void radialAngularBasis(Func & sumU, Func & U,
   sumU.reorder_storage(n, k, m);
   sumU.compute_with(U, n);
 
-  U.update(0).reorder(c, r.z, r.y, r.x).unroll(c, 4).specialize(Ne == 1);
+  //U.update(0).compute_with(sumU.update(0), r.y); // Unhandled exception: Error: Found cyclic dependencies between compute_with of U and sumU
+  U.update(0).reorder(c, r.z, r.y, r.x).unroll(c, 4).specialize(Ne == 1); 
   sumU.update(0).reorder(r.z, r.y, r.x).specialize(Ne == 1);
 }
 
@@ -171,11 +172,7 @@ void twoBodyDescDeriv(Func & d2, Func & dd2, Func rbf,  Func tj, Expr N, Expr Ne
   d2.update(0).reorder(r.x, r.y);
   dd2.update(0).reorder(dim, r.x, r.y).unroll(dim);
   d2.update(0).compute_with(dd2.update(0), r.y);
-  //dd2.update(1).reorder(r.x, r.y);
-  //dd2.update(2).reorder(r.x, r.y).compute_with(dd2.update(1), r.x).
-  //    compute_with(dd2.update(0), r.x).compute_with(d2.update(0), r.y);
-  //d2.update(0).compute_with(dd2.update(0), r.y);
-  //d2.compute_at(dd2, n);
+  //d2.update(0).compute_with(dd2.update(0), r.x); // Invalid compute_with: types of dim 0 of dd2.s1(r197$x is PureRVar) and d2$0.s1(r197$x is ImpureRVar) do not match.
 }
 
 
@@ -344,8 +341,9 @@ void threeBodyCoeff(Func & cU, Func & e, Func coeff3, Func sumU, Func pn3, Func 
   cU.reorder_storage(ne, k3, rbf3);
   cU.update().reorder(r.w, r.z, r.y, r[4]);
   cU.update(1).reorder(r.w, r.z, r.y, r[4]);
+  // cU.update().compute_with(cU.update(1), r.w); // Unhandled exception: Error: Cannot schedule cU.update(0) to be computed with cU.s2.r239$w
   e.update().reorder(r.w, r.z, r.y, r[4]);
-  e.compute_at(cU, r.w);
+  e.compute_root();
 }
 
 void fourbodycoeff(Func & e4, Func  & cU4,
@@ -389,10 +387,10 @@ void fourbodycoeff(Func & e4, Func  & cU4,
 
   e4() += c4 * c6;
   Expr scat = scatter(0, 1, 2);
-  cU4(mux(scat, {i3, i2, i1}), mux(scat, {j3, j2, j1}), rbf) = gather(c5*c4, c6*c1, c6*c2);
+  cU4(mux(scat, {i3, i2, i1}), mux(scat, {j3, j2, j1}), rbf) = gather(c5*c4, c6*c1, c6*c2); // think this is adding if statements
 
   cU4.reorder_storage(ne, kv, rbf);
-  cU4.update().unroll(r[3], 3).specialize(nelements == 1);
+  cU4.update().unroll(r[0], 3).specialize(nelements == 1); // not sure if unrolling correct thing, which nelements RDOM
   e4.update().reorder(r[2], r[1], r[0], r[3], r[4], r[5]).specialize(nelements == 1);
   e4.compute_at(cU4, r[2]);
   cU4.compute_root();
@@ -456,7 +454,7 @@ void threeBodyDesc(Func & d3,
   d3(ry, rbf3, clamp(k, 0, me -1)) += t1 * t2;
 
   d3.reorder_storage(abf3, rbf3, kme);
-  d3.update().reorder(rzz, rz, ry, rbf3).specialize(nelements == 1);
+  d3.update().reorder(rz, rzz, ry, rbf3).specialize(nelements == 1);
   
   //k is a trian
   //(n*(n-1)/2) - (n-i)*((n-i)-1)/2 + j - i - 1
@@ -527,13 +525,13 @@ void fourbodystuff(Func & fij, Func & e23,
   cf1.update().reorder(r1.x, j);
   cf1.compute_root();
 
-  fij.update(2).reorder(pairindex, r2.x);
+  fij.update(2).reorder(dim, pairindex, r2.x);
   fij.compute_root();
 
   cf2.update().reorder(r2.x, i);
   cf2.compute_root();
 
-  fij.update(3).reorder(pairindex, r1.x);
+  fij.update(3).reorder(dim, pairindex, r1.x);
   fij.compute_root();
 }
 
@@ -598,11 +596,11 @@ void fivebodystuff(Func & fij, Func & e33,
 
   cf133.update().reorder(r.x, r.y);
 
-  fij.update(4).reorder(pairindex, rn33.x);
+  fij.update(4).reorder(dim, pairindex, rn33.x);
 
   cf233.update().reorder(r.x, r.y);
 
-  fij.update(5).reorder(pairindex, rn33.x);
+  fij.update(5).reorder(dim, pairindex, rn33.x);
 }
 
 class  poddescTwoBody : public Halide::Generator<poddescTwoBody> {

@@ -207,28 +207,27 @@ let U.s0.k.max.s = max(k3, k4)
 let sumU.s0.k.max = max(k3 + -1, k4)
 let rbf$1.s1.i.max.s = max(nrbf2, nrbf3)
 let coeff2.min.2.required.s = min(ti[0 - (ti.min.0*ti.stride.0)], nelements)
-let coeff23.extent.2.required.s = let t4180 = ti[0 - (ti.min.0*ti.stride.0)] in (min(nelements, t4180) - max(t4180, 1))
+let coeff23.extent.2.required.s = let t3513 = ti[0 - (ti.min.0*ti.stride.0)] in (min(nelements, t3513) - max(t3513, 1))
 let coeff23.min.2.required.s = ti[0 - (ti.min.0*ti.stride.0)]
 let coeff3.extent.2.required.s = min(((nelements + 1)*nelements)/2, (max(max(((nelements + -1)/2)*(nelements + -2), ((nelements + -1)/2)*((nelements*2) + -3)), 0) + nelements) + -1)
 let coeff3.min.3.required.s = min(ti[0 - (ti.min.0*ti.stride.0)], nelements)
 let coeff3.stride.3.required = max(coeff3.extent.2.required.s, 1)*(nabf3*nrbf3)
 let coeff33.extent.0.required = max(((n33 + 1)*n33)/2, 1)
 let coeff33.min.1.required.s = min(ti[0 - (ti.min.0*ti.stride.0)], nelements)
-let coeff4.extent.2.required.s = let t4181 = ((nelements + -1)*nelements) in (let t4182 = min(t4181, min(nelements, 1) + -1) in (let t4183 = max(t4181, max(nelements, 1) + -1) in select(nelements == 1, 0, min((((nelements + 1)*nelements)*(nelements + 2))/6, (((max(max(max(t4182*2, (nelements + 1)*t4182), t4183*2), (nelements + 1)*t4183)/6) + (t4183/2)) + nelements) + -1))))
+let coeff4.extent.2.required.s = let t3514 = min((nelements + -1)/3, 0) in (let t3515 = (t3514*(1 - (t3514*3))) in (let t3516 = min(min(nelements, 3) + ((t3514 + ((nelements + -1)/3))*3), nelements) in (let t3517 = ((1 - (t3514*3))*(t3516 + -1)) in (let t3518 = (t3514*t3516) in (let t3519 = ((t3516 + -1)*t3516) in (let t3520 = min(min(min(0 - (t3515*3), t3517), 0 - (t3518*3)), t3519) in (let t3521 = max(max(max(0 - (t3515*3), t3517), 0 - (t3518*3)), t3519) in (let t3522 = ((nelements + -1)*nelements) in (let t3523 = min(t3522, min(nelements, 1) + -1) in (let t3524 = max(t3522, max(nelements, 1) + -1) in select(nelements == 1, 0, min((((nelements + 1)*nelements)*(nelements + 2))/6, (((max(max(max(max(max(max(max((2 - (t3514*3))*t3520, (t3516 + 1)*t3520), (2 - (t3514*3))*t3521), (t3516 + 1)*t3521), t3523*2), (nelements + 1)*t3523), t3524*2), (nelements + 1)*t3524)/6) + (t3524/2)) + nelements) + -1))))))))))))
 let coeff4.min.3.required = select(nelements == 1, 0, max(min(ti[0 - (ti.min.0*ti.stride.0)], nelements), 1) + -1)
 let coeff4.stride.3.required = (nabf4*nrbf4)*(coeff4.extent.2.required.s + 1)
 let elemindex.extent.0.required = select(nelements == 1, elemindex.extent.0, max(nelements, 1))
 let elemindex.min.0.required = select(nelements == 1, elemindex.min.0, 0)
 let elemindex.extent.1.required = select(nelements == 1, elemindex.extent.1, nelements)
 let elemindex.min.1.required = select(nelements == 1, elemindex.min.1, 0)
-let pb4.extent.0.required = q4
 let pq.extent.0.required.s = max(k3*2, k3) - min(k3, 0)
 assert(!(uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)Phi.buffer) || (rbf$1.s1.i.max.s <= ns), halide_error_constraints_make_required_region_smaller("Input buffer Phi", 1, 0, ns + -1, 0, rbf$1.s1.i.max.s + -1))
 assert(!(uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)coeff2.buffer) || (1 <= npairs), halide_error_constraints_make_required_region_smaller("Input buffer coeff2", 0, 0, npairs + -1, 0, 0))
-assert(!(uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)coeff2.buffer) || (max(coeff2.min.2.required.s, 1) <= nelements), let t4184 = max(coeff2.min.2.required.s, 1) in halide_error_constraints_make_required_region_smaller("Input buffer coeff2", 2, 0, nelements + -1, t4184 + -1, t4184 + -1))
-assert(!(uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)coeff23.buffer) || ((max(coeff23.min.2.required.s, 1) + coeff23.extent.2.required.s) <= nelements), let t4185 = max(coeff23.min.2.required.s, 1) in halide_error_constraints_make_required_region_smaller("Input buffer coeff23", 2, 0, nelements + -1, t4185 + -1, (t4185 + coeff23.extent.2.required.s) + -1))
+assert(!(uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)coeff2.buffer) || (max(coeff2.min.2.required.s, 1) <= nelements), let t3525 = max(coeff2.min.2.required.s, 1) in halide_error_constraints_make_required_region_smaller("Input buffer coeff2", 2, 0, nelements + -1, t3525 + -1, t3525 + -1))
+assert(!(uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)coeff23.buffer) || ((max(coeff23.min.2.required.s, 1) + coeff23.extent.2.required.s) <= nelements), let t3526 = max(coeff23.min.2.required.s, 1) in halide_error_constraints_make_required_region_smaller("Input buffer coeff23", 2, 0, nelements + -1, t3526 + -1, (t3526 + coeff23.extent.2.required.s) + -1))
 assert(!(uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)coeff33.buffer) || (coeff33.extent.0.required <= (((n33 + 1)*n33)/2)), halide_error_constraints_make_required_region_smaller("Input buffer coeff33", 0, 0, (((n33 + 1)*n33)/2) + -1, 0, coeff33.extent.0.required + -1))
-assert(!(uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)coeff33.buffer) || (max(coeff33.min.1.required.s, 1) <= nelements), let t4186 = max(coeff33.min.1.required.s, 1) in halide_error_constraints_make_required_region_smaller("Input buffer coeff33", 1, 0, nelements + -1, t4186 + -1, t4186 + -1))
+assert(!(uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)coeff33.buffer) || (max(coeff33.min.1.required.s, 1) <= nelements), let t3527 = max(coeff33.min.1.required.s, 1) in halide_error_constraints_make_required_region_smaller("Input buffer coeff33", 1, 0, nelements + -1, t3527 + -1, t3527 + -1))
 if ((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)Phi.buffer)) {
  (halide_buffer_t *)_halide_buffer_init((halide_buffer_t *)Phi.buffer, (halide_dimension_t *)_halide_buffer_get_shape((halide_buffer_t *)Phi.buffer), (void *)reinterpret((uint64)0), (uint64)0, (halide_device_interface_t *)reinterpret((uint64)0), 2, 64, 2, (halide_dimension_t *)make_struct(0, ns, 1, 0, 0, ns, ns, 0), (uint64)0)
 }
@@ -245,7 +244,7 @@ if ((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)coeff3.buffer)) {
  (halide_buffer_t *)_halide_buffer_init((halide_buffer_t *)coeff3.buffer, (halide_dimension_t *)_halide_buffer_get_shape((halide_buffer_t *)coeff3.buffer), (void *)reinterpret((uint64)0), (uint64)0, (halide_device_interface_t *)reinterpret((uint64)0), 2, 64, 4, (halide_dimension_t *)make_struct(0, nabf3, 1, 0, 0, nrbf3, nabf3, 0, 0, max(coeff3.extent.2.required.s, 1), nabf3*nrbf3, 0, max(coeff3.min.3.required.s, 1) + -1, 1, coeff3.stride.3.required, 0), (uint64)0)
 }
 if ((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)coeff33.buffer)) {
- let t4187 = ((n33 + 1)*n33) in (halide_buffer_t *)_halide_buffer_init((halide_buffer_t *)coeff33.buffer, (halide_dimension_t *)_halide_buffer_get_shape((halide_buffer_t *)coeff33.buffer), (void *)reinterpret((uint64)0), (uint64)0, (halide_device_interface_t *)reinterpret((uint64)0), 2, 64, 2, (halide_dimension_t *)make_struct(0, t4187/2, 1, 0, 0, nelements, t4187/2, 0), (uint64)0)
+ let t3528 = ((n33 + 1)*n33) in (halide_buffer_t *)_halide_buffer_init((halide_buffer_t *)coeff33.buffer, (halide_dimension_t *)_halide_buffer_get_shape((halide_buffer_t *)coeff33.buffer), (void *)reinterpret((uint64)0), (uint64)0, (halide_device_interface_t *)reinterpret((uint64)0), 2, 64, 2, (halide_dimension_t *)make_struct(0, t3528/2, 1, 0, 0, nelements, t3528/2, 0), (uint64)0)
 }
 if ((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)coeff4.buffer)) {
  (halide_buffer_t *)_halide_buffer_init((halide_buffer_t *)coeff4.buffer, (halide_dimension_t *)_halide_buffer_get_shape((halide_buffer_t *)coeff4.buffer), (void *)reinterpret((uint64)0), (uint64)0, (halide_device_interface_t *)reinterpret((uint64)0), 2, 64, 4, (halide_dimension_t *)make_struct(0, nabf4, 1, 0, 0, nrbf4, nabf4, 0, 0, coeff4.extent.2.required.s + 1, nabf4*nrbf4, 0, coeff4.min.3.required, 1, coeff4.stride.3.required, 0), (uint64)0)
@@ -266,13 +265,13 @@ if ((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)pa4.buffer)) {
  (halide_buffer_t *)_halide_buffer_init((halide_buffer_t *)pa4.buffer, (halide_dimension_t *)_halide_buffer_get_shape((halide_buffer_t *)pa4.buffer), (void *)reinterpret((uint64)0), (uint64)0, (halide_device_interface_t *)reinterpret((uint64)0), 0, 32, 1, (halide_dimension_t *)make_struct(0, nabf4 + 1, 1, 0), (uint64)0)
 }
 if ((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)pb4.buffer)) {
- (halide_buffer_t *)_halide_buffer_init((halide_buffer_t *)pb4.buffer, (halide_dimension_t *)_halide_buffer_get_shape((halide_buffer_t *)pb4.buffer), (void *)reinterpret((uint64)0), (uint64)0, (halide_device_interface_t *)reinterpret((uint64)0), 0, 32, 2, (halide_dimension_t *)make_struct(0, pb4.extent.0.required, 1, 0, 0, 3, pb4.extent.0.required, 0), (uint64)0)
+ (halide_buffer_t *)_halide_buffer_init((halide_buffer_t *)pb4.buffer, (halide_dimension_t *)_halide_buffer_get_shape((halide_buffer_t *)pb4.buffer), (void *)reinterpret((uint64)0), (uint64)0, (halide_device_interface_t *)reinterpret((uint64)0), 0, 32, 2, (halide_dimension_t *)make_struct(0, q4, 1, 0, 0, 3, q4, 0), (uint64)0)
 }
 if ((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)pc3.buffer)) {
  (halide_buffer_t *)_halide_buffer_init((halide_buffer_t *)pc3.buffer, (halide_dimension_t *)_halide_buffer_get_shape((halide_buffer_t *)pc3.buffer), (void *)reinterpret((uint64)0), (uint64)0, (halide_device_interface_t *)reinterpret((uint64)0), 0, 32, 1, (halide_dimension_t *)make_struct(0, k3, 1, 0), (uint64)0)
 }
 if ((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)pc4.buffer)) {
- (halide_buffer_t *)_halide_buffer_init((halide_buffer_t *)pc4.buffer, (halide_dimension_t *)_halide_buffer_get_shape((halide_buffer_t *)pc4.buffer), (void *)reinterpret((uint64)0), (uint64)0, (halide_device_interface_t *)reinterpret((uint64)0), 0, 32, 1, (halide_dimension_t *)make_struct(0, pb4.extent.0.required, 1, 0), (uint64)0)
+ (halide_buffer_t *)_halide_buffer_init((halide_buffer_t *)pc4.buffer, (halide_dimension_t *)_halide_buffer_get_shape((halide_buffer_t *)pc4.buffer), (void *)reinterpret((uint64)0), (uint64)0, (halide_device_interface_t *)reinterpret((uint64)0), 0, 32, 1, (halide_dimension_t *)make_struct(0, q4, 1, 0), (uint64)0)
 }
 if ((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)pn3.buffer)) {
  (halide_buffer_t *)_halide_buffer_init((halide_buffer_t *)pn3.buffer, (halide_dimension_t *)_halide_buffer_get_shape((halide_buffer_t *)pn3.buffer), (void *)reinterpret((uint64)0), (uint64)0, (halide_device_interface_t *)reinterpret((uint64)0), 0, 32, 1, (halide_dimension_t *)make_struct(0, nabf3 + 1, 1, 0), (uint64)0)
@@ -340,13 +339,13 @@ if (!((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)tj.buffer) || ((u
  assert(0 <= coeff2.extent.0, halide_error_buffer_extents_negative("Input buffer coeff2", 0, coeff2.extent.0))
  assert((coeff2.min.1 <= 0) && (nrbf2 <= (coeff2.extent.1 + coeff2.min.1)), halide_error_access_out_of_bounds("Input buffer coeff2", 1, 0, nrbf2 + -1, coeff2.min.1, (coeff2.extent.1 + coeff2.min.1) + -1))
  assert(0 <= coeff2.extent.1, halide_error_buffer_extents_negative("Input buffer coeff2", 1, coeff2.extent.1))
- assert(let t4188 = max(coeff2.min.2.required.s, 1) in (((coeff2.min.2 + 1) <= t4188) && (t4188 <= (coeff2.extent.2 + coeff2.min.2))), let t4189 = max(coeff2.min.2.required.s, 1) in halide_error_access_out_of_bounds("Input buffer coeff2", 2, t4189 + -1, t4189 + -1, coeff2.min.2, (coeff2.extent.2 + coeff2.min.2) + -1))
+ assert(let t3529 = max(coeff2.min.2.required.s, 1) in (((coeff2.min.2 + 1) <= t3529) && (t3529 <= (coeff2.extent.2 + coeff2.min.2))), let t3530 = max(coeff2.min.2.required.s, 1) in halide_error_access_out_of_bounds("Input buffer coeff2", 2, t3530 + -1, t3530 + -1, coeff2.min.2, (coeff2.extent.2 + coeff2.min.2) + -1))
  assert(0 <= coeff2.extent.2, halide_error_buffer_extents_negative("Input buffer coeff2", 2, coeff2.extent.2))
  assert((coeff23.min.0 <= 0) && (n23 <= (coeff23.extent.0 + coeff23.min.0)), halide_error_access_out_of_bounds("Input buffer coeff23", 0, 0, n23 + -1, coeff23.min.0, (coeff23.extent.0 + coeff23.min.0) + -1))
  assert(0 <= coeff23.extent.0, halide_error_buffer_extents_negative("Input buffer coeff23", 0, coeff23.extent.0))
  assert((coeff23.min.1 <= 0) && (n32 <= (coeff23.extent.1 + coeff23.min.1)), halide_error_access_out_of_bounds("Input buffer coeff23", 1, 0, n32 + -1, coeff23.min.1, (coeff23.extent.1 + coeff23.min.1) + -1))
  assert(0 <= coeff23.extent.1, halide_error_buffer_extents_negative("Input buffer coeff23", 1, coeff23.extent.1))
- assert(let t4190 = max(coeff23.min.2.required.s, 1) in (((coeff23.min.2 + 1) <= t4190) && ((t4190 + coeff23.extent.2.required.s) <= (coeff23.extent.2 + coeff23.min.2))), let t4191 = max(coeff23.min.2.required.s, 1) in halide_error_access_out_of_bounds("Input buffer coeff23", 2, t4191 + -1, (t4191 + coeff23.extent.2.required.s) + -1, coeff23.min.2, (coeff23.extent.2 + coeff23.min.2) + -1))
+ assert(let t3531 = max(coeff23.min.2.required.s, 1) in (((coeff23.min.2 + 1) <= t3531) && ((t3531 + coeff23.extent.2.required.s) <= (coeff23.extent.2 + coeff23.min.2))), let t3532 = max(coeff23.min.2.required.s, 1) in halide_error_access_out_of_bounds("Input buffer coeff23", 2, t3532 + -1, (t3532 + coeff23.extent.2.required.s) + -1, coeff23.min.2, (coeff23.extent.2 + coeff23.min.2) + -1))
  assert(0 <= coeff23.extent.2, halide_error_buffer_extents_negative("Input buffer coeff23", 2, coeff23.extent.2))
  assert((coeff3.min.0 <= 0) && (nabf3 <= (coeff3.extent.0 + coeff3.min.0)), halide_error_access_out_of_bounds("Input buffer coeff3", 0, 0, nabf3 + -1, coeff3.min.0, (coeff3.extent.0 + coeff3.min.0) + -1))
  assert(0 <= coeff3.extent.0, halide_error_buffer_extents_negative("Input buffer coeff3", 0, coeff3.extent.0))
@@ -354,11 +353,11 @@ if (!((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)tj.buffer) || ((u
  assert(0 <= coeff3.extent.1, halide_error_buffer_extents_negative("Input buffer coeff3", 1, coeff3.extent.1))
  assert((coeff3.min.2 <= 0) && (max(coeff3.extent.2.required.s, 1) <= (coeff3.extent.2 + coeff3.min.2)), halide_error_access_out_of_bounds("Input buffer coeff3", 2, 0, max(coeff3.extent.2.required.s, 1) + -1, coeff3.min.2, (coeff3.extent.2 + coeff3.min.2) + -1))
  assert(0 <= coeff3.extent.2, halide_error_buffer_extents_negative("Input buffer coeff3", 2, coeff3.extent.2))
- assert(let t4192 = max(coeff3.min.3.required.s, 1) in (((coeff3.min.3 + 1) <= t4192) && (t4192 <= (coeff3.extent.3 + coeff3.min.3))), let t4193 = max(coeff3.min.3.required.s, 1) in halide_error_access_out_of_bounds("Input buffer coeff3", 3, t4193 + -1, t4193 + -1, coeff3.min.3, (coeff3.extent.3 + coeff3.min.3) + -1))
+ assert(let t3533 = max(coeff3.min.3.required.s, 1) in (((coeff3.min.3 + 1) <= t3533) && (t3533 <= (coeff3.extent.3 + coeff3.min.3))), let t3534 = max(coeff3.min.3.required.s, 1) in halide_error_access_out_of_bounds("Input buffer coeff3", 3, t3534 + -1, t3534 + -1, coeff3.min.3, (coeff3.extent.3 + coeff3.min.3) + -1))
  assert(0 <= coeff3.extent.3, halide_error_buffer_extents_negative("Input buffer coeff3", 3, coeff3.extent.3))
  assert((coeff33.min.0 <= 0) && (coeff33.extent.0.required <= (coeff33.extent.0 + coeff33.min.0)), halide_error_access_out_of_bounds("Input buffer coeff33", 0, 0, coeff33.extent.0.required + -1, coeff33.min.0, (coeff33.extent.0 + coeff33.min.0) + -1))
  assert(0 <= coeff33.extent.0, halide_error_buffer_extents_negative("Input buffer coeff33", 0, coeff33.extent.0))
- assert(let t4194 = max(coeff33.min.1.required.s, 1) in (((coeff33.min.1 + 1) <= t4194) && (t4194 <= (coeff33.extent.1 + coeff33.min.1))), let t4195 = max(coeff33.min.1.required.s, 1) in halide_error_access_out_of_bounds("Input buffer coeff33", 1, t4195 + -1, t4195 + -1, coeff33.min.1, (coeff33.extent.1 + coeff33.min.1) + -1))
+ assert(let t3535 = max(coeff33.min.1.required.s, 1) in (((coeff33.min.1 + 1) <= t3535) && (t3535 <= (coeff33.extent.1 + coeff33.min.1))), let t3536 = max(coeff33.min.1.required.s, 1) in halide_error_access_out_of_bounds("Input buffer coeff33", 1, t3536 + -1, t3536 + -1, coeff33.min.1, (coeff33.extent.1 + coeff33.min.1) + -1))
  assert(0 <= coeff33.extent.1, halide_error_buffer_extents_negative("Input buffer coeff33", 1, coeff33.extent.1))
  assert((coeff4.min.0 <= 0) && (nabf4 <= (coeff4.extent.0 + coeff4.min.0)), halide_error_access_out_of_bounds("Input buffer coeff4", 0, 0, nabf4 + -1, coeff4.min.0, (coeff4.extent.0 + coeff4.min.0) + -1))
  assert(0 <= coeff4.extent.0, halide_error_buffer_extents_negative("Input buffer coeff4", 0, coeff4.extent.0))
@@ -368,9 +367,9 @@ if (!((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)tj.buffer) || ((u
  assert(0 <= coeff4.extent.2, halide_error_buffer_extents_negative("Input buffer coeff4", 2, coeff4.extent.2))
  assert((coeff4.min.3 <= coeff4.min.3.required) && ((coeff4.min.3.required + 1) <= (coeff4.extent.3 + coeff4.min.3)), halide_error_access_out_of_bounds("Input buffer coeff4", 3, coeff4.min.3.required, coeff4.min.3.required, coeff4.min.3, (coeff4.extent.3 + coeff4.min.3) + -1))
  assert(0 <= coeff4.extent.3, halide_error_buffer_extents_negative("Input buffer coeff4", 3, coeff4.extent.3))
- assert(let t4196 = (elemindex.extent.0 + elemindex.min.0) in ((elemindex.min.0 <= elemindex.min.0.required) && (select(nelements == 1, t4196, elemindex.extent.0.required + elemindex.min.0.required) <= t4196)), let t4197 = (elemindex.extent.0 + elemindex.min.0) in halide_error_access_out_of_bounds("Input buffer elemindex", 0, elemindex.min.0.required, select(nelements == 1, t4197, elemindex.extent.0.required + elemindex.min.0.required) + -1, elemindex.min.0, t4197 + -1))
+ assert(let t3537 = (elemindex.extent.0 + elemindex.min.0) in ((elemindex.min.0 <= elemindex.min.0.required) && (select(nelements == 1, t3537, elemindex.extent.0.required + elemindex.min.0.required) <= t3537)), let t3538 = (elemindex.extent.0 + elemindex.min.0) in halide_error_access_out_of_bounds("Input buffer elemindex", 0, elemindex.min.0.required, select(nelements == 1, t3538, elemindex.extent.0.required + elemindex.min.0.required) + -1, elemindex.min.0, t3538 + -1))
  assert(0 <= elemindex.extent.0, halide_error_buffer_extents_negative("Input buffer elemindex", 0, elemindex.extent.0))
- assert(let t4198 = (elemindex.extent.1 + elemindex.min.1) in ((elemindex.min.1 <= elemindex.min.1.required) && (select(nelements == 1, t4198, elemindex.extent.1.required + elemindex.min.1.required) <= t4198)), let t4199 = (elemindex.extent.1 + elemindex.min.1) in halide_error_access_out_of_bounds("Input buffer elemindex", 1, elemindex.min.1.required, select(nelements == 1, t4199, elemindex.extent.1.required + elemindex.min.1.required) + -1, elemindex.min.1, t4199 + -1))
+ assert(let t3539 = (elemindex.extent.1 + elemindex.min.1) in ((elemindex.min.1 <= elemindex.min.1.required) && (select(nelements == 1, t3539, elemindex.extent.1.required + elemindex.min.1.required) <= t3539)), let t3540 = (elemindex.extent.1 + elemindex.min.1) in halide_error_access_out_of_bounds("Input buffer elemindex", 1, elemindex.min.1.required, select(nelements == 1, t3540, elemindex.extent.1.required + elemindex.min.1.required) + -1, elemindex.min.1, t3540 + -1))
  assert(0 <= elemindex.extent.1, halide_error_buffer_extents_negative("Input buffer elemindex", 1, elemindex.extent.1))
  assert((fij_o.min.0 <= 0) && (npairs <= (fij_o.extent.0 + fij_o.min.0)), halide_error_access_out_of_bounds("Output buffer fij_o", 0, 0, npairs + -1, fij_o.min.0, (fij_o.extent.0 + fij_o.min.0) + -1))
  assert(0 <= fij_o.extent.0, halide_error_buffer_extents_negative("Output buffer fij_o", 0, fij_o.extent.0))
@@ -378,17 +377,17 @@ if (!((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)tj.buffer) || ((u
  assert(0 <= fij_o.extent.1, halide_error_buffer_extents_negative("Output buffer fij_o", 1, fij_o.extent.1))
  assert((pa4.min.0 <= 0) && ((nabf4 + 1) <= (pa4.extent.0 + pa4.min.0)), halide_error_access_out_of_bounds("Input buffer pa4", 0, 0, nabf4, pa4.min.0, (pa4.extent.0 + pa4.min.0) + -1))
  assert(0 <= pa4.extent.0, halide_error_buffer_extents_negative("Input buffer pa4", 0, pa4.extent.0))
- assert((pb4.min.0 <= 0) && (pb4.extent.0.required <= (pb4.extent.0 + pb4.min.0)), halide_error_access_out_of_bounds("Input buffer pb4", 0, 0, pb4.extent.0.required + -1, pb4.min.0, (pb4.extent.0 + pb4.min.0) + -1))
+ assert((pb4.min.0 <= 0) && (q4 <= (pb4.extent.0 + pb4.min.0)), halide_error_access_out_of_bounds("Input buffer pb4", 0, 0, q4 + -1, pb4.min.0, (pb4.extent.0 + pb4.min.0) + -1))
  assert(0 <= pb4.extent.0, halide_error_buffer_extents_negative("Input buffer pb4", 0, pb4.extent.0))
  assert((pb4.min.1 <= 0) && (3 <= (pb4.extent.1 + pb4.min.1)), halide_error_access_out_of_bounds("Input buffer pb4", 1, 0, 2, pb4.min.1, (pb4.extent.1 + pb4.min.1) + -1))
  assert(0 <= pb4.extent.1, halide_error_buffer_extents_negative("Input buffer pb4", 1, pb4.extent.1))
  assert((pc3.min.0 <= 0) && (k3 <= (pc3.extent.0 + pc3.min.0)), halide_error_access_out_of_bounds("Input buffer pc3", 0, 0, k3 + -1, pc3.min.0, (pc3.extent.0 + pc3.min.0) + -1))
  assert(0 <= pc3.extent.0, halide_error_buffer_extents_negative("Input buffer pc3", 0, pc3.extent.0))
- assert((pc4.min.0 <= 0) && (pb4.extent.0.required <= (pc4.extent.0 + pc4.min.0)), halide_error_access_out_of_bounds("Input buffer pc4", 0, 0, pb4.extent.0.required + -1, pc4.min.0, (pc4.extent.0 + pc4.min.0) + -1))
+ assert((pc4.min.0 <= 0) && (q4 <= (pc4.extent.0 + pc4.min.0)), halide_error_access_out_of_bounds("Input buffer pc4", 0, 0, q4 + -1, pc4.min.0, (pc4.extent.0 + pc4.min.0) + -1))
  assert(0 <= pc4.extent.0, halide_error_buffer_extents_negative("Input buffer pc4", 0, pc4.extent.0))
  assert((pn3.min.0 <= 0) && ((nabf3 + 1) <= (pn3.extent.0 + pn3.min.0)), halide_error_access_out_of_bounds("Input buffer pn3", 0, 0, nabf3, pn3.min.0, (pn3.extent.0 + pn3.min.0) + -1))
  assert(0 <= pn3.extent.0, halide_error_buffer_extents_negative("Input buffer pn3", 0, pn3.extent.0))
- assert(let t4200 = min(k3, 0) in (((pq.min.0 + -1) <= t4200) && (((t4200 + pq.extent.0.required.s) + 2) <= (pq.extent.0 + pq.min.0))), let t4201 = min(k3, 0) in halide_error_access_out_of_bounds("Input buffer pq", 0, t4201 + 1, (t4201 + pq.extent.0.required.s) + 1, pq.min.0, (pq.extent.0 + pq.min.0) + -1))
+ assert(let t3541 = min(k3, 0) in (((pq.min.0 + -1) <= t3541) && (((t3541 + pq.extent.0.required.s) + 2) <= (pq.extent.0 + pq.min.0))), let t3542 = min(k3, 0) in halide_error_access_out_of_bounds("Input buffer pq", 0, t3542 + 1, (t3542 + pq.extent.0.required.s) + 1, pq.min.0, (pq.extent.0 + pq.min.0) + -1))
  assert(0 <= pq.extent.0, halide_error_buffer_extents_negative("Input buffer pq", 0, pq.extent.0))
  assert((rijs.min.0 <= 0) && (3 <= (rijs.extent.0 + rijs.min.0)), halide_error_access_out_of_bounds("Input buffer rijs", 0, 0, 2, rijs.min.0, (rijs.extent.0 + rijs.min.0) + -1))
  assert(0 <= rijs.extent.0, halide_error_buffer_extents_negative("Input buffer rijs", 0, rijs.extent.0))
@@ -563,79 +562,79 @@ if (!((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)tj.buffer) || ((u
     let tm.s0.abfip.max_1 = max((k3*3) + -1, abf4.s0.abfi)
     produce tm {
      for (tm.s0.abfip, 0, tm.s0.abfip.max_1 + 1) {
-      let t3595 = tm.s0.abfip*4
+      let t2964 = tm.s0.abfip*4
       for (tm.s0.c, 0, 4) {
-       tm[t3595 + tm.s0.c] = 0.000000
+       tm[t2964 + tm.s0.c] = 0.000000
       }
      }
      tm[0] = 1.000000
-     let t3597 = abf4.s0.pairindex*3
-     for (tm.s2.r131$x.rebased, 0, k3 + 1) {
-      let t3172 = pq[((k3 - pq.min.0) + tm.s2.r131$x.rebased) + 1]
-      let t3173 = rijs[t3597 + 2]
-      let t3174 = rijs[t3597]
-      let t3175 = rijs[t3597 + 1]
-      let t3176 = (float64)sqrt_f64((t3173*t3173) + ((t3174*t3174) + (t3175*t3175)))
-      tm[(tm.s2.r131$x.rebased*4) + 4] = tm[(max(min(pq[(tm.s2.r131$x.rebased - pq.min.0) + 1], k3*3), 1)*4) + -4]*select(1 < t3172, select(t3172 == 2, (1.000000/t3176)*t3175, select(t3172 < 3, 0.000000, (1.000000/t3176)*t3173)), (1.000000/t3176)*t3174)
+     let t2966 = abf4.s0.pairindex*3
+     for (tm.s2.r136$x.rebased, 0, k3 + 1) {
+      let t2549 = pq[((k3 - pq.min.0) + tm.s2.r136$x.rebased) + 1]
+      let t2550 = rijs[t2966 + 2]
+      let t2551 = rijs[t2966]
+      let t2552 = rijs[t2966 + 1]
+      let t2553 = (float64)sqrt_f64((t2550*t2550) + ((t2551*t2551) + (t2552*t2552)))
+      tm[(tm.s2.r136$x.rebased*4) + 4] = tm[(max(min(pq[(tm.s2.r136$x.rebased - pq.min.0) + 1], k3*3), 1)*4) + -4]*select(1 < t2549, select(t2549 == 2, (1.000000/t2553)*t2552, select(t2549 < 3, 0.000000, (1.000000/t2553)*t2550)), (1.000000/t2553)*t2551)
      }
-     let t3601 = abf4.s0.pairindex*3
-     for (tm.s2.r131$x.rebased, 0, k3 + 1) {
-      let t3177 = pq[((k3 - pq.min.0) + tm.s2.r131$x.rebased) + 1]
-      let t3178 = 1 < t3177
-      let t3179.s = min(pq[(tm.s2.r131$x.rebased - pq.min.0) + 1], k3*3)
-      let t3180 = rijs[t3601 + 2]
-      let t3181 = rijs[t3601]
-      let t3182 = rijs[t3601 + 1]
-      let t3183 = (float64)sqrt_f64((t3180*t3180) + ((t3181*t3181) + (t3182*t3182)))
-      let t3455 = max(t3179.s, 1)
-      tm[(tm.s2.r131$x.rebased*4) + 5] = select(t3178, 0.000000, tm[(t3455*4) + -4]) + (tm[(t3455*4) + -3]*select(t3178, select(t3177 == 2, (1.000000/t3183)*t3182, select(t3177 < 3, 0.000000, (1.000000/t3183)*t3180)), (1.000000/t3183)*t3181))
+     let t2970 = abf4.s0.pairindex*3
+     for (tm.s2.r136$x.rebased, 0, k3 + 1) {
+      let t2554 = pq[((k3 - pq.min.0) + tm.s2.r136$x.rebased) + 1]
+      let t2555 = 1 < t2554
+      let t2556.s = min(pq[(tm.s2.r136$x.rebased - pq.min.0) + 1], k3*3)
+      let t2557 = rijs[t2970 + 2]
+      let t2558 = rijs[t2970]
+      let t2559 = rijs[t2970 + 1]
+      let t2560 = (float64)sqrt_f64((t2557*t2557) + ((t2558*t2558) + (t2559*t2559)))
+      let t2848 = max(t2556.s, 1)
+      tm[(tm.s2.r136$x.rebased*4) + 5] = select(t2555, 0.000000, tm[(t2848*4) + -4]) + (tm[(t2848*4) + -3]*select(t2555, select(t2554 == 2, (1.000000/t2560)*t2559, select(t2554 < 3, 0.000000, (1.000000/t2560)*t2557)), (1.000000/t2560)*t2558))
      }
-     let t3604 = abf4.s0.pairindex*3
-     for (tm.s2.r131$x.rebased, 0, k3 + 1) {
-      let t3184 = pq[((k3 - pq.min.0) + tm.s2.r131$x.rebased) + 1]
-      let t3185 = t3184 == 2
-      let t3186.s = min(pq[(tm.s2.r131$x.rebased - pq.min.0) + 1], k3*3)
-      let t3187 = rijs[t3604 + 2]
-      let t3188 = rijs[t3604]
-      let t3189 = rijs[t3604 + 1]
-      let t3190 = (float64)sqrt_f64((t3187*t3187) + ((t3188*t3188) + (t3189*t3189)))
-      let t3456 = max(t3186.s, 1)
-      tm[(tm.s2.r131$x.rebased*4) + 6] = select(t3185, tm[(t3456*4) + -4], 0.000000) + (tm[(t3456*4) + -2]*select(1 < t3184, select(t3185, (1.000000/t3190)*t3189, select(t3184 < 3, 0.000000, (1.000000/t3190)*t3187)), (1.000000/t3190)*t3188))
+     let t2973 = abf4.s0.pairindex*3
+     for (tm.s2.r136$x.rebased, 0, k3 + 1) {
+      let t2561 = pq[((k3 - pq.min.0) + tm.s2.r136$x.rebased) + 1]
+      let t2562 = t2561 == 2
+      let t2563.s = min(pq[(tm.s2.r136$x.rebased - pq.min.0) + 1], k3*3)
+      let t2564 = rijs[t2973 + 2]
+      let t2565 = rijs[t2973]
+      let t2566 = rijs[t2973 + 1]
+      let t2567 = (float64)sqrt_f64((t2564*t2564) + ((t2565*t2565) + (t2566*t2566)))
+      let t2849 = max(t2563.s, 1)
+      tm[(tm.s2.r136$x.rebased*4) + 6] = select(t2562, tm[(t2849*4) + -4], 0.000000) + (tm[(t2849*4) + -2]*select(1 < t2561, select(t2562, (1.000000/t2567)*t2566, select(t2561 < 3, 0.000000, (1.000000/t2567)*t2564)), (1.000000/t2567)*t2565))
      }
-     let t3607 = abf4.s0.pairindex*3
-     for (tm.s2.r131$x.rebased, 0, k3 + 1) {
-      let t3191 = pq[((k3 - pq.min.0) + tm.s2.r131$x.rebased) + 1]
-      let t3192 = t3191 < 3
-      let t3193.s = min(pq[(tm.s2.r131$x.rebased - pq.min.0) + 1], k3*3)
-      let t3194 = rijs[t3607 + 2]
-      let t3195 = rijs[t3607]
-      let t3196 = rijs[t3607 + 1]
-      let t3197 = (float64)sqrt_f64((t3194*t3194) + ((t3195*t3195) + (t3196*t3196)))
-      let t3457 = max(t3193.s, 1)
-      tm[(tm.s2.r131$x.rebased*4) + 7] = select(t3192, 0.000000, tm[(t3457*4) + -4]) + (tm[(t3457*4) + -1]*select(1 < t3191, select(t3191 == 2, (1.000000/t3197)*t3196, select(t3192, 0.000000, (1.000000/t3197)*t3194)), (1.000000/t3197)*t3195))
+     let t2976 = abf4.s0.pairindex*3
+     for (tm.s2.r136$x.rebased, 0, k3 + 1) {
+      let t2568 = pq[((k3 - pq.min.0) + tm.s2.r136$x.rebased) + 1]
+      let t2569 = t2568 < 3
+      let t2570.s = min(pq[(tm.s2.r136$x.rebased - pq.min.0) + 1], k3*3)
+      let t2571 = rijs[t2976 + 2]
+      let t2572 = rijs[t2976]
+      let t2573 = rijs[t2976 + 1]
+      let t2574 = (float64)sqrt_f64((t2571*t2571) + ((t2572*t2572) + (t2573*t2573)))
+      let t2850 = max(t2570.s, 1)
+      tm[(tm.s2.r136$x.rebased*4) + 7] = select(t2569, 0.000000, tm[(t2850*4) + -4]) + (tm[(t2850*4) + -1]*select(1 < t2568, select(t2568 == 2, (1.000000/t2574)*t2573, select(t2569, 0.000000, (1.000000/t2574)*t2571)), (1.000000/t2574)*t2572))
      }
     }
     consume tm {
      abf4[((abf4.s0.abfi*npairs) + abf4.s0.pairindex)*4] = tm[abf4.s0.abfi*4]
-     let t3198 = rijs[(abf4.s0.pairindex*3) + 2]
-     let t3200 = rijs[abf4.s0.pairindex*3]
-     let t3201 = rijs[(abf4.s0.pairindex*3) + 1]
-     let t3203 = (float64)sqrt_f64((t3198*t3198) + ((t3200*t3200) + (t3201*t3201)))
-     let t3204 = (1.000000/t3203)*((1.000000/t3203)*(1.000000/t3203))
-     abf4[(((abf4.s0.abfi*npairs) + abf4.s0.pairindex)*4) + 1] = ((tm[(abf4.s0.abfi*4) + 1]*(((t3201*t3201) + (t3198*t3198))*t3204)) - (tm[(abf4.s0.abfi*4) + 2]*((t3200*t3201)*t3204))) - (tm[(abf4.s0.abfi*4) + 3]*((t3198*t3200)*t3204))
-     let t3205 = rijs[(abf4.s0.pairindex*3) + 2]
-     let t3207 = rijs[abf4.s0.pairindex*3]
-     let t3209 = rijs[(abf4.s0.pairindex*3) + 1]
-     let t3210 = (float64)sqrt_f64((t3205*t3205) + ((t3207*t3207) + (t3209*t3209)))
-     let t3211 = (1.000000/t3210)*((1.000000/t3210)*(1.000000/t3210))
-     abf4[(((abf4.s0.abfi*npairs) + abf4.s0.pairindex)*4) + 2] = ((tm[(abf4.s0.abfi*4) + 2]*(((t3207*t3207) + (t3205*t3205))*t3211)) - (tm[(abf4.s0.abfi*4) + 1]*((t3207*t3209)*t3211))) - (tm[(abf4.s0.abfi*4) + 3]*((t3205*t3209)*t3211))
-     let t3212 = rijs[abf4.s0.pairindex*3]
-     let t3213 = rijs[(abf4.s0.pairindex*3) + 1]
-     let t3214 = (t3212*t3212) + (t3213*t3213)
-     let t3215 = rijs[(abf4.s0.pairindex*3) + 2]
-     let t3216 = (float64)sqrt_f64((t3215*t3215) + t3214)
-     let t3217 = (1.000000/t3216)*((1.000000/t3216)*(1.000000/t3216))
-     abf4[(((abf4.s0.abfi*npairs) + abf4.s0.pairindex)*4) + 3] = (tm[(abf4.s0.abfi*4) + 3]*(t3214*t3217)) - ((tm[(abf4.s0.abfi*4) + 2]*((t3213*t3215)*t3217)) + (tm[(abf4.s0.abfi*4) + 1]*((t3212*t3215)*t3217)))
+     let t2575 = rijs[(abf4.s0.pairindex*3) + 2]
+     let t2577 = rijs[abf4.s0.pairindex*3]
+     let t2578 = rijs[(abf4.s0.pairindex*3) + 1]
+     let t2580 = (float64)sqrt_f64((t2575*t2575) + ((t2577*t2577) + (t2578*t2578)))
+     let t2581 = (1.000000/t2580)*((1.000000/t2580)*(1.000000/t2580))
+     abf4[(((abf4.s0.abfi*npairs) + abf4.s0.pairindex)*4) + 1] = ((tm[(abf4.s0.abfi*4) + 1]*(((t2578*t2578) + (t2575*t2575))*t2581)) - (tm[(abf4.s0.abfi*4) + 2]*((t2577*t2578)*t2581))) - (tm[(abf4.s0.abfi*4) + 3]*((t2575*t2577)*t2581))
+     let t2582 = rijs[(abf4.s0.pairindex*3) + 2]
+     let t2584 = rijs[abf4.s0.pairindex*3]
+     let t2586 = rijs[(abf4.s0.pairindex*3) + 1]
+     let t2587 = (float64)sqrt_f64((t2582*t2582) + ((t2584*t2584) + (t2586*t2586)))
+     let t2588 = (1.000000/t2587)*((1.000000/t2587)*(1.000000/t2587))
+     abf4[(((abf4.s0.abfi*npairs) + abf4.s0.pairindex)*4) + 2] = ((tm[(abf4.s0.abfi*4) + 2]*(((t2584*t2584) + (t2582*t2582))*t2588)) - (tm[(abf4.s0.abfi*4) + 1]*((t2584*t2586)*t2588))) - (tm[(abf4.s0.abfi*4) + 3]*((t2582*t2586)*t2588))
+     let t2589 = rijs[abf4.s0.pairindex*3]
+     let t2590 = rijs[(abf4.s0.pairindex*3) + 1]
+     let t2591 = (t2589*t2589) + (t2590*t2590)
+     let t2592 = rijs[(abf4.s0.pairindex*3) + 2]
+     let t2593 = (float64)sqrt_f64((t2592*t2592) + t2591)
+     let t2594 = (1.000000/t2593)*((1.000000/t2593)*(1.000000/t2593))
+     abf4[(((abf4.s0.abfi*npairs) + abf4.s0.pairindex)*4) + 3] = (tm[(abf4.s0.abfi*4) + 3]*(t2591*t2594)) - ((tm[(abf4.s0.abfi*4) + 2]*((t2590*t2592)*t2594)) + (tm[(abf4.s0.abfi*4) + 1]*((t2589*t2592)*t2594)))
     }
    }
   }
@@ -645,37 +644,53 @@ if (!((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)tj.buffer) || ((u
  allocate dabf_f[float64 * adegree * npairs * 3]
  produce dabf_f {
   produce abf_f {
-   let t3614 = (float64)rcut - (float64)rin
-   let t3611 = (float64)exp_f64(-1.000000)
-   let t3608 = max(npairs, 0)
-   let t3609 = max(adegree, 0)
-   let t3610 = 1.000000/t3614
-   let t3613 = adegree*npairs
-   for (abf_f.s0.fused.pairindex, 0, t3608) {
-    let t3617 = 3.000000/(t3611*t3614)
-    let t3616 = abf_f.s0.fused.pairindex*adegree
-    let t3615 = abf_f.s0.fused.pairindex*3
-    for (abf_f.s0.fused.basis function index, 0, t3609) {
-     let t3218 = rijs[t3615 + 2]
-     let t3219 = rijs[t3615]
-     let t3220 = rijs[t3615 + 1]
-     let t3221 = (float64)sqrt_f64((t3218*t3218) + ((t3219*t3219) + (t3220*t3220)))
-     let t3222 = (t3221 - (float64)rin)*t3610
-     let t3458 = (t3222*t3222)*t3222
-     abf_f[abf_f.s0.fused.basis function index + t3616] = ((float64)exp_f64(-1.000000/(float64)sqrt_f64(((1.000000 - t3458)*(1.000000 - t3458)) + 0.000001))/t3611)*(1.000000/(float64)pow_f64(t3221, float64((abf_f.s0.fused.basis function index + 1))))
-     let t3618 = float64(abf_f.s0.fused.basis function index) + 1.000000
-     let t3619 = abf_f.s0.fused.basis function index + t3616
-     for (dabf_f.s0.dim, 0, 3) {
-      let t3224 = rijs[t3615 + 2]
-      let t3225 = rijs[t3615]
-      let t3226 = rijs[t3615 + 1]
-      let t3227 = (float64)sqrt_f64((t3224*t3224) + ((t3225*t3225) + (t3226*t3226)))
-      let t3229 = (t3227 - (float64)rin)*t3610
-      let t3232 = let t4202 = ((t3229*t3229)*t3229) in ((1.000000 - t4202)*(1.000000 - t4202))
-      let t3234 = (float64)exp_f64(-1.000000/(float64)sqrt_f64(t3232 + 0.000001))
-      let t3460 = t3229*t3229
-      dabf_f[(dabf_f.s0.dim*t3613) + t3619] = (rijs[dabf_f.s0.dim + t3615]*(1.000000/t3227))*((1.000000/(float64)pow_f64(t3227, float64((abf_f.s0.fused.basis function index + 1))))*(((1.000000/(float64)pow_f64(t3232 + 0.000001, 1.500000))*(((t3460*t3617)*t3234)*((t3229*t3460) + -1.000000))) - ((1.000000/t3227)*((t3234/t3611)*t3618))))
-     }
+   let t2984 = (float64)rcut - (float64)rin
+   let t2985 = adegree*npairs
+   let t2980 = (float64)exp_f64(-1.000000)
+   let t2977 = max(npairs, 0)
+   let t2978 = max(adegree, 0)
+   let t2979 = 1.000000/t2984
+   for (abf_f.s0.fused.pairindex, 0, t2977) {
+    let t2991 = abf_f.s0.fused.pairindex*adegree
+    let t2988 = 3.000000/(t2980*t2984)
+    let t2986 = abf_f.s0.fused.pairindex*3
+    let t2990 = (t2985*2) + t2991
+    let t2989 = t2985 + t2991
+    for (abf_f.s0.fused.basis function index, 0, t2978) {
+     let t2595 = rijs[t2986 + 2]
+     let t2596 = rijs[t2986]
+     let t2597 = rijs[t2986 + 1]
+     let t2598 = (float64)sqrt_f64((t2595*t2595) + ((t2596*t2596) + (t2597*t2597)))
+     let t2599 = (t2598 - (float64)rin)*t2979
+     let t2851 = (t2599*t2599)*t2599
+     abf_f[abf_f.s0.fused.basis function index + t2991] = ((float64)exp_f64(-1.000000/(float64)sqrt_f64(((1.000000 - t2851)*(1.000000 - t2851)) + 0.000001))/t2980)*(1.000000/(float64)pow_f64(t2598, float64((abf_f.s0.fused.basis function index + 1))))
+     let t2601 = rijs[t2986]
+     let t2602 = rijs[t2986 + 2]
+     let t2603 = rijs[t2986 + 1]
+     let t2604 = (float64)sqrt_f64((t2602*t2602) + ((t2601*t2601) + (t2603*t2603)))
+     let t2606 = (t2604 - (float64)rin)*t2979
+     let t2609 = let t3543 = ((t2606*t2606)*t2606) in ((1.000000 - t3543)*(1.000000 - t3543))
+     let t2611 = (float64)exp_f64(-1.000000/(float64)sqrt_f64(t2609 + 0.000001))
+     let t2853 = t2606*t2606
+     dabf_f[abf_f.s0.fused.basis function index + t2991] = ((1.000000/t2604)*t2601)*((1.000000/(float64)pow_f64(t2604, float64((abf_f.s0.fused.basis function index + 1))))*(((1.000000/(float64)pow_f64(t2609 + 0.000001, 1.500000))*(((t2853*t2988)*t2611)*((t2606*t2853) + -1.000000))) - ((1.000000/t2604)*((t2611/t2980)*(float64(abf_f.s0.fused.basis function index) + 1.000000)))))
+     let t2612 = rijs[t2986 + 1]
+     let t2613 = rijs[t2986 + 2]
+     let t2614 = rijs[t2986]
+     let t2615 = (float64)sqrt_f64((t2613*t2613) + ((t2614*t2614) + (t2612*t2612)))
+     let t2617 = (t2615 - (float64)rin)*t2979
+     let t2620 = let t3544 = ((t2617*t2617)*t2617) in ((1.000000 - t3544)*(1.000000 - t3544))
+     let t2622 = (float64)exp_f64(-1.000000/(float64)sqrt_f64(t2620 + 0.000001))
+     let t2855 = t2617*t2617
+     dabf_f[abf_f.s0.fused.basis function index + t2989] = ((1.000000/t2615)*t2612)*((1.000000/(float64)pow_f64(t2615, float64((abf_f.s0.fused.basis function index + 1))))*(((1.000000/(float64)pow_f64(t2620 + 0.000001, 1.500000))*(((t2855*t2988)*t2622)*((t2617*t2855) + -1.000000))) - ((1.000000/t2615)*((t2622/t2980)*(float64(abf_f.s0.fused.basis function index) + 1.000000)))))
+     let t2623 = rijs[t2986 + 2]
+     let t2624 = rijs[t2986]
+     let t2625 = rijs[t2986 + 1]
+     let t2626 = (float64)sqrt_f64((t2623*t2623) + ((t2624*t2624) + (t2625*t2625)))
+     let t2628 = (t2626 - (float64)rin)*t2979
+     let t2631 = let t3545 = ((t2628*t2628)*t2628) in ((1.000000 - t3545)*(1.000000 - t3545))
+     let t2633 = (float64)exp_f64(-1.000000/(float64)sqrt_f64(t2631 + 0.000001))
+     let t2857 = t2628*t2628
+     dabf_f[abf_f.s0.fused.basis function index + t2990] = ((1.000000/t2626)*t2623)*((1.000000/(float64)pow_f64(t2626, float64((abf_f.s0.fused.basis function index + 1))))*(((1.000000/(float64)pow_f64(t2631 + 0.000001, 1.500000))*(((t2857*t2988)*t2633)*((t2628*t2857) + -1.000000))) - ((1.000000/t2626)*((t2633/t2980)*(float64(abf_f.s0.fused.basis function index) + 1.000000)))))
     }
    }
   }
@@ -684,113 +699,113 @@ if (!((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)tj.buffer) || ((u
  allocate rbf[float64 * nbesselpars * bdegree * npairs]
  produce rbf {
   produce drbf_f {
-   let t3627 = (float64)rcut - (float64)rin
-   let t3624 = (float64)exp_f64(-1.000000)
-   let t3620 = max(npairs, 0)
-   let t3621 = max(nbesselpars, 0)
-   let t3622 = max(bdegree, 0)
-   let t3623 = 1.000000/t3627
-   let t3626 = bdegree*nbesselpars
-   for (drbf_f.s0.fused.pairindex, 0, t3620) {
-    let t3635 = drbf_f.s0.fused.pairindex*t3626
-    let t3636 = 1.000000/t3627
-    let t3629 = (float64)sqrt_f64(t3636*2.000000)
-    let t3631 = 3.000000/(t3624*t3627)
-    let t3633 = (drbf_f.s0.fused.pairindex + npairs)*t3626
-    let t3628 = drbf_f.s0.fused.pairindex*3
-    let t3634 = ((npairs*t3626)*2) + t3635
-    for (drbf_f.s0.fused.basis function param, 0, t3621) {
-     let t3637 = drbf_f.s0.fused.basis function param + t3635
-     let t3639 = drbf_f.s0.fused.basis function param + t3634
-     let t3638 = drbf_f.s0.fused.basis function param + t3633
-     for (drbf_f.s0.fused.basis function index, 0, t3622) {
-      let t3235 = rijs[t3628]
-      let t3236 = rijs[t3628 + 2]
-      let t3237 = rijs[t3628 + 1]
-      let t3238 = (float64)sqrt_f64((t3236*t3236) + ((t3235*t3235) + (t3237*t3237)))
-      let t3240.s = besselparams[drbf_f.s0.fused.basis function param]
-      let t3242 = (float64)exp_f64(0.000000 - ((max(t3240.s, 0.001000)*(t3238 - (float64)rin))*t3623))
-      let t3243 = (float64)exp_f64(0.000000 - max(t3240.s, 0.001000))
-      let t3244 = ((1.000000 - t3242)/(1.000000 - t3243))*float64((drbf_f.s0.fused.basis function index + 1))
-      let t3245 = (t3238 - (float64)rin)*t3623
-      let t3248 = let t4203 = ((t3245*t3245)*t3245) in ((1.000000 - t4203)*(1.000000 - t4203))
-      let t3249 = (float64)exp_f64(-1.000000/(float64)sqrt_f64(t3248 + 0.000001))
-      let t3251 = t3249/t3624
-      let t3252 = (float64)sin_f64(t3244*3.141593)
-      let t3463 = t3238 - (float64)rin
-      let t3464 = t3245*t3245
-      drbf_f[(drbf_f.s0.fused.basis function index*nbesselpars) + t3637] = ((1.000000/t3238)*t3235)*((t3629/float64((drbf_f.s0.fused.basis function index + 1)))*(((((((max(t3240.s, 0.001000)*t3636)*t3242)/(1.000000 - t3243))*(((float64)cos_f64(t3244*3.141593)*float64((drbf_f.s0.fused.basis function index + 1)))*t3251))*3.141593)/t3463) + (((((1.000000/(float64)pow_f64(t3248 + 0.000001, 1.500000))*(((t3464*t3631)*t3249)*((t3245*t3464) + -1.000000)))*t3252)/t3463) - ((t3251*t3252)/(t3463*t3463)))))
-      let t3253 = rijs[t3628 + 1]
-      let t3254 = rijs[t3628 + 2]
-      let t3255 = rijs[t3628]
-      let t3256 = (float64)sqrt_f64((t3254*t3254) + ((t3255*t3255) + (t3253*t3253)))
-      let t3258.s = besselparams[drbf_f.s0.fused.basis function param]
-      let t3260 = (float64)exp_f64(0.000000 - ((max(t3258.s, 0.001000)*(t3256 - (float64)rin))*t3623))
-      let t3261 = (float64)exp_f64(0.000000 - max(t3258.s, 0.001000))
-      let t3262 = ((1.000000 - t3260)/(1.000000 - t3261))*float64((drbf_f.s0.fused.basis function index + 1))
-      let t3263 = (t3256 - (float64)rin)*t3623
-      let t3266 = let t4204 = ((t3263*t3263)*t3263) in ((1.000000 - t4204)*(1.000000 - t4204))
-      let t3267 = (float64)exp_f64(-1.000000/(float64)sqrt_f64(t3266 + 0.000001))
-      let t3269 = t3267/t3624
-      let t3270 = (float64)sin_f64(t3262*3.141593)
-      let t3467 = t3256 - (float64)rin
-      let t3468 = t3263*t3263
-      drbf_f[(drbf_f.s0.fused.basis function index*nbesselpars) + t3638] = ((1.000000/t3256)*t3253)*((t3629/float64((drbf_f.s0.fused.basis function index + 1)))*(((((((max(t3258.s, 0.001000)*t3636)*t3260)/(1.000000 - t3261))*(((float64)cos_f64(t3262*3.141593)*float64((drbf_f.s0.fused.basis function index + 1)))*t3269))*3.141593)/t3467) + (((((1.000000/(float64)pow_f64(t3266 + 0.000001, 1.500000))*(((t3468*t3631)*t3267)*((t3263*t3468) + -1.000000)))*t3270)/t3467) - ((t3269*t3270)/(t3467*t3467)))))
-      let t3272 = rijs[t3628 + 2]
-      let t3273 = rijs[t3628]
-      let t3274 = rijs[t3628 + 1]
-      let t3275 = (float64)sqrt_f64((t3272*t3272) + ((t3273*t3273) + (t3274*t3274)))
-      let t3277.s = besselparams[drbf_f.s0.fused.basis function param]
-      let t3279 = (float64)exp_f64(0.000000 - ((max(t3277.s, 0.001000)*(t3275 - (float64)rin))*t3623))
-      let t3280 = (float64)exp_f64(0.000000 - max(t3277.s, 0.001000))
-      let t3281 = ((1.000000 - t3279)/(1.000000 - t3280))*float64((drbf_f.s0.fused.basis function index + 1))
-      let t3282 = (t3275 - (float64)rin)*t3623
-      let t3285 = let t4205 = ((t3282*t3282)*t3282) in ((1.000000 - t4205)*(1.000000 - t4205))
-      let t3286 = (float64)exp_f64(-1.000000/(float64)sqrt_f64(t3285 + 0.000001))
-      let t3288 = t3286/t3624
-      let t3289 = (float64)sin_f64(t3281*3.141593)
-      let t3472 = t3275 - (float64)rin
-      let t3473 = t3282*t3282
-      drbf_f[(drbf_f.s0.fused.basis function index*nbesselpars) + t3639] = ((1.000000/t3275)*t3272)*((t3629/float64((drbf_f.s0.fused.basis function index + 1)))*(((((((max(t3277.s, 0.001000)*t3636)*t3279)/(1.000000 - t3280))*(((float64)cos_f64(t3281*3.141593)*float64((drbf_f.s0.fused.basis function index + 1)))*t3288))*3.141593)/t3472) + (((((1.000000/(float64)pow_f64(t3285 + 0.000001, 1.500000))*(((t3473*t3631)*t3286)*((t3282*t3473) + -1.000000)))*t3289)/t3472) - ((t3288*t3289)/(t3472*t3472)))))
-      let t3292.s = besselparams[drbf_f.s0.fused.basis function param]
-      let t3293 = rijs[t3628 + 2]
-      let t3294 = rijs[t3628]
-      let t3295 = rijs[t3628 + 1]
-      let t3296.s = (float64)sqrt_f64((t3293*t3293) + ((t3294*t3294) + (t3295*t3295)))
-      let t3297 = (t3296.s - (float64)rin)*t3623
-      let t3476 = max(t3292.s, 0.001000)
-      let t3477 = t3296.s - (float64)rin
-      let t3478 = (t3297*t3297)*t3297
-      rbf[(drbf_f.s0.fused.basis function index*nbesselpars) + t3637] = ((float64)sin_f64((((1.000000 - (float64)exp_f64(0.000000 - ((t3476*t3477)*t3636)))/(1.000000 - (float64)exp_f64(0.000000 - t3476)))*float64((drbf_f.s0.fused.basis function index + 1)))*3.141593)*((t3629/float64((drbf_f.s0.fused.basis function index + 1)))*((float64)exp_f64(-1.000000/(float64)sqrt_f64(((1.000000 - t3478)*(1.000000 - t3478)) + 0.000001))/t3624)))/t3477
+   let t2999 = (float64)rcut - (float64)rin
+   let t2996 = (float64)exp_f64(-1.000000)
+   let t2992 = max(npairs, 0)
+   let t2993 = max(nbesselpars, 0)
+   let t2994 = max(bdegree, 0)
+   let t2995 = 1.000000/t2999
+   let t2998 = bdegree*nbesselpars
+   for (drbf_f.s0.fused.pairindex, 0, t2992) {
+    let t3007 = drbf_f.s0.fused.pairindex*t2998
+    let t3008 = 1.000000/t2999
+    let t3001 = (float64)sqrt_f64(t3008*2.000000)
+    let t3003 = 3.000000/(t2996*t2999)
+    let t3005 = (drbf_f.s0.fused.pairindex + npairs)*t2998
+    let t3000 = drbf_f.s0.fused.pairindex*3
+    let t3006 = ((npairs*t2998)*2) + t3007
+    for (drbf_f.s0.fused.basis function param, 0, t2993) {
+     let t3009 = drbf_f.s0.fused.basis function param + t3007
+     let t3011 = drbf_f.s0.fused.basis function param + t3006
+     let t3010 = drbf_f.s0.fused.basis function param + t3005
+     for (drbf_f.s0.fused.basis function index, 0, t2994) {
+      let t2634 = rijs[t3000]
+      let t2635 = rijs[t3000 + 2]
+      let t2636 = rijs[t3000 + 1]
+      let t2637 = (float64)sqrt_f64((t2635*t2635) + ((t2634*t2634) + (t2636*t2636)))
+      let t2639.s = besselparams[drbf_f.s0.fused.basis function param]
+      let t2641 = (float64)exp_f64(0.000000 - ((max(t2639.s, 0.001000)*(t2637 - (float64)rin))*t2995))
+      let t2642 = (float64)exp_f64(0.000000 - max(t2639.s, 0.001000))
+      let t2643 = ((1.000000 - t2641)/(1.000000 - t2642))*float64((drbf_f.s0.fused.basis function index + 1))
+      let t2644 = (t2637 - (float64)rin)*t2995
+      let t2647 = let t3546 = ((t2644*t2644)*t2644) in ((1.000000 - t3546)*(1.000000 - t3546))
+      let t2648 = (float64)exp_f64(-1.000000/(float64)sqrt_f64(t2647 + 0.000001))
+      let t2650 = t2648/t2996
+      let t2651 = (float64)sin_f64(t2643*3.141593)
+      let t2860 = t2637 - (float64)rin
+      let t2861 = t2644*t2644
+      drbf_f[(drbf_f.s0.fused.basis function index*nbesselpars) + t3009] = ((1.000000/t2637)*t2634)*((t3001/float64((drbf_f.s0.fused.basis function index + 1)))*(((((((max(t2639.s, 0.001000)*t3008)*t2641)/(1.000000 - t2642))*(((float64)cos_f64(t2643*3.141593)*float64((drbf_f.s0.fused.basis function index + 1)))*t2650))*3.141593)/t2860) + (((((1.000000/(float64)pow_f64(t2647 + 0.000001, 1.500000))*(((t2861*t3003)*t2648)*((t2644*t2861) + -1.000000)))*t2651)/t2860) - ((t2650*t2651)/(t2860*t2860)))))
+      let t2652 = rijs[t3000 + 1]
+      let t2653 = rijs[t3000 + 2]
+      let t2654 = rijs[t3000]
+      let t2655 = (float64)sqrt_f64((t2653*t2653) + ((t2654*t2654) + (t2652*t2652)))
+      let t2657.s = besselparams[drbf_f.s0.fused.basis function param]
+      let t2659 = (float64)exp_f64(0.000000 - ((max(t2657.s, 0.001000)*(t2655 - (float64)rin))*t2995))
+      let t2660 = (float64)exp_f64(0.000000 - max(t2657.s, 0.001000))
+      let t2661 = ((1.000000 - t2659)/(1.000000 - t2660))*float64((drbf_f.s0.fused.basis function index + 1))
+      let t2662 = (t2655 - (float64)rin)*t2995
+      let t2665 = let t3547 = ((t2662*t2662)*t2662) in ((1.000000 - t3547)*(1.000000 - t3547))
+      let t2666 = (float64)exp_f64(-1.000000/(float64)sqrt_f64(t2665 + 0.000001))
+      let t2668 = t2666/t2996
+      let t2669 = (float64)sin_f64(t2661*3.141593)
+      let t2864 = t2655 - (float64)rin
+      let t2865 = t2662*t2662
+      drbf_f[(drbf_f.s0.fused.basis function index*nbesselpars) + t3010] = ((1.000000/t2655)*t2652)*((t3001/float64((drbf_f.s0.fused.basis function index + 1)))*(((((((max(t2657.s, 0.001000)*t3008)*t2659)/(1.000000 - t2660))*(((float64)cos_f64(t2661*3.141593)*float64((drbf_f.s0.fused.basis function index + 1)))*t2668))*3.141593)/t2864) + (((((1.000000/(float64)pow_f64(t2665 + 0.000001, 1.500000))*(((t2865*t3003)*t2666)*((t2662*t2865) + -1.000000)))*t2669)/t2864) - ((t2668*t2669)/(t2864*t2864)))))
+      let t2671 = rijs[t3000 + 2]
+      let t2672 = rijs[t3000]
+      let t2673 = rijs[t3000 + 1]
+      let t2674 = (float64)sqrt_f64((t2671*t2671) + ((t2672*t2672) + (t2673*t2673)))
+      let t2676.s = besselparams[drbf_f.s0.fused.basis function param]
+      let t2678 = (float64)exp_f64(0.000000 - ((max(t2676.s, 0.001000)*(t2674 - (float64)rin))*t2995))
+      let t2679 = (float64)exp_f64(0.000000 - max(t2676.s, 0.001000))
+      let t2680 = ((1.000000 - t2678)/(1.000000 - t2679))*float64((drbf_f.s0.fused.basis function index + 1))
+      let t2681 = (t2674 - (float64)rin)*t2995
+      let t2684 = let t3548 = ((t2681*t2681)*t2681) in ((1.000000 - t3548)*(1.000000 - t3548))
+      let t2685 = (float64)exp_f64(-1.000000/(float64)sqrt_f64(t2684 + 0.000001))
+      let t2687 = t2685/t2996
+      let t2688 = (float64)sin_f64(t2680*3.141593)
+      let t2869 = t2674 - (float64)rin
+      let t2870 = t2681*t2681
+      drbf_f[(drbf_f.s0.fused.basis function index*nbesselpars) + t3011] = ((1.000000/t2674)*t2671)*((t3001/float64((drbf_f.s0.fused.basis function index + 1)))*(((((((max(t2676.s, 0.001000)*t3008)*t2678)/(1.000000 - t2679))*(((float64)cos_f64(t2680*3.141593)*float64((drbf_f.s0.fused.basis function index + 1)))*t2687))*3.141593)/t2869) + (((((1.000000/(float64)pow_f64(t2684 + 0.000001, 1.500000))*(((t2870*t3003)*t2685)*((t2681*t2870) + -1.000000)))*t2688)/t2869) - ((t2687*t2688)/(t2869*t2869)))))
+      let t2691.s = besselparams[drbf_f.s0.fused.basis function param]
+      let t2692 = rijs[t3000 + 2]
+      let t2693 = rijs[t3000]
+      let t2694 = rijs[t3000 + 1]
+      let t2695.s = (float64)sqrt_f64((t2692*t2692) + ((t2693*t2693) + (t2694*t2694)))
+      let t2696 = (t2695.s - (float64)rin)*t2995
+      let t2873 = max(t2691.s, 0.001000)
+      let t2874 = t2695.s - (float64)rin
+      let t2875 = (t2696*t2696)*t2696
+      rbf[(drbf_f.s0.fused.basis function index*nbesselpars) + t3009] = ((float64)sin_f64((((1.000000 - (float64)exp_f64(0.000000 - ((t2873*t2874)*t3008)))/(1.000000 - (float64)exp_f64(0.000000 - t2873)))*float64((drbf_f.s0.fused.basis function index + 1)))*3.141593)*((t3001/float64((drbf_f.s0.fused.basis function index + 1)))*((float64)exp_f64(-1.000000/(float64)sqrt_f64(((1.000000 - t2875)*(1.000000 - t2875)) + 0.000001))/t2996)))/t2874
      }
     }
    }
   }
  }
  let rbft.rbf_abf_info.min_realized.s = min(select(bdegree < 0, (nbesselpars + -1)*bdegree, 0), bdegree*nbesselpars)
- let rbft.rbf_abf_info.extent_realized = let t4206 = (bdegree < 0) in (let t4207 = ((nbesselpars + -1)*bdegree) in (let t4208 = (bdegree*nbesselpars) in (max(max(select(t4206, 0, t4207) + bdegree, ns), t4208 + adegree) - min(min(select(t4206, t4207, 0), t4208), 0))))
+ let rbft.rbf_abf_info.extent_realized = let t3549 = (bdegree < 0) in (let t3550 = ((nbesselpars + -1)*bdegree) in (let t3551 = (bdegree*nbesselpars) in (max(max(select(t3549, 0, t3550) + bdegree, ns), t3551 + adegree) - min(min(select(t3549, t3550, 0), t3551), 0))))
  allocate rbft[float64 * npairs * rbft.rbf_abf_info.extent_realized * 4]
  produce rbft {
-  let t3640 = min(rbft.rbf_abf_info.min_realized.s, 0)
-  let t3641 = npairs*rbft.rbf_abf_info.extent_realized
+  let t3012 = min(rbft.rbf_abf_info.min_realized.s, 0)
+  let t3013 = npairs*rbft.rbf_abf_info.extent_realized
   for (rbft.s0.pairindex, 0, npairs) {
    for (rbft.s0.rbf_abf_info, 0, ns) {
-    let t3642 = ((rbft.s0.rbf_abf_info - t3640)*npairs) + rbft.s0.pairindex
+    let t3014 = ((rbft.s0.rbf_abf_info - t3012)*npairs) + rbft.s0.pairindex
     for (rbft.s0.rbfty, 0, 4) {
-     rbft[(rbft.s0.rbfty*t3641) + t3642] = 0.000000
+     rbft[(rbft.s0.rbfty*t3013) + t3014] = 0.000000
     }
    }
   }
   consume rbf {
-   let t3644 = min(rbft.rbf_abf_info.min_realized.s, 0)
-   for (rbft.s1.r82$z, 0, npairs) {
-    let t3645 = (bdegree*nbesselpars)*rbft.s1.r82$z
-    for (rbft.s1.r82$w, 0, 3) {
-     for (rbft.s1.r82$y, 0, bdegree) {
-      let t3647 = rbft.s1.r82$y - t3644
-      let t3646 = (nbesselpars*rbft.s1.r82$y) + t3645
-      for (rbft.s1.r82$x, 0, nbesselpars) {
-       rbft[(((bdegree*rbft.s1.r82$x) + t3647)*npairs) + rbft.s1.r82$z] = rbf[rbft.s1.r82$x + t3646]
+   let t3016 = min(rbft.rbf_abf_info.min_realized.s, 0)
+   for (rbft.s1.r87$z, 0, npairs) {
+    let t3017 = (bdegree*nbesselpars)*rbft.s1.r87$z
+    for (rbft.s1.r87$w, 0, 3) {
+     for (rbft.s1.r87$y, 0, bdegree) {
+      let t3019 = rbft.s1.r87$y - t3016
+      let t3018 = (nbesselpars*rbft.s1.r87$y) + t3017
+      for (rbft.s1.r87$x, 0, nbesselpars) {
+       rbft[(((bdegree*rbft.s1.r87$x) + t3019)*npairs) + rbft.s1.r87$z] = rbf[rbft.s1.r87$x + t3018]
       }
      }
     }
@@ -798,33 +813,33 @@ if (!((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)tj.buffer) || ((u
   }
   free rbf
   consume abf_f {
-   let t3648 = (bdegree*nbesselpars) - min(rbft.rbf_abf_info.min_realized.s, 0)
-   for (rbft.s2.r87$x, 0, npairs) {
-    for (rbft.s2.r87$y, 0, adegree) {
-     let t3651 = ((rbft.s2.r87$y + t3648)*npairs) + rbft.s2.r87$x
-     let t3650 = (adegree*rbft.s2.r87$x) + rbft.s2.r87$y
-     for (rbft.s2.r87$z, 0, 3) {
-      rbft[t3651] = abf_f[t3650]
+   let t3020 = (bdegree*nbesselpars) - min(rbft.rbf_abf_info.min_realized.s, 0)
+   for (rbft.s2.r92$x, 0, npairs) {
+    for (rbft.s2.r92$y, 0, adegree) {
+     let t3023 = ((rbft.s2.r92$y + t3020)*npairs) + rbft.s2.r92$x
+     let t3022 = (adegree*rbft.s2.r92$x) + rbft.s2.r92$y
+     for (rbft.s2.r92$z, 0, 3) {
+      rbft[t3023] = abf_f[t3022]
      }
     }
    }
   }
   free abf_f
   consume drbf_f {
-   let t3654 = min(rbft.rbf_abf_info.min_realized.s, 0)
-   let t3653 = npairs*rbft.rbf_abf_info.extent_realized
-   for (rbft.s3.r82$w, 0, 3) {
-    let t3658 = bdegree*nbesselpars
-    let t3655 = (npairs*t3658)*rbft.s3.r82$w
-    let t3657 = (rbft.s3.r82$w + 1)*t3653
-    for (rbft.s3.r82$z, 0, npairs) {
-     let t3659 = (rbft.s3.r82$z*t3658) + t3655
-     let t3660 = rbft.s3.r82$z + t3657
-     for (rbft.s3.r82$y, 0, bdegree) {
-      let t3662 = rbft.s3.r82$y - t3654
-      let t3661 = (nbesselpars*rbft.s3.r82$y) + t3659
-      for (rbft.s3.r82$x, 0, nbesselpars) {
-       rbft[(((bdegree*rbft.s3.r82$x) + t3662)*npairs) + t3660] = drbf_f[rbft.s3.r82$x + t3661]
+   let t3026 = min(rbft.rbf_abf_info.min_realized.s, 0)
+   let t3025 = npairs*rbft.rbf_abf_info.extent_realized
+   for (rbft.s3.r87$w, 0, 3) {
+    let t3030 = bdegree*nbesselpars
+    let t3027 = (npairs*t3030)*rbft.s3.r87$w
+    let t3029 = (rbft.s3.r87$w + 1)*t3025
+    for (rbft.s3.r87$z, 0, npairs) {
+     let t3031 = (rbft.s3.r87$z*t3030) + t3027
+     let t3032 = rbft.s3.r87$z + t3029
+     for (rbft.s3.r87$y, 0, bdegree) {
+      let t3034 = rbft.s3.r87$y - t3026
+      let t3033 = (nbesselpars*rbft.s3.r87$y) + t3031
+      for (rbft.s3.r87$x, 0, nbesselpars) {
+       rbft[(((bdegree*rbft.s3.r87$x) + t3034)*npairs) + t3032] = drbf_f[rbft.s3.r87$x + t3033]
       }
      }
     }
@@ -832,17 +847,17 @@ if (!((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)tj.buffer) || ((u
   }
   free drbf_f
   consume dabf_f {
-   let t3663 = npairs*rbft.rbf_abf_info.extent_realized
-   let t3665 = (bdegree*nbesselpars) - min(rbft.rbf_abf_info.min_realized.s, 0)
-   for (rbft.s4.r87$x, 0, npairs) {
-    let t3666 = adegree*rbft.s4.r87$x
-    let t3668 = rbft.s4.r87$x + t3663
-    for (rbft.s4.r87$y, 0, adegree) {
-     let t3670 = adegree*npairs
-     let t3671 = ((rbft.s4.r87$y + t3665)*npairs) + t3668
-     let t3669 = rbft.s4.r87$y + t3666
-     for (rbft.s4.r87$z, 0, 3) {
-      rbft[(rbft.s4.r87$z*t3663) + t3671] = dabf_f[(rbft.s4.r87$z*t3670) + t3669]
+   let t3035 = npairs*rbft.rbf_abf_info.extent_realized
+   let t3037 = (bdegree*nbesselpars) - min(rbft.rbf_abf_info.min_realized.s, 0)
+   for (rbft.s4.r92$x, 0, npairs) {
+    let t3038 = adegree*rbft.s4.r92$x
+    let t3040 = rbft.s4.r92$x + t3035
+    for (rbft.s4.r92$y, 0, adegree) {
+     let t3042 = adegree*npairs
+     let t3043 = ((rbft.s4.r92$y + t3037)*npairs) + t3040
+     let t3041 = rbft.s4.r92$y + t3038
+     for (rbft.s4.r92$z, 0, 3) {
+      rbft[(rbft.s4.r92$z*t3035) + t3043] = dabf_f[(rbft.s4.r92$z*t3042) + t3041]
      }
     }
    }
@@ -852,31 +867,31 @@ if (!((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)tj.buffer) || ((u
  let rbf$1.i.extent_realized = max(max(nrbf3, rbf$1.s1.i.max.s), nrbf2)
  allocate rbf$1[float64 * npairs * rbf$1.i.extent_realized * 4]
  produce rbf$1 {
-  let t3672 = npairs*rbf$1.i.extent_realized
+  let t3044 = npairs*rbf$1.i.extent_realized
   for (rbf$1.s0.c, 0, 4) {
-   let t3673 = rbf$1.s0.c*t3672
+   let t3045 = rbf$1.s0.c*t3044
    for (rbf$1.s0.i, 0, rbf$1.s1.i.max.s) {
-    let t3674 = (npairs*rbf$1.s0.i) + t3673
+    let t3046 = (npairs*rbf$1.s0.i) + t3045
     for (rbf$1.s0.j, 0, npairs) {
-     rbf$1[rbf$1.s0.j + t3674] = 0.000000
+     rbf$1[rbf$1.s0.j + t3046] = 0.000000
     }
    }
   }
   consume rbft {
-   let t3677 = min(rbft.rbf_abf_info.min_realized.s, 0)
-   let t3676 = npairs*rbft.rbf_abf_info.extent_realized
-   let t3675 = npairs*rbf$1.i.extent_realized
+   let t3049 = min(rbft.rbf_abf_info.min_realized.s, 0)
+   let t3048 = npairs*rbft.rbf_abf_info.extent_realized
+   let t3047 = npairs*rbf$1.i.extent_realized
    for (rbf$1.s1.c, 0, 4) {
-    let t3679 = rbf$1.s1.c*t3676
-    let t3678 = rbf$1.s1.c*t3675
+    let t3051 = rbf$1.s1.c*t3048
+    let t3050 = rbf$1.s1.c*t3047
     for (rbf$1.s1.i, 0, rbf$1.s1.i.max.s) {
-     let t3681 = ns*rbf$1.s1.i
-     let t3680 = (npairs*rbf$1.s1.i) + t3678
+     let t3053 = ns*rbf$1.s1.i
+     let t3052 = (npairs*rbf$1.s1.i) + t3050
      for (rbf$1.s1.j, 0, npairs) {
-      let t3682 = rbf$1.s1.j + t3680
-      let t3683 = rbf$1.s1.j + t3679
-      for (rbf$1.s1.r105$x, 0, ns) {
-       rbf$1[t3682] = rbf$1[t3682] + (Phi[rbf$1.s1.r105$x + t3681]*rbft[((rbf$1.s1.r105$x - t3677)*npairs) + t3683])
+      let t3054 = rbf$1.s1.j + t3052
+      let t3055 = rbf$1.s1.j + t3051
+      for (rbf$1.s1.r110$x, 0, ns) {
+       rbf$1[t3054] = rbf$1[t3054] + (Phi[rbf$1.s1.r110$x + t3053]*rbft[((rbf$1.s1.r110$x - t3049)*npairs) + t3055])
       }
      }
     }
@@ -889,123 +904,123 @@ if (!((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)tj.buffer) || ((u
  allocate U[float64 * npairs * U.k.extent_realized * U.m.extent_realized * 4]
  let sumU.m.extent_realized = max(max(U.s0.m.max.s, nrbf4), nrbf3)
  let sumU.k.extent_realized = max(max(k4, sumU.s0.k.max) + 1, k3)
- let sumU.n.extent_realized = let t4209 = (nelements == 1) in max(max(select(t4209, 0, nelements + -1), max(select(t4209, 0, max(nelements, 1) + -1), nelements + -1)) + 1, nelements)
+ let sumU.n.extent_realized = let t3552 = (nelements == 1) in max(max(select(t3552, 0, nelements + -1), max(select(t3552, 0, max(nelements, 1) + -1), nelements + -1)) + 1, nelements)
  allocate sumU[float64 * sumU.n.extent_realized * sumU.k.extent_realized * sumU.m.extent_realized]
  produce sumU {
   produce U {
-   let t3691 = max(nelements, 1)
-   let t3685 = max(sumU.s0.k.max + 1, U.s0.k.max.s)
-   let t3686 = max(nelements, npairs)
-   let t3684 = max(U.s0.m.max.s, 0)
-   let t3687 = min(npairs, t3691)
-   let t3689 = sumU.k.extent_realized*sumU.n.extent_realized
-   let t3688 = U.k.extent_realized*npairs
-   for (U.s0.fused.m, 0, t3684) {
-    let U.s0.fused.k.epilogue.s = min(min(U.s0.k.max.s, t3685), sumU.s0.k.max + 1)
-    let t3692 = max(U.s0.fused.k.epilogue.s, 0)
-    let t3693 = min(max(t3686, 1), t3687)
-    let t3695 = U.s0.fused.m*t3689
-    let t3694 = U.s0.fused.m*t3688
-    for (U.s0.fused.k, 0, t3692) {
-     let t3697 = max(t3693, 0)
-     let t3699 = (U.s0.fused.k*sumU.n.extent_realized) + t3695
-     let t3698 = (U.s0.fused.k*npairs) + t3694
-     for (U.s0.fused.n, 0, t3697) {
-      let t3700 = (U.s0.fused.n + t3698)*4
+   let t3063 = max(nelements, 1)
+   let t3057 = max(sumU.s0.k.max + 1, U.s0.k.max.s)
+   let t3058 = max(nelements, npairs)
+   let t3056 = max(U.s0.m.max.s, 0)
+   let t3059 = min(npairs, t3063)
+   let t3061 = sumU.k.extent_realized*sumU.n.extent_realized
+   let t3060 = U.k.extent_realized*npairs
+   for (U.s0.fused.m, 0, t3056) {
+    let U.s0.fused.k.epilogue.s = min(min(U.s0.k.max.s, t3057), sumU.s0.k.max + 1)
+    let t3064 = max(U.s0.fused.k.epilogue.s, 0)
+    let t3065 = min(max(t3058, 1), t3059)
+    let t3067 = U.s0.fused.m*t3061
+    let t3066 = U.s0.fused.m*t3060
+    for (U.s0.fused.k, 0, t3064) {
+     let t3069 = max(t3065, 0)
+     let t3071 = (U.s0.fused.k*sumU.n.extent_realized) + t3067
+     let t3070 = (U.s0.fused.k*npairs) + t3066
+     for (U.s0.fused.n, 0, t3069) {
+      let t3072 = (U.s0.fused.n + t3070)*4
       for (U.s0.crab.rebased, 0, 3) {
-       U[U.s0.crab.rebased + t3700] = 0.000000
+       U[U.s0.crab.rebased + t3072] = 0.000000
       }
-      sumU[U.s0.fused.n + t3699] = 0.000000
+      sumU[U.s0.fused.n + t3071] = 0.000000
      }
-     let U.s0.fused.n.new_max.s = max(t3686, t3693)
-     let t3705 = max(t3693, 0)
-     let t3701 = max(U.s0.fused.n.new_max.s, 1) - t3705
-     let t3704 = (U.s0.fused.k*sumU.n.extent_realized) + (t3695 + t3705)
-     let t3703 = (U.s0.fused.k*npairs) + (t3694 + t3705)
-     for (U.s0.fused.n.rebased, 0, t3701) {
-      if (((U.s0.fused.n.rebased + t3705) + 1) <= npairs) {
-       let t3706 = (U.s0.fused.n.rebased + t3703)*4
+     let U.s0.fused.n.new_max.s = max(t3058, t3065)
+     let t3077 = max(t3065, 0)
+     let t3073 = max(U.s0.fused.n.new_max.s, 1) - t3077
+     let t3076 = (U.s0.fused.k*sumU.n.extent_realized) + (t3067 + t3077)
+     let t3075 = (U.s0.fused.k*npairs) + (t3066 + t3077)
+     for (U.s0.fused.n.rebased, 0, t3073) {
+      if (((U.s0.fused.n.rebased + t3077) + 1) <= npairs) {
+       let t3078 = (U.s0.fused.n.rebased + t3075)*4
        for (U.s0.crab.rebased, 0, 3) {
-        U[U.s0.crab.rebased + t3706] = 0.000000
+        U[U.s0.crab.rebased + t3078] = 0.000000
        }
       }
-      if (((U.s0.fused.n.rebased + t3705) + 1) <= t3691) {
-       sumU[U.s0.fused.n.rebased + t3704] = 0.000000
+      if (((U.s0.fused.n.rebased + t3077) + 1) <= t3063) {
+       sumU[U.s0.fused.n.rebased + t3076] = 0.000000
       }
      }
     }
-    let U.s0.fused.k.new_max.s = max(U.s0.fused.k.epilogue.s, t3685)
-    let t3712 = max(U.s0.fused.k.epilogue.s, 0)
-    let t3708 = max(t3686, 1)
-    let t3711 = U.s0.fused.m*t3689
-    let t3710 = U.s0.fused.m*t3688
-    let t3707 = max(U.s0.fused.k.new_max.s, 0) - t3712
-    for (U.s0.fused.k.rebased, 0, t3707) {
-     let t3717 = U.s0.fused.k.rebased + t3712
-     let t3713 = (t3717 + 1) <= U.s0.k.max.s
-     let t3715 = t3717 <= sumU.s0.k.max
-     let t3716 = (sumU.n.extent_realized*t3717) + t3711
-     let t3714 = (npairs*t3717) + t3710
-     for (U.s0.fused.n, 0, t3708) {
-      if (((U.s0.fused.n + 1) <= npairs) && t3713) {
-       let t3718 = (U.s0.fused.n + t3714)*4
+    let U.s0.fused.k.new_max.s = max(U.s0.fused.k.epilogue.s, t3057)
+    let t3084 = max(U.s0.fused.k.epilogue.s, 0)
+    let t3080 = max(t3058, 1)
+    let t3083 = U.s0.fused.m*t3061
+    let t3082 = U.s0.fused.m*t3060
+    let t3079 = max(U.s0.fused.k.new_max.s, 0) - t3084
+    for (U.s0.fused.k.rebased, 0, t3079) {
+     let t3089 = U.s0.fused.k.rebased + t3084
+     let t3085 = (t3089 + 1) <= U.s0.k.max.s
+     let t3087 = t3089 <= sumU.s0.k.max
+     let t3088 = (sumU.n.extent_realized*t3089) + t3083
+     let t3086 = (npairs*t3089) + t3082
+     for (U.s0.fused.n, 0, t3080) {
+      if (((U.s0.fused.n + 1) <= npairs) && t3085) {
+       let t3090 = (U.s0.fused.n + t3086)*4
        for (U.s0.crab.rebased, 0, 3) {
-        U[U.s0.crab.rebased + t3718] = 0.000000
+        U[U.s0.crab.rebased + t3090] = 0.000000
        }
       }
-      if (((U.s0.fused.n + 1) <= t3691) && t3715) {
-       sumU[U.s0.fused.n + t3716] = 0.000000
+      if (((U.s0.fused.n + 1) <= t3063) && t3087) {
+       sumU[U.s0.fused.n + t3088] = 0.000000
       }
      }
     }
    }
    consume rbf$1 {
     consume abf4 {
-     let t3723 = npairs*rbf$1.i.extent_realized
-     let t3720 = U.k.extent_realized*npairs
-     for (U.s1.r166$x, 0, nrbf3) {
-      let t3725 = U.s1.r166$x*t3720
-      let t3724 = U.s1.r166$x*npairs
-      for (U.s1.r166$y, 0, k3) {
-       let t3733 = U.s1.r166$y*npairs
-       let t3731 = (t3723*3) + t3724
-       let t3730 = (t3723*2) + t3724
-       let t3729 = t3723 + t3724
-       for (U.s1.r166$z, 0, npairs) {
-        let t3487 = U.s1.r166$z + t3733
-        U[((t3725 + t3733) + U.s1.r166$z)*4] = (abf4[(t3487*4) + 1]*rbf$1[U.s1.r166$z + t3724]) + (rbf$1[U.s1.r166$z + t3729]*abf4[t3487*4])
-        let t3490 = U.s1.r166$z + t3733
-        U[(((t3725 + t3733) + U.s1.r166$z)*4) + 1] = (abf4[(t3490*4) + 2]*rbf$1[U.s1.r166$z + t3724]) + (rbf$1[U.s1.r166$z + t3730]*abf4[t3490*4])
-        let t3493 = U.s1.r166$z + t3733
-        U[(((t3725 + t3733) + U.s1.r166$z)*4) + 2] = (abf4[(t3493*4) + 3]*rbf$1[U.s1.r166$z + t3724]) + (rbf$1[U.s1.r166$z + t3731]*abf4[t3493*4])
-        U[(((t3725 + t3733) + U.s1.r166$z)*4) + 3] = 0.000000
+     let t3095 = npairs*rbf$1.i.extent_realized
+     let t3092 = U.k.extent_realized*npairs
+     for (U.s1.r171$x, 0, nrbf3) {
+      let t3097 = U.s1.r171$x*t3092
+      let t3096 = U.s1.r171$x*npairs
+      for (U.s1.r171$y, 0, k3) {
+       let t3105 = U.s1.r171$y*npairs
+       let t3103 = (t3095*3) + t3096
+       let t3102 = (t3095*2) + t3096
+       let t3101 = t3095 + t3096
+       for (U.s1.r171$z, 0, npairs) {
+        let t2884 = U.s1.r171$z + t3105
+        U[((t3097 + t3105) + U.s1.r171$z)*4] = (abf4[(t2884*4) + 1]*rbf$1[U.s1.r171$z + t3096]) + (rbf$1[U.s1.r171$z + t3101]*abf4[t2884*4])
+        let t2887 = U.s1.r171$z + t3105
+        U[(((t3097 + t3105) + U.s1.r171$z)*4) + 1] = (abf4[(t2887*4) + 2]*rbf$1[U.s1.r171$z + t3096]) + (rbf$1[U.s1.r171$z + t3102]*abf4[t2887*4])
+        let t2890 = U.s1.r171$z + t3105
+        U[(((t3097 + t3105) + U.s1.r171$z)*4) + 2] = (abf4[(t2890*4) + 3]*rbf$1[U.s1.r171$z + t3096]) + (rbf$1[U.s1.r171$z + t3103]*abf4[t2890*4])
+        U[(((t3097 + t3105) + U.s1.r171$z)*4) + 3] = 0.000000
        }
       }
      }
      if (nelements == 1) {
-      let t3734 = sumU.k.extent_realized*sumU.n.extent_realized
-      for (sumU.s1.r166$x, 0, nrbf3) {
-       let t3735 = sumU.s1.r166$x*t3734
-       let t3736 = npairs*sumU.s1.r166$x
-       for (sumU.s1.r166$y, 0, k3) {
-        let t3738 = npairs*sumU.s1.r166$y
-        let t3737 = (sumU.n.extent_realized*sumU.s1.r166$y) + t3735
-        for (sumU.s1.r166$z, 0, npairs) {
-         sumU[t3737] = sumU[t3737] + (rbf$1[sumU.s1.r166$z + t3736]*abf4[(sumU.s1.r166$z + t3738)*4])
+      let t3106 = sumU.k.extent_realized*sumU.n.extent_realized
+      for (sumU.s1.r171$x, 0, nrbf3) {
+       let t3107 = sumU.s1.r171$x*t3106
+       let t3108 = npairs*sumU.s1.r171$x
+       for (sumU.s1.r171$y, 0, k3) {
+        let t3110 = npairs*sumU.s1.r171$y
+        let t3109 = (sumU.n.extent_realized*sumU.s1.r171$y) + t3107
+        for (sumU.s1.r171$z, 0, npairs) {
+         sumU[t3109] = sumU[t3109] + (rbf$1[sumU.s1.r171$z + t3108]*abf4[(sumU.s1.r171$z + t3110)*4])
         }
        }
       }
      } else {
-      let t3739 = sumU.k.extent_realized*sumU.n.extent_realized
-      for (sumU.s1.r166$x, 0, nrbf3) {
-       let t3740 = sumU.s1.r166$x*t3739
-       let t3741 = npairs*sumU.s1.r166$x
-       for (sumU.s1.r166$y, 0, k3) {
-        let t3743 = npairs*sumU.s1.r166$y
-        let t3742 = (sumU.n.extent_realized*sumU.s1.r166$y) + t3740
-        for (sumU.s1.r166$z, 0, npairs) {
-         let t3320 = max(min(tj[sumU.s1.r166$z - tj.min.0], nelements), 1) + t3742
-         sumU[t3320 + -1] = sumU[t3320 + -1] + (rbf$1[sumU.s1.r166$z + t3741]*abf4[(sumU.s1.r166$z + t3743)*4])
+      let t3111 = sumU.k.extent_realized*sumU.n.extent_realized
+      for (sumU.s1.r171$x, 0, nrbf3) {
+       let t3112 = sumU.s1.r171$x*t3111
+       let t3113 = npairs*sumU.s1.r171$x
+       for (sumU.s1.r171$y, 0, k3) {
+        let t3115 = npairs*sumU.s1.r171$y
+        let t3114 = (sumU.n.extent_realized*sumU.s1.r171$y) + t3112
+        for (sumU.s1.r171$z, 0, npairs) {
+         let t2719 = max(min(tj[sumU.s1.r171$z - tj.min.0], nelements), 1) + t3114
+         sumU[t2719 + -1] = sumU[t2719 + -1] + (rbf$1[sumU.s1.r171$z + t3113]*abf4[(sumU.s1.r171$z + t3115)*4])
         }
        }
       }
@@ -1015,49 +1030,49 @@ if (!((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)tj.buffer) || ((u
    free abf4
   }
  }
- let cU.ne.extent_realized = let t4210 = max(nelements, 1) in max(select(nelements == 1, 1, t4210), t4210)
+ let cU.ne.extent_realized = let t3553 = max(nelements, 1) in max(select(nelements == 1, 1, t3553), t3553)
  allocate cU[float64 * cU.ne.extent_realized * k3 * nrbf3]
  produce cU {
-  let t3744 = max(nelements, 1)
+  let t3116 = max(nelements, 1)
   for (cU.s0.rbfThree, 0, nrbf3) {
-   let t3746 = (cU.ne.extent_realized*k3)*cU.s0.rbfThree
+   let t3118 = (cU.ne.extent_realized*k3)*cU.s0.rbfThree
    for (cU.s0.k3var, 0, k3) {
-    let t3747 = (cU.ne.extent_realized*cU.s0.k3var) + t3746
-    for (cU.s0.ne, 0, t3744) {
-     cU[cU.s0.ne + t3747] = 0.000000
+    let t3119 = (cU.ne.extent_realized*cU.s0.k3var) + t3118
+    for (cU.s0.ne, 0, t3116) {
+     cU[cU.s0.ne + t3119] = 0.000000
     }
    }
   }
   consume sumU {
-   let t3754 = ((nelements + 1)*nelements)/2
-   let t3756 = sumU.k.extent_realized*sumU.n.extent_realized
-   let t3750 = coeff3.min.3*coeff3.stride.3
-   let t3751 = coeff3.min.2*coeff3.stride.2
-   let t3752 = coeff3.min.1*coeff3.stride.1
-   let t3749 = 0 - ti.min.0
-   for (cU.s1.r234$4, 0, nrbf3) {
-    let t3757 = (cU.ne.extent_realized*k3)*cU.s1.r234$4
-    let t3761 = cU.s1.r234$4*t3756
-    let t3759 = cU.s1.r234$4*coeff3.stride.1
-    for (cU.s1.r234$y, 0, nabf3) {
-     let t3762 = cU.s1.r234$y - pn3.min.0
-     for (cU.s1.r234$z, 0, nelements) {
-      let cU.s1.r234$w.new_min.s = min(cU.s1.r234$z, nelements)
-      let t3765 = nelements - cU.s1.r234$w.new_min.s
-      let t3768 = ((cU.s1.r234$z/2)*(((nelements*2) - cU.s1.r234$z) + -3)) + cU.s1.r234$w.new_min.s
-      let t3769 = cU.s1.r234$z + t3761
-      let t3766 = cU.s1.r234$w.new_min.s + t3757
-      for (cU.s1.r234$w.rebased, 0, t3765) {
-       let cU.s1.r234$x.new_min.s = min(pn3[t3762], k3)
-       let cU.s1.r234$x.new_max.s = max(min(pn3[t3762 + 1], k3), cU.s1.r234$x.new_min.s)
-       let t3775 = max(cU.s1.r234$x.new_min.s, 0)
-       let t3774 = max(min(cU.s1.r234$w.rebased + t3768, t3754), 1)*coeff3.stride.2
-       let t3773 = coeff3.stride.2*-1
-       let t3770 = max(cU.s1.r234$x.new_max.s, 0) - t3775
-       let t3771 = cU.s1.r234$w.rebased + t3766
-       for (cU.s1.r234$x.rebased, 0, t3770) {
-        let t3322 = ((cU.s1.r234$x.rebased + t3775)*cU.ne.extent_realized) + t3771
-        cU[t3322] = cU[t3322] + (coeff3[(((((((((max(min(ti[t3749], nelements), 1)*coeff3.stride.3) - t3750) - t3751) - t3752) - coeff3.min.0) + t3773) - coeff3.stride.3) + t3759) + cU.s1.r234$y) + t3774]*(sumU[((cU.s1.r234$x.rebased + t3775)*sumU.n.extent_realized) + t3769]*float64(pc3[(t3775 - pc3.min.0) + cU.s1.r234$x.rebased])))
+   let t3126 = ((nelements + 1)*nelements)/2
+   let t3128 = sumU.k.extent_realized*sumU.n.extent_realized
+   let t3122 = coeff3.min.3*coeff3.stride.3
+   let t3123 = coeff3.min.2*coeff3.stride.2
+   let t3124 = coeff3.min.1*coeff3.stride.1
+   let t3121 = 0 - ti.min.0
+   for (cU.s1.r239$4, 0, nrbf3) {
+    let t3129 = (cU.ne.extent_realized*k3)*cU.s1.r239$4
+    let t3133 = cU.s1.r239$4*t3128
+    let t3131 = cU.s1.r239$4*coeff3.stride.1
+    for (cU.s1.r239$y, 0, nabf3) {
+     let t3134 = cU.s1.r239$y - pn3.min.0
+     for (cU.s1.r239$z, 0, nelements) {
+      let cU.s1.r239$w.new_min.s = min(cU.s1.r239$z, nelements)
+      let t3137 = nelements - cU.s1.r239$w.new_min.s
+      let t3140 = ((cU.s1.r239$z/2)*(((nelements*2) - cU.s1.r239$z) + -3)) + cU.s1.r239$w.new_min.s
+      let t3141 = cU.s1.r239$z + t3133
+      let t3138 = cU.s1.r239$w.new_min.s + t3129
+      for (cU.s1.r239$w.rebased, 0, t3137) {
+       let cU.s1.r239$x.new_min.s = min(pn3[t3134], k3)
+       let cU.s1.r239_x.new_max$1.s = max(min(pn3[t3134 + 1], k3), cU.s1.r239$x.new_min.s)
+       let t3147 = max(cU.s1.r239$x.new_min.s, 0)
+       let t3146 = max(min(cU.s1.r239$w.rebased + t3140, t3126), 1)*coeff3.stride.2
+       let t3145 = coeff3.stride.2*-1
+       let t3142 = max(cU.s1.r239_x.new_max$1.s, 0) - t3147
+       let t3143 = cU.s1.r239$w.rebased + t3138
+       for (cU.s1.r239$x.rebased, 0, t3142) {
+        let t2721 = ((cU.s1.r239$x.rebased + t3147)*cU.ne.extent_realized) + t3143
+        cU[t2721] = cU[t2721] + (coeff3[(((((((((max(min(ti[t3121], nelements), 1)*coeff3.stride.3) - t3122) - t3123) - t3124) - coeff3.min.0) + t3145) - coeff3.stride.3) + t3131) + cU.s1.r239$y) + t3146]*(sumU[((cU.s1.r239$x.rebased + t3147)*sumU.n.extent_realized) + t3141]*float64(pc3[(t3147 - pc3.min.0) + cU.s1.r239$x.rebased])))
        }
       }
      }
@@ -1065,35 +1080,35 @@ if (!((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)tj.buffer) || ((u
    }
   }
   consume sumU {
-   let t3782 = ((nelements + 1)*nelements)/2
-   let t3784 = sumU.k.extent_realized*sumU.n.extent_realized
-   let t3778 = coeff3.min.3*coeff3.stride.3
-   let t3779 = coeff3.min.2*coeff3.stride.2
-   let t3780 = coeff3.min.1*coeff3.stride.1
-   let t3777 = 0 - ti.min.0
-   for (cU.s2.r234$4, 0, nrbf3) {
-    let t3785 = (cU.ne.extent_realized*k3)*cU.s2.r234$4
-    let t3789 = cU.s2.r234$4*t3784
-    let t3787 = cU.s2.r234$4*coeff3.stride.1
-    for (cU.s2.r234$y, 0, nabf3) {
-     let t3790 = cU.s2.r234$y - pn3.min.0
-     for (cU.s2.r234$z, 0, nelements) {
-      let cU.s2.r234$w.new_min.s = min(cU.s2.r234$z, nelements)
-      let t3793 = nelements - cU.s2.r234$w.new_min.s
-      let t3796 = ((cU.s2.r234$z/2)*(((nelements*2) - cU.s2.r234$z) + -3)) + cU.s2.r234$w.new_min.s
-      let t3794 = cU.s2.r234$z + t3785
-      let t3797 = cU.s2.r234$w.new_min.s + t3789
-      for (cU.s2.r234$w.rebased, 0, t3793) {
-       let cU.s2.r234$x.new_min.s = min(pn3[t3790], k3)
-       let cU.s2.r234$x.new_max.s = max(min(pn3[t3790 + 1], k3), cU.s2.r234$x.new_min.s)
-       let t3803 = max(cU.s2.r234$x.new_min.s, 0)
-       let t3801 = max(min(cU.s2.r234$w.rebased + t3796, t3782), 1)*coeff3.stride.2
-       let t3800 = coeff3.stride.2*-1
-       let t3798 = max(cU.s2.r234$x.new_max.s, 0) - t3803
-       let t3802 = cU.s2.r234$w.rebased + t3797
-       for (cU.s2.r234$x.rebased, 0, t3798) {
-        let t3323 = ((cU.s2.r234$x.rebased + t3803)*cU.ne.extent_realized) + t3794
-        cU[t3323] = cU[t3323] + (coeff3[(((((((((max(min(ti[t3777], nelements), 1)*coeff3.stride.3) - t3778) - t3779) - t3780) - coeff3.min.0) + t3800) - coeff3.stride.3) + t3787) + cU.s2.r234$y) + t3801]*(sumU[((cU.s2.r234$x.rebased + t3803)*sumU.n.extent_realized) + t3802]*float64(pc3[(t3803 - pc3.min.0) + cU.s2.r234$x.rebased])))
+   let t3154 = ((nelements + 1)*nelements)/2
+   let t3156 = sumU.k.extent_realized*sumU.n.extent_realized
+   let t3150 = coeff3.min.3*coeff3.stride.3
+   let t3151 = coeff3.min.2*coeff3.stride.2
+   let t3152 = coeff3.min.1*coeff3.stride.1
+   let t3149 = 0 - ti.min.0
+   for (cU.s2.r239$4, 0, nrbf3) {
+    let t3157 = (cU.ne.extent_realized*k3)*cU.s2.r239$4
+    let t3161 = cU.s2.r239$4*t3156
+    let t3159 = cU.s2.r239$4*coeff3.stride.1
+    for (cU.s2.r239$y, 0, nabf3) {
+     let t3162 = cU.s2.r239$y - pn3.min.0
+     for (cU.s2.r239$z, 0, nelements) {
+      let cU.s2.r239$w.new_min.s = min(cU.s2.r239$z, nelements)
+      let t3165 = nelements - cU.s2.r239$w.new_min.s
+      let t3168 = ((cU.s2.r239$z/2)*(((nelements*2) - cU.s2.r239$z) + -3)) + cU.s2.r239$w.new_min.s
+      let t3166 = cU.s2.r239$z + t3157
+      let t3169 = cU.s2.r239$w.new_min.s + t3161
+      for (cU.s2.r239$w.rebased, 0, t3165) {
+       let cU.s2.r239$x.new_min.s = min(pn3[t3162], k3)
+       let cU.s2.r239$x.new_max.s = max(min(pn3[t3162 + 1], k3), cU.s2.r239$x.new_min.s)
+       let t3175 = max(cU.s2.r239$x.new_min.s, 0)
+       let t3173 = max(min(cU.s2.r239$w.rebased + t3168, t3154), 1)*coeff3.stride.2
+       let t3172 = coeff3.stride.2*-1
+       let t3170 = max(cU.s2.r239$x.new_max.s, 0) - t3175
+       let t3174 = cU.s2.r239$w.rebased + t3169
+       for (cU.s2.r239$x.rebased, 0, t3170) {
+        let t2722 = ((cU.s2.r239$x.rebased + t3175)*cU.ne.extent_realized) + t3166
+        cU[t2722] = cU[t2722] + (coeff3[(((((((((max(min(ti[t3149], nelements), 1)*coeff3.stride.3) - t3150) - t3151) - t3152) - coeff3.min.0) + t3172) - coeff3.stride.3) + t3159) + cU.s2.r239$y) + t3173]*(sumU[((cU.s2.r239$x.rebased + t3175)*sumU.n.extent_realized) + t3174]*float64(pc3[(t3175 - pc3.min.0) + cU.s2.r239$x.rebased])))
        }
       }
      }
@@ -1105,50 +1120,50 @@ if (!((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)tj.buffer) || ((u
  allocate d2$0[float64 * max(nelements, 1) * nrbf2]
  produce d2$0 {
   produce dd2 {
-   let t3804 = max(nelements, 1)
+   let t3176 = max(nelements, 1)
    for (d2$0.s0.m, 0, nrbf2) {
-    let t3805 = d2$0.s0.m*t3804
-    for (d2$0.s0.ne, 0, t3804) {
-     d2$0[d2$0.s0.ne + t3805] = 0.000000
+    let t3177 = d2$0.s0.m*t3176
+    for (d2$0.s0.ne, 0, t3176) {
+     d2$0[d2$0.s0.ne + t3177] = 0.000000
     }
    }
-   let t3806 = max(nelements, 1)
+   let t3178 = max(nelements, 1)
    for (dd2.s0.dim, 0, 3) {
     for (dd2.s0.n, 0, npairs) {
-     let t3809 = nrbf2*t3806
-     let t3808 = ((npairs*t3809)*dd2.s0.dim) + (dd2.s0.n*t3809)
+     let t3181 = nrbf2*t3178
+     let t3180 = ((npairs*t3181)*dd2.s0.dim) + (dd2.s0.n*t3181)
      for (dd2.s0.m, 0, nrbf2) {
-      let t3810 = (dd2.s0.m*t3806) + t3808
-      for (dd2.s0.ne, 0, t3806) {
-       dd2[dd2.s0.ne + t3810] = 0.000000
+      let t3182 = (dd2.s0.m*t3178) + t3180
+      for (dd2.s0.ne, 0, t3178) {
+       dd2[dd2.s0.ne + t3182] = 0.000000
       }
      }
     }
    }
    consume rbf$1 {
-    let t3811 = max(nrbf2, 0)
-    let t3812 = max(nelements, 1)
-    let t3813 = npairs*rbf$1.i.extent_realized
-    for (dd2.s1.r192$y, 0, t3811) {
-     let t3819 = dd2.s1.r192$y*npairs
-     let t3815 = nrbf2*t3812
-     let t3814 = dd2.s1.r192$y*t3812
-     let t3818 = (t3813*3) + t3819
-     let t3817 = (t3813*2) + t3819
-     let t3816 = t3813 + t3819
-     for (dd2.s1.r192$x, 0, npairs) {
-      let t3327 = max(min(tj[dd2.s1.r192$x - tj.min.0], nelements), 1) + ((dd2.s1.r192$x*t3815) + t3814)
-      dd2[t3327 + -1] = dd2[t3327 + -1] + rbf$1[dd2.s1.r192$x + t3816]
-      let t3330 = max(min(tj[dd2.s1.r192$x - tj.min.0], nelements), 1) + ((dd2.s1.r192$x*t3815) + ((npairs*t3815) + t3814))
-      dd2[t3330 + -1] = dd2[t3330 + -1] + rbf$1[dd2.s1.r192$x + t3817]
-      let t3334 = max(min(tj[dd2.s1.r192$x - tj.min.0], nelements), 1) + ((dd2.s1.r192$x*t3815) + (((npairs*t3815)*2) + t3814))
-      dd2[t3334 + -1] = dd2[t3334 + -1] + rbf$1[dd2.s1.r192$x + t3818]
+    let t3183 = max(nrbf2, 0)
+    let t3184 = max(nelements, 1)
+    let t3185 = npairs*rbf$1.i.extent_realized
+    for (dd2.s1.r197$y, 0, t3183) {
+     let t3191 = dd2.s1.r197$y*npairs
+     let t3187 = nrbf2*t3184
+     let t3186 = dd2.s1.r197$y*t3184
+     let t3190 = (t3185*3) + t3191
+     let t3189 = (t3185*2) + t3191
+     let t3188 = t3185 + t3191
+     for (dd2.s1.r197$x, 0, npairs) {
+      let t2726 = max(min(tj[dd2.s1.r197$x - tj.min.0], nelements), 1) + ((dd2.s1.r197$x*t3187) + t3186)
+      dd2[t2726 + -1] = dd2[t2726 + -1] + rbf$1[dd2.s1.r197$x + t3188]
+      let t2729 = max(min(tj[dd2.s1.r197$x - tj.min.0], nelements), 1) + ((dd2.s1.r197$x*t3187) + ((npairs*t3187) + t3186))
+      dd2[t2729 + -1] = dd2[t2729 + -1] + rbf$1[dd2.s1.r197$x + t3189]
+      let t2733 = max(min(tj[dd2.s1.r197$x - tj.min.0], nelements), 1) + ((dd2.s1.r197$x*t3187) + (((npairs*t3187)*2) + t3186))
+      dd2[t2733 + -1] = dd2[t2733 + -1] + rbf$1[dd2.s1.r197$x + t3190]
      }
-     let t3820 = dd2.s1.r192$y*t3812
-     let t3821 = dd2.s1.r192$y*npairs
-     for (d2$0.s1.r192$x, 0, npairs) {
-      let t3336 = max(min(tj[d2$0.s1.r192$x - tj.min.0], nelements), 1) + t3820
-      d2$0[t3336 + -1] = d2$0[t3336 + -1] + rbf$1[d2$0.s1.r192$x + t3821]
+     let t3192 = dd2.s1.r197$y*t3184
+     let t3193 = dd2.s1.r197$y*npairs
+     for (d2$0.s1.r197$x, 0, npairs) {
+      let t2735 = max(min(tj[d2$0.s1.r197$x - tj.min.0], nelements), 1) + t3192
+      d2$0[t2735 + -1] = d2$0[t2735 + -1] + rbf$1[d2$0.s1.r197$x + t3193]
      }
     }
    }
@@ -1158,8 +1173,8 @@ if (!((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)tj.buffer) || ((u
  produce ind23 {
   for (ind23.s0.c.rebased, 0, 2) {
    for (ind23.s0.k, 0, n23) {
-    let t3337 = ind23.s0.k/nrbf2
-    ind23[(ind23.s0.c.rebased*n23) + ind23.s0.k] = mux(ind23.s0.c.rebased + 1, 0, ind23.s0.k - (nrbf2*t3337), t3337)
+    let t2736 = ind23.s0.k/nrbf2
+    ind23[(ind23.s0.c.rebased*n23) + ind23.s0.k] = mux(ind23.s0.c.rebased + 1, 0, ind23.s0.k - (nrbf2*t2736), t2736)
    }
   }
  }
@@ -1170,11 +1185,11 @@ if (!((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)tj.buffer) || ((u
   }
   consume ind23 {
    consume d2$0 {
-    let t3823 = max(nelements, 1)
-    let t3824 = 0 - ti.min.0
+    let t3195 = max(nelements, 1)
+    let t3196 = 0 - ti.min.0
     for (cf1.s1.j, 0, n32) {
-     for (cf1.s1.r256$x, 0, n23) {
-      cf1[cf1.s1.j] = cf1[cf1.s1.j] + (d2$0[ind23[cf1.s1.r256$x] + (ind23[cf1.s1.r256$x + n23]*t3823)]*coeff23[(((ti[t3824] + -1)*coeff23.stride.2) + (cf1.s1.j*n23)) + cf1.s1.r256$x])
+     for (cf1.s1.r261$x, 0, n23) {
+      cf1[cf1.s1.j] = cf1[cf1.s1.j] + (d2$0[ind23[cf1.s1.r261$x] + (ind23[cf1.s1.r261$x + n23]*t3195)]*coeff23[(((ti[t3196] + -1)*coeff23.stride.2) + (cf1.s1.j*n23)) + cf1.s1.r261$x])
      }
     }
    }
@@ -1183,61 +1198,59 @@ if (!((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)tj.buffer) || ((u
  let d3$0.kme.extent_realized = max(select(nelements == 1, 1, max(coeff3.extent.2.required.s, 1)), max(((nelements + 1)*nelements)/2, 1))
  allocate d3$0[float64 * nabf3 * nrbf3 * d3$0.kme.extent_realized]
  produce d3$0 {
-  let t3826 = max(((nelements + 1)*nelements)/2, 1)
-  for (d3$0.s0.kme, 0, t3826) {
-   let t3828 = (nabf3*nrbf3)*d3$0.s0.kme
+  let t3198 = max(((nelements + 1)*nelements)/2, 1)
+  for (d3$0.s0.kme, 0, t3198) {
+   let t3200 = (nabf3*nrbf3)*d3$0.s0.kme
    for (d3$0.s0.rbfThree, 0, nrbf3) {
-    let t3829 = (d3$0.s0.rbfThree*nabf3) + t3828
+    let t3201 = (d3$0.s0.rbfThree*nabf3) + t3200
     for (d3$0.s0.abfThree, 0, nabf3) {
-     d3$0[d3$0.s0.abfThree + t3829] = 0.000000
+     d3$0[d3$0.s0.abfThree + t3201] = 0.000000
     }
    }
   }
   consume sumU {
    if (nelements == 1) {
-    let t3830 = sumU.k.extent_realized*sumU.n.extent_realized
+    let t3202 = sumU.k.extent_realized*sumU.n.extent_realized
     for (d3$0.s1.rbfThree, 0, nrbf3) {
-     let t3831 = d3$0.s1.rbfThree*t3830
-     let t3832 = d3$0.s1.rbfThree*nabf3
-     for (d3$0.s1.r203$y, 0, nabf3) {
-      let d3$0.s1.r203$x.new_min.s = min(pn3[d3$0.s1.r203$y - pn3.min.0], k3)
-      let d3$0.s1.r203$x.new_max.s = max(min(pn3[(d3$0.s1.r203$y - pn3.min.0) + 1], k3), d3$0.s1.r203$x.new_min.s)
-      let t3837 = max(d3$0.s1.r203$x.new_min.s, 0)
-      let t3836 = t3837 - pc3.min.0
-      let t3833 = max(d3$0.s1.r203$x.new_max.s, 0) - t3837
-      let t3835 = d3$0.s1.r203$y + t3832
-      for (d3$0.s1.r203$x.rebased, 0, t3833) {
-       let t3339 = sumU[((d3$0.s1.r203$x.rebased + t3837)*sumU.n.extent_realized) + t3831]
-       d3$0[t3835] = d3$0[t3835] + ((t3339*float64(pc3[d3$0.s1.r203$x.rebased + t3836]))*t3339)
+     let t3203 = d3$0.s1.rbfThree*t3202
+     let t3204 = d3$0.s1.rbfThree*nabf3
+     for (d3$0.s1.r208$y, 0, nabf3) {
+      let d3$0.s1.r208$x.new_min.s = min(pn3[d3$0.s1.r208$y - pn3.min.0], k3)
+      let d3$0.s1.r208$x.new_max.s = max(min(pn3[(d3$0.s1.r208$y - pn3.min.0) + 1], k3), d3$0.s1.r208$x.new_min.s)
+      let t3209 = max(d3$0.s1.r208$x.new_min.s, 0)
+      let t3208 = t3209 - pc3.min.0
+      let t3205 = max(d3$0.s1.r208$x.new_max.s, 0) - t3209
+      let t3207 = d3$0.s1.r208$y + t3204
+      for (d3$0.s1.r208$x.rebased, 0, t3205) {
+       let t2738 = sumU[((d3$0.s1.r208$x.rebased + t3209)*sumU.n.extent_realized) + t3203]
+       d3$0[t3207] = d3$0[t3207] + ((t2738*float64(pc3[d3$0.s1.r208$x.rebased + t3208]))*t2738)
       }
      }
     }
    } else {
-    let t3839 = ((nelements + 1)*nelements)/2
-    let t3841 = sumU.k.extent_realized*sumU.n.extent_realized
+    let t3211 = ((nelements + 1)*nelements)/2
+    let t3213 = sumU.k.extent_realized*sumU.n.extent_realized
     for (d3$0.s1.rbfThree, 0, nrbf3) {
-     let t3842 = (d3$0.s1.rbfThree - nrbf3)*nabf3
-     let t3844 = nabf3*nrbf3
-     let t3845 = d3$0.s1.rbfThree*t3841
-     for (d3$0.s1.r203$y, 0, nabf3) {
-      let t3846 = d3$0.s1.r203$y - pn3.min.0
-      let t3847 = d3$0.s1.r203$y + t3842
-      for (d3$0.s1.r203$z, 0, nelements) {
-       let d3$0.s1.r203$w.new_min.s = min(d3$0.s1.r203$z, nelements)
-       let t3849 = nelements - d3$0.s1.r203$w.new_min.s
-       let t3850 = ((d3$0.s1.r203$z/2)*(((nelements*2) - d3$0.s1.r203$z) + -3)) + d3$0.s1.r203$w.new_min.s
-       let t3852 = d3$0.s1.r203$z + t3845
-       let t3851 = d3$0.s1.r203$w.new_min.s + t3845
-       for (d3$0.s1.r203$w.rebased, 0, t3849) {
-        let d3_0.s1.r203_x.new_min$1.s = min(pn3[t3846], k3)
-        let d3_0.s1.r203_x.new_max$1.s = max(min(pn3[t3846 + 1], k3), d3_0.s1.r203_x.new_min$1.s)
-        let t3857 = max(d3_0.s1.r203_x.new_min$1.s, 0)
-        let t3853 = max(d3_0.s1.r203_x.new_max$1.s, 0) - t3857
-        let t3854 = (max(min(d3$0.s1.r203$w.rebased + t3850, t3839), 1)*t3844) + t3847
-        let t3856 = d3$0.s1.r203$w.rebased + t3851
-        for (d3$0.s1.r203$x.rebased, 0, t3853) {
-         let t3511 = (d3$0.s1.r203$x.rebased + t3857)*sumU.n.extent_realized
-         d3$0[t3854] = d3$0[t3854] + (sumU[t3511 + t3856]*(sumU[t3511 + t3852]*float64(pc3[(t3857 - pc3.min.0) + d3$0.s1.r203$x.rebased])))
+     let t3214 = (d3$0.s1.rbfThree - nrbf3)*nabf3
+     let t3216 = nabf3*nrbf3
+     let t3217 = d3$0.s1.rbfThree*t3213
+     for (d3$0.s1.r208$y, 0, nabf3) {
+      let t3218 = d3$0.s1.r208$y - pn3.min.0
+      let t3219 = d3$0.s1.r208$y + t3214
+      for (d3$0.s1.r208$w, 0, nelements) {
+       let d3$0.s1.r208$z.new_max.s = min(d3$0.s1.r208$w + 1, nelements)
+       let t3221 = nelements*2
+       for (d3$0.s1.r208$z, 0, d3$0.s1.r208$z.new_max.s) {
+        let d3_0.s1.r208_x.new_min$1.s = min(pn3[t3218], k3)
+        let d3_0.s1.r208_x.new_max$1.s = max(min(pn3[t3218 + 1], k3), d3_0.s1.r208_x.new_min$1.s)
+        let t3228 = max(d3_0.s1.r208_x.new_min$1.s, 0)
+        let t3223 = max(d3_0.s1.r208_x.new_max$1.s, 0) - t3228
+        let t3224 = (max(min(((d3$0.s1.r208$z/2)*((t3221 - d3$0.s1.r208$z) + -3)) + d3$0.s1.r208$w, t3211), 1)*t3216) + t3219
+        let t3227 = d3$0.s1.r208$z + t3217
+        let t3226 = d3$0.s1.r208$w + t3217
+        for (d3$0.s1.r208$x.rebased, 0, t3223) {
+         let t2908 = (d3$0.s1.r208$x.rebased + t3228)*sumU.n.extent_realized
+         d3$0[t3224] = d3$0[t3224] + (sumU[t2908 + t3226]*(sumU[t2908 + t3227]*float64(pc3[(t3228 - pc3.min.0) + d3$0.s1.r208$x.rebased])))
         }
        }
       }
@@ -1250,9 +1263,9 @@ if (!((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)tj.buffer) || ((u
  produce ind33 {
   for (ind33.s0.c, 0, 3) {
    for (ind33.s0.k, 0, n33) {
-    let t3344 = ind33.s0.k/(nabf3*nrbf3)
-    let t3345 = ind33.s0.k - ((nabf3*t3344)*nrbf3)
-    ind33[(ind33.s0.c*n33) + ind33.s0.k] = mux(ind33.s0.c, t3345 % nabf3, t3345/nabf3, t3344)
+    let t2743 = ind33.s0.k/(nabf3*nrbf3)
+    let t2744 = ind33.s0.k - ((nabf3*t2743)*nrbf3)
+    ind33[(ind33.s0.c*n33) + ind33.s0.k] = mux(ind33.s0.c, t2744 % nabf3, t2744/nabf3, t2743)
    }
   }
  }
@@ -1263,19 +1276,19 @@ if (!((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)tj.buffer) || ((u
   }
   consume ind33 {
    consume d3$0 {
-    let t3861 = ((n33 + 1)*n33)/2
-    let t3863 = nabf3*nrbf3
-    let t3864 = 0 - ti.min.0
-    for (cf133.s1.r279$y, 0, n33) {
-     let cf133.s1.r279_x.new_min$1.s = min(cf133.s1.r279$y, n33)
-     let t3866 = (((n33 + -1)*cf133.s1.r279$y) + cf133.s1.r279_x.new_min$1.s) - (((cf133.s1.r279$y + -1)*cf133.s1.r279$y)/2)
-     let t3865 = n33 - cf133.s1.r279_x.new_min$1.s
-     let t3867 = (n33*2) + cf133.s1.r279_x.new_min$1.s
-     let t3868 = cf133.s1.r279_x.new_min$1.s + n33
-     for (cf133.s1.r279$x.rebased, 0, t3865) {
-      let t3347.s = min(cf133.s1.r279$x.rebased + t3866, t3861 + -1)
-      let t3512 = max(t3347.s, 0)
-      cf133[cf133.s1.r279$y] = cf133[cf133.s1.r279$y] + (d3$0[(ind33[cf133.s1.r279$x.rebased + t3868]*nabf3) + (ind33[cf133.s1.r279$x.rebased + cf133.s1.r279_x.new_min$1.s] + (ind33[cf133.s1.r279$x.rebased + t3867]*t3863))]*coeff33[if_then_else(t3861 < (t3512 + 1), return_second(halide_print((char *)stringify(t3512, " error!\n")), t3512), t3512) + ((max(min(ti[t3864], nelements), 1) + -1)*coeff33.stride.1)])
+    let t3232 = ((n33 + 1)*n33)/2
+    let t3234 = nabf3*nrbf3
+    let t3235 = 0 - ti.min.0
+    for (cf133.s1.r286$y, 0, n33) {
+     let cf133.s1.r286_x.new_min$1.s = min(cf133.s1.r286$y, n33)
+     let t3237 = (((n33 + -1)*cf133.s1.r286$y) + cf133.s1.r286_x.new_min$1.s) - (((cf133.s1.r286$y + -1)*cf133.s1.r286$y)/2)
+     let t3236 = n33 - cf133.s1.r286_x.new_min$1.s
+     let t3238 = (n33*2) + cf133.s1.r286_x.new_min$1.s
+     let t3239 = cf133.s1.r286_x.new_min$1.s + n33
+     for (cf133.s1.r286$x.rebased, 0, t3236) {
+      let t2746.s = min(cf133.s1.r286$x.rebased + t3237, t3232 + -1)
+      let t2909 = max(t2746.s, 0)
+      cf133[cf133.s1.r286$y] = cf133[cf133.s1.r286$y] + (d3$0[(ind33[cf133.s1.r286$x.rebased + t3239]*nabf3) + (ind33[cf133.s1.r286$x.rebased + cf133.s1.r286_x.new_min$1.s] + (ind33[cf133.s1.r286$x.rebased + t3238]*t3234))]*coeff33[if_then_else(t3232 < (t2909 + 1), return_second(halide_print((char *)stringify(t2909, " error!\n")), t2909), t2909) + ((max(min(ti[t3235], nelements), 1) + -1)*coeff33.stride.1)])
      }
     }
    }
@@ -1285,9 +1298,9 @@ if (!((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)tj.buffer) || ((u
  produce ind32 {
   for (ind32.s0.c, 0, 3) {
    for (ind32.s0.k, 0, n32) {
-    let t3348 = ind32.s0.k/(nabf3*nrbf3)
-    let t3349 = ind32.s0.k - ((nabf3*t3348)*nrbf3)
-    ind32[(ind32.s0.c*n32) + ind32.s0.k] = mux(ind32.s0.c, t3349 % nabf3, t3349/nabf3, t3348)
+    let t2747 = ind32.s0.k/(nabf3*nrbf3)
+    let t2748 = ind32.s0.k - ((nabf3*t2747)*nrbf3)
+    ind32[(ind32.s0.c*n32) + ind32.s0.k] = mux(ind32.s0.c, t2748 % nabf3, t2748/nabf3, t2747)
    }
   }
  }
@@ -1298,11 +1311,11 @@ if (!((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)tj.buffer) || ((u
   }
   consume ind32 {
    consume d3$0 {
-    let t3873 = nabf3*nrbf3
-    let t3874 = 0 - ti.min.0
+    let t3244 = nabf3*nrbf3
+    let t3245 = 0 - ti.min.0
     for (cf2.s1.i, 0, n23) {
-     for (cf2.s1.r263$x, 0, n32) {
-      cf2[cf2.s1.i] = cf2[cf2.s1.i] + (d3$0[(ind32[cf2.s1.r263$x + n32]*nabf3) + (ind32[cf2.s1.r263$x] + (ind32[(n32*2) + cf2.s1.r263$x]*t3873))]*coeff23[(cf2.s1.r263$x*n23) + (((ti[t3874] + -1)*coeff23.stride.2) + cf2.s1.i)])
+     for (cf2.s1.r268$x, 0, n32) {
+      cf2[cf2.s1.i] = cf2[cf2.s1.i] + (d3$0[(ind32[cf2.s1.r268$x + n32]*nabf3) + (ind32[cf2.s1.r268$x] + (ind32[(n32*2) + cf2.s1.r268$x]*t3244))]*coeff23[(cf2.s1.r268$x*n23) + (((ti[t3245] + -1)*coeff23.stride.2) + cf2.s1.i)])
      }
     }
    }
@@ -1315,335 +1328,188 @@ if (!((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)tj.buffer) || ((u
   }
   consume ind33 {
    consume d3$0 {
-    let t3876 = ((n33 + 1)*n33)/2
-    let t3878 = nabf3*nrbf3
-    let t3879 = 0 - ti.min.0
-    for (cf233.s1.r279$y, 0, n33) {
-     let cf233.s1.r279$x.new_min.s = min(cf233.s1.r279$y, n33)
-     let t3881 = (((n33 + -1)*cf233.s1.r279$y) + cf233.s1.r279$x.new_min.s) - (((cf233.s1.r279$y + -1)*cf233.s1.r279$y)/2)
-     let t3880 = n33 - cf233.s1.r279$x.new_min.s
-     let t3882 = (n33*2) + cf233.s1.r279$y
-     let t3883 = cf233.s1.r279$y + n33
-     for (cf233.s1.r279$x.rebased, 0, t3880) {
-      let t3351.s = min(cf233.s1.r279$x.rebased + t3881, t3876 + -1)
-      let t3513 = cf233.s1.r279$x.new_min.s + cf233.s1.r279$x.rebased
-      let t3514 = max(t3351.s, 0)
-      cf233[t3513] = cf233[t3513] + (d3$0[(ind33[t3883]*nabf3) + (ind33[cf233.s1.r279$y] + (ind33[t3882]*t3878))]*coeff33[if_then_else(t3876 < (t3514 + 1), return_second(halide_print((char *)stringify(t3514, " error!\n")), t3514), t3514) + ((max(min(ti[t3879], nelements), 1) + -1)*coeff33.stride.1)])
+    let t3247 = ((n33 + 1)*n33)/2
+    let t3249 = nabf3*nrbf3
+    let t3250 = 0 - ti.min.0
+    for (cf233.s1.r286$y, 0, n33) {
+     let cf233.s1.r286$x.new_min.s = min(cf233.s1.r286$y, n33)
+     let t3252 = (((n33 + -1)*cf233.s1.r286$y) + cf233.s1.r286$x.new_min.s) - (((cf233.s1.r286$y + -1)*cf233.s1.r286$y)/2)
+     let t3251 = n33 - cf233.s1.r286$x.new_min.s
+     let t3253 = (n33*2) + cf233.s1.r286$y
+     let t3254 = cf233.s1.r286$y + n33
+     for (cf233.s1.r286$x.rebased, 0, t3251) {
+      let t2750.s = min(cf233.s1.r286$x.rebased + t3252, t3247 + -1)
+      let t2910 = cf233.s1.r286$x.new_min.s + cf233.s1.r286$x.rebased
+      let t2911 = max(t2750.s, 0)
+      cf233[t2910] = cf233[t2910] + (d3$0[(ind33[t3254]*nabf3) + (ind33[cf233.s1.r286$y] + (ind33[t3253]*t3249))]*coeff33[if_then_else(t3247 < (t2911 + 1), return_second(halide_print((char *)stringify(t2911, " error!\n")), t2911), t2911) + ((max(min(ti[t3250], nelements), 1) + -1)*coeff33.stride.1)])
      }
     }
    }
   }
  }
- let cu4.ne.extent_realized = let t4211 = (nelements == 1) in (let t4212 = max(nelements, 1) in (max(select(t4211, 0, t4212 + -1), max(select(t4211, 0, nelements + -1), t4212 + -1)) + 1))
+ let cu4.ne.extent_realized = let t3554 = (nelements == 1) in (let t3555 = max(nelements, 1) in (max(select(t3554, 0, t3555 + -1), max(select(t3554, 0, nelements + -1), t3555 + -1)) + 1))
  allocate cu4[float64 * cu4.ne.extent_realized * (k4 + 1) * nrbf4]
  produce cu4 {
-  let t3884 = max(nelements, 1)
-  let t3885 = (k4 + 1)*cu4.ne.extent_realized
+  let t3255 = max(nelements, 1)
+  let t3256 = (k4 + 1)*cu4.ne.extent_realized
   for (cu4.s0.rbf, 0, nrbf4) {
-   let t3886 = cu4.s0.rbf*t3885
+   let t3257 = cu4.s0.rbf*t3256
    for (cu4.s0.kv, 0, k4) {
-    let t3887 = (cu4.ne.extent_realized*cu4.s0.kv) + t3886
-    for (cu4.s0.ne, 0, t3884) {
-     cu4[cu4.s0.ne + t3887] = 0.000000
+    let t3258 = (cu4.ne.extent_realized*cu4.s0.kv) + t3257
+    for (cu4.s0.ne, 0, t3255) {
+     cu4[cu4.s0.ne + t3258] = 0.000000
     }
    }
   }
   consume sumU {
    if (nelements == 1) {
-    let t3888 = max(q4/3, 0)
-    let t3894 = (k4 + 1)*cu4.ne.extent_realized
-    let t3892 = sumU.k.extent_realized*sumU.n.extent_realized
-    let t3889 = ((2 - pb4.min.1)*pb4.stride.1) - pb4.min.0
-    let t3890 = ((1 - pb4.min.1)*pb4.stride.1) - pb4.min.0
-    let t3891 = (pb4.min.1*pb4.stride.1) + pb4.min.0
-    let t3893 = ((coeff4.min.1*coeff4.stride.1) + ((coeff4.min.3*coeff4.stride.3) + (coeff4.min.2*coeff4.stride.2))) + coeff4.min.0
+    let t3264 = (k4 + 1)*cu4.ne.extent_realized
+    let t3262 = sumU.k.extent_realized*sumU.n.extent_realized
+    let t3259 = ((2 - pb4.min.1)*pb4.stride.1) - pb4.min.0
+    let t3260 = ((1 - pb4.min.1)*pb4.stride.1) - pb4.min.0
+    let t3261 = (pb4.min.1*pb4.stride.1) + pb4.min.0
+    let t3263 = ((coeff4.min.1*coeff4.stride.1) + ((coeff4.min.3*coeff4.stride.3) + (coeff4.min.2*coeff4.stride.2))) + coeff4.min.0
     for (cu4.s1.rbf, 0, nrbf4) {
-     let t3895 = cu4.s1.rbf*t3894
-     for (cu4.s1.r312$5, 0, nrbf4) {
-      let t3896 = cu4.s1.r312$5*t3892
-      let t3897 = (coeff4.stride.1*cu4.s1.r312$5) - t3893
-      for (cu4.s1.r312$4, 0, nabf4) {
-       let cu4.s1.r312$w.r312$w.new_min.s = min(pa4[cu4.s1.r312$4 - pa4.min.0]/3, t3888)
-       let cu4.s1.r312$w.r312$w.new_max.s = max(min((pa4[(cu4.s1.r312$4 - pa4.min.0) + 1] + 2)/3, t3888), cu4.s1.r312$w.r312$w.new_min.s)
-       let t3902 = max(cu4.s1.r312$w.r312$w.new_min.s, 0)
-       let t3898 = max(cu4.s1.r312$w.r312$w.new_max.s, 0) - t3902
-       let t3899 = cu4.s1.r312$4 - pa4.min.0
-       let t3901 = cu4.s1.r312$4 + t3897
-       for (cu4.s1.r312$w.r312$w.rebased, 0, t3898) {
-        if (let t4213 = (cu4.s1.r312$w.r312$w.rebased + t3902) in ((pa4[t3899] <= (t4213*3)) && ((t4213*3) < pa4[t3899 + 1]))) {
-         let t1812 = pb4[((cu4.s1.r312$w.r312$w.rebased + t3902)*3) + t3889]
-         let t1813 = pb4[((cu4.s1.r312$w.r312$w.rebased + t3902)*3) + t3890]
-         let t1814 = pb4[((cu4.s1.r312$w.r312$w.rebased + t3902)*3) - t3891]
-         let t1815.s = pc4[((cu4.s1.r312$w.r312$w.rebased + t3902)*3) - pc4.min.0]
-         let t1816 = sumU[(sumU.n.extent_realized*t1814) + t3896]*float64(t1815.s)
-         let t1817 = sumU[(sumU.n.extent_realized*t1813) + t3896]
-         let t1818 = coeff4[t3901]
-         let t1819.s = sumU[(sumU.n.extent_realized*t1812) + t3896]
-         cu4[(cu4.ne.extent_realized*t1812) + t3895] = (t1816*t1817)*t1818
-         cu4[(cu4.ne.extent_realized*t1813) + t3895] = (t1818*t1819.s)*t1816
-         cu4[(cu4.ne.extent_realized*t1814) + t3895] = (t1818*t1819.s)*(t1817*float64(t1815.s))
-        }
-        if (let t4214 = (cu4.s1.r312$w.r312$w.rebased + t3902) in (((pa4[t3899] + -1) <= (t4214*3)) && ((t4214*3) < (pa4[t3899 + 1] + -1)))) {
-         let t1812 = pb4[(((cu4.s1.r312$w.r312$w.rebased + t3902)*3) + t3889) + 1]
-         let t1813 = pb4[(((cu4.s1.r312$w.r312$w.rebased + t3902)*3) + t3890) + 1]
-         let t1814 = pb4[(((cu4.s1.r312$w.r312$w.rebased + t3902)*3) - t3891) + 1]
-         let t1815.s = pc4[(((cu4.s1.r312$w.r312$w.rebased + t3902)*3) - pc4.min.0) + 1]
-         let t1816 = sumU[(sumU.n.extent_realized*t1814) + t3896]*float64(t1815.s)
-         let t1817 = sumU[(sumU.n.extent_realized*t1813) + t3896]
-         let t1818 = coeff4[t3901]
-         let t1819.s = sumU[(sumU.n.extent_realized*t1812) + t3896]
-         cu4[(cu4.ne.extent_realized*t1812) + t3895] = (t1816*t1817)*t1818
-         cu4[(cu4.ne.extent_realized*t1813) + t3895] = (t1818*t1819.s)*t1816
-         cu4[(cu4.ne.extent_realized*t1814) + t3895] = (t1818*t1819.s)*(t1817*float64(t1815.s))
-        }
-        if (let t4215 = (cu4.s1.r312$w.r312$w.rebased + t3902) in (((pa4[t3899] + -2) <= (t4215*3)) && ((t4215*3) < (pa4[t3899 + 1] + -2)))) {
-         let t1812 = pb4[(((cu4.s1.r312$w.r312$w.rebased + t3902)*3) + t3889) + 2]
-         let t1813 = pb4[(((cu4.s1.r312$w.r312$w.rebased + t3902)*3) + t3890) + 2]
-         let t1814 = pb4[(((cu4.s1.r312$w.r312$w.rebased + t3902)*3) - t3891) + 2]
-         let t1815.s = pc4[(((cu4.s1.r312$w.r312$w.rebased + t3902)*3) - pc4.min.0) + 2]
-         let t1816 = sumU[(sumU.n.extent_realized*t1814) + t3896]*float64(t1815.s)
-         let t1817 = sumU[(sumU.n.extent_realized*t1813) + t3896]
-         let t1818 = coeff4[t3901]
-         let t1819.s = sumU[(sumU.n.extent_realized*t1812) + t3896]
-         cu4[(cu4.ne.extent_realized*t1812) + t3895] = (t1816*t1817)*t1818
-         cu4[(cu4.ne.extent_realized*t1813) + t3895] = (t1818*t1819.s)*t1816
-         cu4[(cu4.ne.extent_realized*t1814) + t3895] = (t1818*t1819.s)*(t1817*float64(t1815.s))
-        }
-       }
-       let cu4.s1.r312_w.r312_w.new_min$1.s.s = max(min(pa4[cu4.s1.r312$4 - pa4.min.0], q4 + 2), q4)
-       let cu4.s1.r312_w.r312_w.new_max$1.s = let t4216 = pa4[(cu4.s1.r312$4 - pa4.min.0) + 1] in (max(min(max(min(max(min(q4, t4216), t4216 + 1), q4 + 1), t4216 + 2), q4 + 2), cu4.s1.r312_w.r312_w.new_min$1.s.s)/3)
-       let t3907 = max(cu4.s1.r312_w.r312_w.new_min$1.s.s/3, 0)
-       let t3903 = max(cu4.s1.r312_w.r312_w.new_max$1.s, 0) - t3907
-       let t3905 = cu4.s1.r312$4 - pa4.min.0
-       let t3906 = cu4.s1.r312$4 + t3897
-       for (cu4.s1.r312$w.r312$w.rebased, 0, t3903) {
-        if ((((cu4.s1.r312$w.r312$w.rebased + t3907)*3) + 1) <= q4) {
-         if (let t4217 = (cu4.s1.r312$w.r312$w.rebased + t3907) in ((pa4[t3905] <= (t4217*3)) && ((t4217*3) < pa4[t3905 + 1]))) {
-          let t1812 = pb4[((cu4.s1.r312$w.r312$w.rebased + t3907)*3) + t3889]
-          let t1813 = pb4[((cu4.s1.r312$w.r312$w.rebased + t3907)*3) + t3890]
-          let t1814 = pb4[((cu4.s1.r312$w.r312$w.rebased + t3907)*3) - t3891]
-          let t1815.s = pc4[((cu4.s1.r312$w.r312$w.rebased + t3907)*3) - pc4.min.0]
-          let t1816 = sumU[(sumU.n.extent_realized*t1814) + t3896]*float64(t1815.s)
-          let t1817 = sumU[(sumU.n.extent_realized*t1813) + t3896]
-          let t1818 = coeff4[t3906]
-          let t1819.s = sumU[(sumU.n.extent_realized*t1812) + t3896]
-          cu4[(cu4.ne.extent_realized*t1812) + t3895] = (t1816*t1817)*t1818
-          cu4[(cu4.ne.extent_realized*t1813) + t3895] = (t1818*t1819.s)*t1816
-          cu4[(cu4.ne.extent_realized*t1814) + t3895] = (t1818*t1819.s)*(t1817*float64(t1815.s))
-         }
-         if ((((cu4.s1.r312$w.r312$w.rebased + t3907)*3) + 2) <= q4) {
-          if (let t4218 = (cu4.s1.r312$w.r312$w.rebased + t3907) in (((pa4[t3905] + -1) <= (t4218*3)) && ((t4218*3) < (pa4[t3905 + 1] + -1)))) {
-           let t1812 = pb4[(((cu4.s1.r312$w.r312$w.rebased + t3907)*3) + t3889) + 1]
-           let t1813 = pb4[(((cu4.s1.r312$w.r312$w.rebased + t3907)*3) + t3890) + 1]
-           let t1814 = pb4[(((cu4.s1.r312$w.r312$w.rebased + t3907)*3) - t3891) + 1]
-           let t1815.s = pc4[(((cu4.s1.r312$w.r312$w.rebased + t3907)*3) - pc4.min.0) + 1]
-           let t1816 = sumU[(sumU.n.extent_realized*t1814) + t3896]*float64(t1815.s)
-           let t1817 = sumU[(sumU.n.extent_realized*t1813) + t3896]
-           let t1818 = coeff4[t3906]
-           let t1819.s = sumU[(sumU.n.extent_realized*t1812) + t3896]
-           cu4[(cu4.ne.extent_realized*t1812) + t3895] = (t1816*t1817)*t1818
-           cu4[(cu4.ne.extent_realized*t1813) + t3895] = (t1818*t1819.s)*t1816
-           cu4[(cu4.ne.extent_realized*t1814) + t3895] = (t1818*t1819.s)*(t1817*float64(t1815.s))
-          }
-          if (let t4219 = (cu4.s1.r312$w.r312$w.rebased + t3907) in ((((pa4[t3905] + -2) <= (t4219*3)) && ((t4219*3) < (pa4[t3905 + 1] + -2))) && (((t4219*3) + 3) <= q4))) {
-           let t1812 = pb4[(((cu4.s1.r312$w.r312$w.rebased + t3907)*3) + t3889) + 2]
-           let t1813 = pb4[(((cu4.s1.r312$w.r312$w.rebased + t3907)*3) + t3890) + 2]
-           let t1814 = pb4[(((cu4.s1.r312$w.r312$w.rebased + t3907)*3) - t3891) + 2]
-           let t1815.s = pc4[(((cu4.s1.r312$w.r312$w.rebased + t3907)*3) - pc4.min.0) + 2]
-           let t1816 = sumU[(sumU.n.extent_realized*t1814) + t3896]*float64(t1815.s)
-           let t1817 = sumU[(sumU.n.extent_realized*t1813) + t3896]
-           let t1818 = coeff4[t3906]
-           let t1819.s = sumU[(sumU.n.extent_realized*t1812) + t3896]
-           cu4[(cu4.ne.extent_realized*t1812) + t3895] = (t1816*t1817)*t1818
-           cu4[(cu4.ne.extent_realized*t1813) + t3895] = (t1818*t1819.s)*t1816
-           cu4[(cu4.ne.extent_realized*t1814) + t3895] = (t1818*t1819.s)*(t1817*float64(t1815.s))
-          }
-         }
-        }
+     let t3265 = cu4.s1.rbf*t3264
+     for (cu4.s1.r321$5, 0, nrbf4) {
+      let t3266 = cu4.s1.r321$5*t3262
+      let t3267 = (coeff4.stride.1*cu4.s1.r321$5) - t3263
+      for (cu4.s1.r321$4, 0, nabf4) {
+       let cu4.s1.r321$w.new_min.s = min(pa4[cu4.s1.r321$4 - pa4.min.0], q4)
+       let cu4.s1.r321$w.new_max.s = max(min(pa4[(cu4.s1.r321$4 - pa4.min.0) + 1], q4), cu4.s1.r321$w.new_min.s)
+       let t3274 = max(cu4.s1.r321$w.new_min.s, 0)
+       let t3271 = t3274 - t3261
+       let t3272 = t3274 - pc4.min.0
+       let t3268 = max(cu4.s1.r321$w.new_max.s, 0) - t3274
+       let t3270 = t3260 + t3274
+       let t3269 = t3259 + t3274
+       let t3273 = cu4.s1.r321$4 + t3267
+       for (cu4.s1.r321$w.rebased, 0, t3268) {
+        let t1585 = pb4[cu4.s1.r321$w.rebased + t3269]
+        let t1586 = pb4[cu4.s1.r321$w.rebased + t3270]
+        let t1587 = pb4[cu4.s1.r321$w.rebased + t3271]
+        let t1588.s = pc4[cu4.s1.r321$w.rebased + t3272]
+        let t1589 = sumU[(sumU.n.extent_realized*t1587) + t3266]*float64(t1588.s)
+        let t1590 = sumU[(sumU.n.extent_realized*t1586) + t3266]
+        let t1591 = coeff4[t3273]
+        let t1592.s = sumU[(sumU.n.extent_realized*t1585) + t3266]
+        cu4[(cu4.ne.extent_realized*t1585) + t3265] = (t1589*t1590)*t1591
+        cu4[(cu4.ne.extent_realized*t1586) + t3265] = (t1591*t1592.s)*t1589
+        cu4[(cu4.ne.extent_realized*t1587) + t3265] = (t1591*t1592.s)*(t1590*float64(t1588.s))
        }
       }
      }
     }
    } else {
-    let t3908 = max(q4/3, 0)
-    let t3917 = (k4 + 1)*cu4.ne.extent_realized
-    let t3912 = sumU.k.extent_realized*sumU.n.extent_realized
-    let t3914 = coeff4.min.3*coeff4.stride.3
-    let t3915 = coeff4.min.2*coeff4.stride.2
-    let t3916 = coeff4.min.1*coeff4.stride.1
-    let t3909 = ((2 - pb4.min.1)*pb4.stride.1) - pb4.min.0
-    let t3910 = ((1 - pb4.min.1)*pb4.stride.1) - pb4.min.0
-    let t3913 = 0 - ti.min.0
-    let t3911 = (pb4.min.1*pb4.stride.1) + pb4.min.0
+    let t3290 = nelements/3
+    let t3291 = t3290*3
+    let t3292 = t3291 + 2
+    let t3293 = t3291 + 1
+    let t3294 = nelements % 3
+    let t3285 = t3294 != 0
+    let t3288 = t3294 == 2
+    let t3287 = ((t3290*t3293)*t3292)/2
+    let t3289 = ((t3292*t3293)*(t3291 + 3))/6
+    let t3284 = (k4 + 1)*cu4.ne.extent_realized
+    let t3279 = sumU.k.extent_realized*sumU.n.extent_realized
+    let t3281 = coeff4.min.3*coeff4.stride.3
+    let t3282 = coeff4.min.2*coeff4.stride.2
+    let t3283 = coeff4.min.1*coeff4.stride.1
+    let t3276 = ((2 - pb4.min.1)*pb4.stride.1) - pb4.min.0
+    let t3277 = ((1 - pb4.min.1)*pb4.stride.1) - pb4.min.0
+    let t3280 = 0 - ti.min.0
+    let t3278 = (pb4.min.1*pb4.stride.1) + pb4.min.0
     for (cu4.s1.rbf, 0, nrbf4) {
-     let t3918 = cu4.s1.rbf*t3917
-     for (cu4.s1.r312$5, 0, nrbf4) {
-      let t3919 = cu4.s1.r312$5*t3912
-      let t3920 = coeff4.stride.1*cu4.s1.r312$5
-      for (cu4.s1.r312$4, 0, nabf4) {
-       let cu4.s1.r312_w.r312_w.new_min$2.s = min(pa4[cu4.s1.r312$4 - pa4.min.0]/3, t3908)
-       let cu4.s1.r312_w.r312_w.new_max$2.s = max(min((pa4[(cu4.s1.r312$4 - pa4.min.0) + 1] + 2)/3, t3908), cu4.s1.r312_w.r312_w.new_min$2.s)
-       let t3924 = max(cu4.s1.r312_w.r312_w.new_min$2.s, 0)
-       let t3921 = max(cu4.s1.r312_w.r312_w.new_max$2.s, 0) - t3924
-       let t3922 = cu4.s1.r312$4 - pa4.min.0
-       for (cu4.s1.r312$w.r312$w.rebased, 0, t3921) {
-        if (let t4220 = (cu4.s1.r312$w.r312$w.rebased + t3924) in ((pa4[t3922] <= (t4220*3)) && ((t4220*3) < pa4[t3922 + 1]))) {
-         let t3929 = (cu4.s1.r312$w.r312$w.rebased + t3924)*3
-         let t3927 = t3929 - t3911
-         let t3928 = t3929 - pc4.min.0
-         let t3926 = t3910 + t3929
-         let t3925 = t3909 + t3929
-         for (cu4.s1.r312$z, 0, nelements) {
-          for (cu4.s1.r312$y.rebased, 0, nelements - cu4.s1.r312$z) {
-           let t3931 = (nelements - cu4.s1.r312$z) - cu4.s1.r312$y.rebased
-           for (cu4.s1.r312$x.rebased, 0, t3931) {
-            let t1832 = pb4[t3925]
-            let t1833 = pb4[t3926]
-            let t1834 = pb4[t3927]
-            let t1835.s = pc4[t3928]
-            let t1836 = sumU[((((sumU.n.extent_realized*t1834) + t3919) + cu4.s1.r312$z) + cu4.s1.r312$y.rebased) + cu4.s1.r312$x.rebased]*float64(t1835.s)
-            let t1837 = sumU[(((sumU.n.extent_realized*t1833) + t3919) + cu4.s1.r312$z) + cu4.s1.r312$y.rebased]
-            let t1838 = let t4221 = (cu4.s1.r312$y.rebased + cu4.s1.r312$z) in (let t4222 = (t4221 + cu4.s1.r312$x.rebased) in coeff4[((((((t4222 + 1)*t4222)*(t4222 + 2))/6) + ((((t4221 + 1)*t4221)/2) + cu4.s1.r312$z))*coeff4.stride.2) + ((((((((max(min(ti[t3913], nelements), 1)*coeff4.stride.3) - t3914) - t3915) - t3916) - coeff4.min.0) - coeff4.stride.3) + t3920) + cu4.s1.r312$4)])
-            let t1839.s = sumU[((sumU.n.extent_realized*t1832) + t3919) + cu4.s1.r312$z]
-            cu4[((cu4.ne.extent_realized*t1832) + t3918) + cu4.s1.r312$z] = (t1836*t1837)*t1838
-            cu4[(((cu4.ne.extent_realized*t1833) + t3918) + cu4.s1.r312$z) + cu4.s1.r312$y.rebased] = (t1838*t1839.s)*t1836
-            cu4[((((cu4.ne.extent_realized*t1834) + t3918) + cu4.s1.r312$z) + cu4.s1.r312$y.rebased) + cu4.s1.r312$x.rebased] = (t1838*t1839.s)*(t1837*float64(t1835.s))
+     let t3297 = cu4.s1.rbf*t3284
+     for (cu4.s1.r321$5, 0, nrbf4) {
+      let t3302 = cu4.s1.r321$5*t3279
+      let t3299 = coeff4.stride.1*cu4.s1.r321$5
+      for (cu4.s1.r321$4, 0, nabf4) {
+       let cu4.s1.r321_w.new_min$1.s = min(pa4[cu4.s1.r321$4 - pa4.min.0], q4)
+       let cu4.s1.r321_w.new_max$1.s = max(min(pa4[(cu4.s1.r321$4 - pa4.min.0) + 1], q4), cu4.s1.r321_w.new_min$1.s)
+       let t3310 = max(cu4.s1.r321_w.new_min$1.s, 0)
+       let t3306 = t3310 - t3278
+       let t3307 = t3310 - pc4.min.0
+       let t3303 = max(cu4.s1.r321_w.new_max$1.s, 0) - t3310
+       let t3305 = t3277 + t3310
+       let t3304 = t3276 + t3310
+       for (cu4.s1.r321$w.rebased, 0, t3303) {
+        let t3314 = cu4.s1.r321$w.rebased + t3307
+        let t3313 = cu4.s1.r321$w.rebased + t3306
+        let t3312 = cu4.s1.r321$w.rebased + t3305
+        let t3311 = cu4.s1.r321$w.rebased + t3304
+        for (cu4.s1.r321$z, 0, nelements) {
+         let t3321 = cu4.s1.r321$z + t3289
+         let t3319 = cu4.s1.r321$z + t3287
+         for (cu4.s1.r321$y.rebased, 0, nelements - cu4.s1.r321$z) {
+          let t3325 = cu4.s1.r321$y.rebased + cu4.s1.r321$z
+          let t3326 = t3325/3
+          let t3322 = t3290 - t3326
+          for (cu4.s1.r321$x.r321$x.rebased, 0, t3322) {
+           if (t3325 <= (((t3325/3) + cu4.s1.r321$x.r321$x.rebased)*3)) {
+            let t1605 = pb4[t3311]
+            let t1606 = pb4[t3312]
+            let t1607 = pb4[t3313]
+            let t1608.s = pc4[t3314]
+            let t1609 = sumU[((cu4.s1.r321$x.r321$x.rebased + t3326)*3) + ((sumU.n.extent_realized*t1607) + t3302)]*float64(t1608.s)
+            let t1610 = sumU[(((sumU.n.extent_realized*t1606) + t3302) + cu4.s1.r321$z) + cu4.s1.r321$y.rebased]
+            let t1611 = let t3556 = ((t3325/3) + cu4.s1.r321$x.r321$x.rebased) in coeff4[(((((((t3556*3) + 1)*t3556)*((t3556*3) + 2))/2) + ((((t3325 + 1)*t3325)/2) + cu4.s1.r321$z))*coeff4.stride.2) + ((((((((max(min(ti[t3280], nelements), 1)*coeff4.stride.3) - t3281) - t3282) - t3283) - coeff4.min.0) - coeff4.stride.3) + t3299) + cu4.s1.r321$4)]
+            let t1612.s = sumU[((sumU.n.extent_realized*t1605) + t3302) + cu4.s1.r321$z]
+            cu4[((cu4.ne.extent_realized*t1605) + t3297) + cu4.s1.r321$z] = (t1609*t1610)*t1611
+            cu4[(((cu4.ne.extent_realized*t1606) + t3297) + cu4.s1.r321$z) + cu4.s1.r321$y.rebased] = (t1611*t1612.s)*t1609
+            cu4[((cu4.s1.r321$x.r321$x.rebased + t3326)*3) + ((cu4.ne.extent_realized*t1607) + t3297)] = (t1611*t1612.s)*(t1610*float64(t1608.s))
            }
-          }
-         }
-        }
-        if (let t4223 = (cu4.s1.r312$w.r312$w.rebased + t3924) in (((pa4[t3922] + -1) <= (t4223*3)) && ((t4223*3) < (pa4[t3922 + 1] + -1)))) {
-         let t3937 = (cu4.s1.r312$w.r312$w.rebased + t3924)*3
-         let t3935 = t3937 - t3911
-         let t3936 = t3937 - pc4.min.0
-         let t3934 = t3910 + t3937
-         let t3933 = t3909 + t3937
-         for (cu4.s1.r312$z, 0, nelements) {
-          for (cu4.s1.r312$y.rebased, 0, nelements - cu4.s1.r312$z) {
-           let t3939 = (nelements - cu4.s1.r312$z) - cu4.s1.r312$y.rebased
-           for (cu4.s1.r312$x.rebased, 0, t3939) {
-            let t1832 = pb4[t3933 + 1]
-            let t1833 = pb4[t3934 + 1]
-            let t1834 = pb4[t3935 + 1]
-            let t1835.s = pc4[t3936 + 1]
-            let t1836 = sumU[((((sumU.n.extent_realized*t1834) + t3919) + cu4.s1.r312$z) + cu4.s1.r312$y.rebased) + cu4.s1.r312$x.rebased]*float64(t1835.s)
-            let t1837 = sumU[(((sumU.n.extent_realized*t1833) + t3919) + cu4.s1.r312$z) + cu4.s1.r312$y.rebased]
-            let t1838 = let t4224 = (cu4.s1.r312$y.rebased + cu4.s1.r312$z) in (let t4225 = (t4224 + cu4.s1.r312$x.rebased) in coeff4[((((((t4225 + 1)*t4225)*(t4225 + 2))/6) + ((((t4224 + 1)*t4224)/2) + cu4.s1.r312$z))*coeff4.stride.2) + ((((((((max(min(ti[t3913], nelements), 1)*coeff4.stride.3) - t3914) - t3915) - t3916) - coeff4.min.0) - coeff4.stride.3) + t3920) + cu4.s1.r312$4)])
-            let t1839.s = sumU[((sumU.n.extent_realized*t1832) + t3919) + cu4.s1.r312$z]
-            cu4[((cu4.ne.extent_realized*t1832) + t3918) + cu4.s1.r312$z] = (t1836*t1837)*t1838
-            cu4[(((cu4.ne.extent_realized*t1833) + t3918) + cu4.s1.r312$z) + cu4.s1.r312$y.rebased] = (t1838*t1839.s)*t1836
-            cu4[((((cu4.ne.extent_realized*t1834) + t3918) + cu4.s1.r312$z) + cu4.s1.r312$y.rebased) + cu4.s1.r312$x.rebased] = (t1838*t1839.s)*(t1837*float64(t1835.s))
+           if ((t3325 + -1) <= (((t3325/3) + cu4.s1.r321$x.r321$x.rebased)*3)) {
+            let t1605 = pb4[t3311]
+            let t1606 = pb4[t3312]
+            let t1607 = pb4[t3313]
+            let t1608.s = pc4[t3314]
+            let t1609 = sumU[(((cu4.s1.r321$x.r321$x.rebased + t3326)*3) + ((sumU.n.extent_realized*t1607) + t3302)) + 1]*float64(t1608.s)
+            let t1610 = sumU[(((sumU.n.extent_realized*t1606) + t3302) + cu4.s1.r321$z) + cu4.s1.r321$y.rebased]
+            let t1611 = let t3557 = ((t3325/3) + cu4.s1.r321$x.r321$x.rebased) in coeff4[(((((((t3557*3) + 2)*((t3557*3) + 1))*((t3557*3) + 3))/6) + ((((t3325 + 1)*t3325)/2) + cu4.s1.r321$z))*coeff4.stride.2) + ((((((((max(min(ti[t3280], nelements), 1)*coeff4.stride.3) - t3281) - t3282) - t3283) - coeff4.min.0) - coeff4.stride.3) + t3299) + cu4.s1.r321$4)]
+            let t1612.s = sumU[((sumU.n.extent_realized*t1605) + t3302) + cu4.s1.r321$z]
+            cu4[((cu4.ne.extent_realized*t1605) + t3297) + cu4.s1.r321$z] = (t1609*t1610)*t1611
+            cu4[(((cu4.ne.extent_realized*t1606) + t3297) + cu4.s1.r321$z) + cu4.s1.r321$y.rebased] = (t1611*t1612.s)*t1609
+            cu4[(((cu4.s1.r321$x.r321$x.rebased + t3326)*3) + ((cu4.ne.extent_realized*t1607) + t3297)) + 1] = (t1611*t1612.s)*(t1610*float64(t1608.s))
            }
+           let t1605 = pb4[t3311]
+           let t1606 = pb4[t3312]
+           let t1607 = pb4[t3313]
+           let t1608.s = pc4[t3314]
+           let t1609 = sumU[(((cu4.s1.r321$x.r321$x.rebased + t3326)*3) + ((sumU.n.extent_realized*t1607) + t3302)) + 2]*float64(t1608.s)
+           let t1610 = sumU[(((sumU.n.extent_realized*t1606) + t3302) + cu4.s1.r321$z) + cu4.s1.r321$y.rebased]
+           let t1611 = let t3558 = ((t3325/3) + cu4.s1.r321$x.r321$x.rebased) in coeff4[(((((((t3558*3) + 3)*((t3558*3) + 2))*((t3558*3) + 4))/6) + ((((t3325 + 1)*t3325)/2) + cu4.s1.r321$z))*coeff4.stride.2) + ((((((((max(min(ti[t3280], nelements), 1)*coeff4.stride.3) - t3281) - t3282) - t3283) - coeff4.min.0) - coeff4.stride.3) + t3299) + cu4.s1.r321$4)]
+           let t1612.s = sumU[((sumU.n.extent_realized*t1605) + t3302) + cu4.s1.r321$z]
+           cu4[((cu4.ne.extent_realized*t1605) + t3297) + cu4.s1.r321$z] = (t1609*t1610)*t1611
+           cu4[(((cu4.ne.extent_realized*t1606) + t3297) + cu4.s1.r321$z) + cu4.s1.r321$y.rebased] = (t1611*t1612.s)*t1609
+           cu4[(((cu4.s1.r321$x.r321$x.rebased + t3326)*3) + ((cu4.ne.extent_realized*t1607) + t3297)) + 2] = (t1611*t1612.s)*(t1610*float64(t1608.s))
           }
-         }
-        }
-        if (let t4226 = (cu4.s1.r312$w.r312$w.rebased + t3924) in (((pa4[t3922] + -2) <= (t4226*3)) && ((t4226*3) < (pa4[t3922 + 1] + -2)))) {
-         let t3945 = (cu4.s1.r312$w.r312$w.rebased + t3924)*3
-         let t3943 = t3945 - t3911
-         let t3944 = t3945 - pc4.min.0
-         let t3942 = t3910 + t3945
-         let t3941 = t3909 + t3945
-         for (cu4.s1.r312$z, 0, nelements) {
-          for (cu4.s1.r312$y.rebased, 0, nelements - cu4.s1.r312$z) {
-           let t3947 = (nelements - cu4.s1.r312$z) - cu4.s1.r312$y.rebased
-           for (cu4.s1.r312$x.rebased, 0, t3947) {
-            let t1832 = pb4[t3941 + 2]
-            let t1833 = pb4[t3942 + 2]
-            let t1834 = pb4[t3943 + 2]
-            let t1835.s = pc4[t3944 + 2]
-            let t1836 = sumU[((((sumU.n.extent_realized*t1834) + t3919) + cu4.s1.r312$z) + cu4.s1.r312$y.rebased) + cu4.s1.r312$x.rebased]*float64(t1835.s)
-            let t1837 = sumU[(((sumU.n.extent_realized*t1833) + t3919) + cu4.s1.r312$z) + cu4.s1.r312$y.rebased]
-            let t1838 = let t4227 = (cu4.s1.r312$y.rebased + cu4.s1.r312$z) in (let t4228 = (t4227 + cu4.s1.r312$x.rebased) in coeff4[((((((t4228 + 1)*t4228)*(t4228 + 2))/6) + ((((t4227 + 1)*t4227)/2) + cu4.s1.r312$z))*coeff4.stride.2) + ((((((((max(min(ti[t3913], nelements), 1)*coeff4.stride.3) - t3914) - t3915) - t3916) - coeff4.min.0) - coeff4.stride.3) + t3920) + cu4.s1.r312$4)])
-            let t1839.s = sumU[((sumU.n.extent_realized*t1832) + t3919) + cu4.s1.r312$z]
-            cu4[((cu4.ne.extent_realized*t1832) + t3918) + cu4.s1.r312$z] = (t1836*t1837)*t1838
-            cu4[(((cu4.ne.extent_realized*t1833) + t3918) + cu4.s1.r312$z) + cu4.s1.r312$y.rebased] = (t1838*t1839.s)*t1836
-            cu4[((((cu4.ne.extent_realized*t1834) + t3918) + cu4.s1.r312$z) + cu4.s1.r312$y.rebased) + cu4.s1.r312$x.rebased] = (t1838*t1839.s)*(t1837*float64(t1835.s))
+          if (t3285) {
+           if ((cu4.s1.r321$y.rebased + cu4.s1.r321$z) <= t3291) {
+            let t1605 = pb4[t3311]
+            let t1606 = pb4[t3312]
+            let t1607 = pb4[t3313]
+            let t1608.s = pc4[t3314]
+            let t1609 = sumU[(sumU.n.extent_realized*t1607) + (t3291 + t3302)]*float64(t1608.s)
+            let t1610 = sumU[(((sumU.n.extent_realized*t1606) + t3302) + cu4.s1.r321$z) + cu4.s1.r321$y.rebased]
+            let t1611 = let t3559 = (cu4.s1.r321$y.rebased + cu4.s1.r321$z) in coeff4[(((((t3559 + 1)*t3559)/2) + t3319)*coeff4.stride.2) + ((((((((max(min(ti[t3280], nelements), 1)*coeff4.stride.3) - t3281) - t3282) - t3283) - coeff4.min.0) - coeff4.stride.3) + t3299) + cu4.s1.r321$4)]
+            let t1612.s = sumU[((sumU.n.extent_realized*t1605) + t3302) + cu4.s1.r321$z]
+            cu4[((cu4.ne.extent_realized*t1605) + t3297) + cu4.s1.r321$z] = (t1609*t1610)*t1611
+            cu4[(((cu4.ne.extent_realized*t1606) + t3297) + cu4.s1.r321$z) + cu4.s1.r321$y.rebased] = (t1611*t1612.s)*t1609
+            cu4[(cu4.ne.extent_realized*t1607) + (t3291 + t3297)] = (t1611*t1612.s)*(t1610*float64(t1608.s))
            }
-          }
-         }
-        }
-       }
-       let cu4.s1.r312_w.r312_w.new_min$3.s.s = max(min(pa4[cu4.s1.r312$4 - pa4.min.0], q4 + 2), q4)
-       let cu4.s1.r312_w.r312_w.new_max$3.s = let t4229 = pa4[(cu4.s1.r312$4 - pa4.min.0) + 1] in (max(min(max(min(max(min(q4, t4229), t4229 + 1), q4 + 1), t4229 + 2), q4 + 2), cu4.s1.r312_w.r312_w.new_min$3.s.s)/3)
-       let t3952 = max(cu4.s1.r312_w.r312_w.new_min$3.s.s/3, 0)
-       let t3949 = max(cu4.s1.r312_w.r312_w.new_max$3.s, 0) - t3952
-       let t3951 = cu4.s1.r312$4 - pa4.min.0
-       for (cu4.s1.r312$w.r312$w.rebased, 0, t3949) {
-        if ((((cu4.s1.r312$w.r312$w.rebased + t3952)*3) + 1) <= q4) {
-         if (let t4230 = (cu4.s1.r312$w.r312$w.rebased + t3952) in ((pa4[t3951] <= (t4230*3)) && ((t4230*3) < pa4[t3951 + 1]))) {
-          let t3957 = (cu4.s1.r312$w.r312$w.rebased + t3952)*3
-          let t3955 = t3957 - t3911
-          let t3956 = t3957 - pc4.min.0
-          let t3954 = t3910 + t3957
-          let t3953 = t3909 + t3957
-          for (cu4.s1.r312$z, 0, nelements) {
-           for (cu4.s1.r312$y.rebased, 0, nelements - cu4.s1.r312$z) {
-            let t3959 = (nelements - cu4.s1.r312$z) - cu4.s1.r312$y.rebased
-            for (cu4.s1.r312$x.rebased, 0, t3959) {
-             let t1832 = pb4[t3953]
-             let t1833 = pb4[t3954]
-             let t1834 = pb4[t3955]
-             let t1835.s = pc4[t3956]
-             let t1836 = sumU[((((sumU.n.extent_realized*t1834) + t3919) + cu4.s1.r312$z) + cu4.s1.r312$y.rebased) + cu4.s1.r312$x.rebased]*float64(t1835.s)
-             let t1837 = sumU[(((sumU.n.extent_realized*t1833) + t3919) + cu4.s1.r312$z) + cu4.s1.r312$y.rebased]
-             let t1838 = let t4231 = (cu4.s1.r312$y.rebased + cu4.s1.r312$z) in (let t4232 = (t4231 + cu4.s1.r312$x.rebased) in coeff4[((((((t4232 + 1)*t4232)*(t4232 + 2))/6) + ((((t4231 + 1)*t4231)/2) + cu4.s1.r312$z))*coeff4.stride.2) + ((((((((max(min(ti[t3913], nelements), 1)*coeff4.stride.3) - t3914) - t3915) - t3916) - coeff4.min.0) - coeff4.stride.3) + t3920) + cu4.s1.r312$4)])
-             let t1839.s = sumU[((sumU.n.extent_realized*t1832) + t3919) + cu4.s1.r312$z]
-             cu4[((cu4.ne.extent_realized*t1832) + t3918) + cu4.s1.r312$z] = (t1836*t1837)*t1838
-             cu4[(((cu4.ne.extent_realized*t1833) + t3918) + cu4.s1.r312$z) + cu4.s1.r312$y.rebased] = (t1838*t1839.s)*t1836
-             cu4[((((cu4.ne.extent_realized*t1834) + t3918) + cu4.s1.r312$z) + cu4.s1.r312$y.rebased) + cu4.s1.r312$x.rebased] = (t1838*t1839.s)*(t1837*float64(t1835.s))
-            }
-           }
-          }
-         }
-         if ((((cu4.s1.r312$w.r312$w.rebased + t3952)*3) + 2) <= q4) {
-          if (let t4233 = (cu4.s1.r312$w.r312$w.rebased + t3952) in (((pa4[t3951] + -1) <= (t4233*3)) && ((t4233*3) < (pa4[t3951 + 1] + -1)))) {
-           let t3965 = (cu4.s1.r312$w.r312$w.rebased + t3952)*3
-           let t3963 = t3965 - t3911
-           let t3964 = t3965 - pc4.min.0
-           let t3962 = t3910 + t3965
-           let t3961 = t3909 + t3965
-           for (cu4.s1.r312$z, 0, nelements) {
-            for (cu4.s1.r312$y.rebased, 0, nelements - cu4.s1.r312$z) {
-             let t3967 = (nelements - cu4.s1.r312$z) - cu4.s1.r312$y.rebased
-             for (cu4.s1.r312$x.rebased, 0, t3967) {
-              let t1832 = pb4[t3961 + 1]
-              let t1833 = pb4[t3962 + 1]
-              let t1834 = pb4[t3963 + 1]
-              let t1835.s = pc4[t3964 + 1]
-              let t1836 = sumU[((((sumU.n.extent_realized*t1834) + t3919) + cu4.s1.r312$z) + cu4.s1.r312$y.rebased) + cu4.s1.r312$x.rebased]*float64(t1835.s)
-              let t1837 = sumU[(((sumU.n.extent_realized*t1833) + t3919) + cu4.s1.r312$z) + cu4.s1.r312$y.rebased]
-              let t1838 = let t4234 = (cu4.s1.r312$y.rebased + cu4.s1.r312$z) in (let t4235 = (t4234 + cu4.s1.r312$x.rebased) in coeff4[((((((t4235 + 1)*t4235)*(t4235 + 2))/6) + ((((t4234 + 1)*t4234)/2) + cu4.s1.r312$z))*coeff4.stride.2) + ((((((((max(min(ti[t3913], nelements), 1)*coeff4.stride.3) - t3914) - t3915) - t3916) - coeff4.min.0) - coeff4.stride.3) + t3920) + cu4.s1.r312$4)])
-              let t1839.s = sumU[((sumU.n.extent_realized*t1832) + t3919) + cu4.s1.r312$z]
-              cu4[((cu4.ne.extent_realized*t1832) + t3918) + cu4.s1.r312$z] = (t1836*t1837)*t1838
-              cu4[(((cu4.ne.extent_realized*t1833) + t3918) + cu4.s1.r312$z) + cu4.s1.r312$y.rebased] = (t1838*t1839.s)*t1836
-              cu4[((((cu4.ne.extent_realized*t1834) + t3918) + cu4.s1.r312$z) + cu4.s1.r312$y.rebased) + cu4.s1.r312$x.rebased] = (t1838*t1839.s)*(t1837*float64(t1835.s))
-             }
-            }
-           }
-          }
-          if (let t4236 = (cu4.s1.r312$w.r312$w.rebased + t3952) in ((((pa4[t3951] + -2) <= (t4236*3)) && ((t4236*3) < (pa4[t3951 + 1] + -2))) && (((t4236*3) + 3) <= q4))) {
-           let t3973 = (cu4.s1.r312$w.r312$w.rebased + t3952)*3
-           let t3971 = t3973 - t3911
-           let t3972 = t3973 - pc4.min.0
-           let t3970 = t3910 + t3973
-           let t3969 = t3909 + t3973
-           for (cu4.s1.r312$z, 0, nelements) {
-            for (cu4.s1.r312$y.rebased, 0, nelements - cu4.s1.r312$z) {
-             let t3975 = (nelements - cu4.s1.r312$z) - cu4.s1.r312$y.rebased
-             for (cu4.s1.r312$x.rebased, 0, t3975) {
-              let t1832 = pb4[t3969 + 2]
-              let t1833 = pb4[t3970 + 2]
-              let t1834 = pb4[t3971 + 2]
-              let t1835.s = pc4[t3972 + 2]
-              let t1836 = sumU[((((sumU.n.extent_realized*t1834) + t3919) + cu4.s1.r312$z) + cu4.s1.r312$y.rebased) + cu4.s1.r312$x.rebased]*float64(t1835.s)
-              let t1837 = sumU[(((sumU.n.extent_realized*t1833) + t3919) + cu4.s1.r312$z) + cu4.s1.r312$y.rebased]
-              let t1838 = let t4237 = (cu4.s1.r312$y.rebased + cu4.s1.r312$z) in (let t4238 = (t4237 + cu4.s1.r312$x.rebased) in coeff4[((((((t4238 + 1)*t4238)*(t4238 + 2))/6) + ((((t4237 + 1)*t4237)/2) + cu4.s1.r312$z))*coeff4.stride.2) + ((((((((max(min(ti[t3913], nelements), 1)*coeff4.stride.3) - t3914) - t3915) - t3916) - coeff4.min.0) - coeff4.stride.3) + t3920) + cu4.s1.r312$4)])
-              let t1839.s = sumU[((sumU.n.extent_realized*t1832) + t3919) + cu4.s1.r312$z]
-              cu4[((cu4.ne.extent_realized*t1832) + t3918) + cu4.s1.r312$z] = (t1836*t1837)*t1838
-              cu4[(((cu4.ne.extent_realized*t1833) + t3918) + cu4.s1.r312$z) + cu4.s1.r312$y.rebased] = (t1838*t1839.s)*t1836
-              cu4[((((cu4.ne.extent_realized*t1834) + t3918) + cu4.s1.r312$z) + cu4.s1.r312$y.rebased) + cu4.s1.r312$x.rebased] = (t1838*t1839.s)*(t1837*float64(t1835.s))
-             }
-            }
+           if (t3288) {
+            let t1605 = pb4[t3311]
+            let t1606 = pb4[t3312]
+            let t1607 = pb4[t3313]
+            let t1608.s = pc4[t3314]
+            let t1609 = sumU[((sumU.n.extent_realized*t1607) + (t3291 + t3302)) + 1]*float64(t1608.s)
+            let t1610 = sumU[(((sumU.n.extent_realized*t1606) + t3302) + cu4.s1.r321$z) + cu4.s1.r321$y.rebased]
+            let t1611 = let t3560 = (cu4.s1.r321$y.rebased + cu4.s1.r321$z) in coeff4[(((((t3560 + 1)*t3560)/2) + t3321)*coeff4.stride.2) + ((((((((max(min(ti[t3280], nelements), 1)*coeff4.stride.3) - t3281) - t3282) - t3283) - coeff4.min.0) - coeff4.stride.3) + t3299) + cu4.s1.r321$4)]
+            let t1612.s = sumU[((sumU.n.extent_realized*t1605) + t3302) + cu4.s1.r321$z]
+            cu4[((cu4.ne.extent_realized*t1605) + t3297) + cu4.s1.r321$z] = (t1609*t1610)*t1611
+            cu4[(((cu4.ne.extent_realized*t1606) + t3297) + cu4.s1.r321$z) + cu4.s1.r321$y.rebased] = (t1611*t1612.s)*t1609
+            cu4[((cu4.ne.extent_realized*t1607) + (t3291 + t3297)) + 1] = (t1611*t1612.s)*(t1610*float64(t1608.s))
            }
           }
          }
@@ -1655,21 +1521,21 @@ if (!((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)tj.buffer) || ((u
    }
   }
  }
- let dd3.kme.extent_realized = let t4239 = max(((nelements + 1)*nelements)/2, 1) in max(select(nelements == 1, 1, t4239), t4239)
+ let dd3.kme.extent_realized = let t3561 = max(((nelements + 1)*nelements)/2, 1) in max(select(nelements == 1, 1, t3561), t3561)
  allocate dd3[float64 * 3 * npairs * nabf3 * nrbf3 * dd3.kme.extent_realized]
  produce dd3 {
-  let t3977 = max(((nelements + 1)*nelements)/2, 1)
-  for (dd3.s0.kme, 0, t3977) {
-   let t3981 = nabf3*npairs
-   let t3979 = ((nrbf3*t3981)*dd3.s0.kme)*3
+  let t3327 = max(((nelements + 1)*nelements)/2, 1)
+  for (dd3.s0.kme, 0, t3327) {
+   let t3331 = nabf3*npairs
+   let t3329 = ((nrbf3*t3331)*dd3.s0.kme)*3
    for (dd3.s0.rbfThree, 0, nrbf3) {
-    let t3982 = ((dd3.s0.rbfThree*t3981)*3) + t3979
+    let t3332 = ((dd3.s0.rbfThree*t3331)*3) + t3329
     for (dd3.s0.abfThree, 0, nabf3) {
-     let t3983 = ((dd3.s0.abfThree*npairs)*3) + t3982
+     let t3333 = ((dd3.s0.abfThree*npairs)*3) + t3332
      for (dd3.s0.nj, 0, npairs) {
-      let t3984 = (dd3.s0.nj*3) + t3983
+      let t3334 = (dd3.s0.nj*3) + t3333
       for (dd3.s0.dim, 0, 3) {
-       dd3[dd3.s0.dim + t3984] = 0.000000
+       dd3[dd3.s0.dim + t3334] = 0.000000
       }
      }
     }
@@ -1678,72 +1544,72 @@ if (!((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)tj.buffer) || ((u
   consume sumU {
    consume U {
     if (nelements == 1) {
-     let t3986 = sumU.k.extent_realized*sumU.n.extent_realized
-     let t3987 = U.k.extent_realized*npairs
+     let t3336 = sumU.k.extent_realized*sumU.n.extent_realized
+     let t3337 = U.k.extent_realized*npairs
      for (dd3.s1.rbfThree, 0, nrbf3) {
-      let t3988 = (nabf3*npairs)*dd3.s1.rbfThree
-      let t3990 = dd3.s1.rbfThree*t3987
-      let t3989 = dd3.s1.rbfThree*t3986
-      for (dd3.s1.r210$y, 0, nabf3) {
-       let dd3.s1.r210$x.new_min.s = min(pn3[dd3.s1.r210$y - pn3.min.0], k3)
-       let dd3.s1.r210$x.new_max.s = max(min(pn3[(dd3.s1.r210$y - pn3.min.0) + 1], k3), dd3.s1.r210$x.new_min.s)
-       let t3994 = max(dd3.s1.r210$x.new_min.s, 0)
-       let t3991 = max(dd3.s1.r210$x.new_max.s, 0) - t3994
-       let t3992 = (dd3.s1.r210$y*npairs) + t3988
-       for (dd3.s1.r210$x.rebased, 0, t3991) {
-        let t3998 = dd3.s1.r210$x.rebased + t3994
-        let t3995 = (sumU.n.extent_realized*t3998) + t3989
-        let t3997 = (npairs*t3998) + t3990
-        let t3996 = (t3994 - pc3.min.0) + dd3.s1.r210$x.rebased
-        for (dd3.s1.r210$w, 0, npairs) {
-         let t3427 = dd3.s1.r210$w + t3992
-         let t3373 = sumU[t3995]*float64(pc3[t3996])
-         dd3[t3427*3] = dd3[t3427*3] + (U[(dd3.s1.r210$w + t3997)*4]*select(tj[dd3.s1.r210$w - tj.min.0] == 1, t3373*2.000000, t3373))
-         let t3375 = sumU[t3995]*float64(pc3[t3996])
-         dd3[(t3427*3) + 1] = dd3[(t3427*3) + 1] + (U[((dd3.s1.r210$w + t3997)*4) + 1]*select(tj[dd3.s1.r210$w - tj.min.0] == 1, t3375*2.000000, t3375))
-         let t3377 = sumU[t3995]*float64(pc3[t3996])
-         dd3[(t3427*3) + 2] = dd3[(t3427*3) + 2] + (U[((dd3.s1.r210$w + t3997)*4) + 2]*select(tj[dd3.s1.r210$w - tj.min.0] == 1, t3377*2.000000, t3377))
+      let t3338 = (nabf3*npairs)*dd3.s1.rbfThree
+      let t3340 = dd3.s1.rbfThree*t3337
+      let t3339 = dd3.s1.rbfThree*t3336
+      for (dd3.s1.r215$y, 0, nabf3) {
+       let dd3.s1.r215$x.new_min.s = min(pn3[dd3.s1.r215$y - pn3.min.0], k3)
+       let dd3.s1.r215$x.new_max.s = max(min(pn3[(dd3.s1.r215$y - pn3.min.0) + 1], k3), dd3.s1.r215$x.new_min.s)
+       let t3344 = max(dd3.s1.r215$x.new_min.s, 0)
+       let t3341 = max(dd3.s1.r215$x.new_max.s, 0) - t3344
+       let t3342 = (dd3.s1.r215$y*npairs) + t3338
+       for (dd3.s1.r215$x.rebased, 0, t3341) {
+        let t3348 = dd3.s1.r215$x.rebased + t3344
+        let t3345 = (sumU.n.extent_realized*t3348) + t3339
+        let t3347 = (npairs*t3348) + t3340
+        let t3346 = (t3344 - pc3.min.0) + dd3.s1.r215$x.rebased
+        for (dd3.s1.r215$w, 0, npairs) {
+         let t2812 = dd3.s1.r215$w + t3342
+         let t2758 = sumU[t3345]*float64(pc3[t3346])
+         dd3[t2812*3] = dd3[t2812*3] + (U[(dd3.s1.r215$w + t3347)*4]*select(tj[dd3.s1.r215$w - tj.min.0] == 1, t2758*2.000000, t2758))
+         let t2760 = sumU[t3345]*float64(pc3[t3346])
+         dd3[(t2812*3) + 1] = dd3[(t2812*3) + 1] + (U[((dd3.s1.r215$w + t3347)*4) + 1]*select(tj[dd3.s1.r215$w - tj.min.0] == 1, t2760*2.000000, t2760))
+         let t2762 = sumU[t3345]*float64(pc3[t3346])
+         dd3[(t2812*3) + 2] = dd3[(t2812*3) + 2] + (U[((dd3.s1.r215$w + t3347)*4) + 2]*select(tj[dd3.s1.r215$w - tj.min.0] == 1, t2762*2.000000, t2762))
         }
        }
       }
      }
     } else {
-     let t4005 = nabf3*npairs
-     let t4002 = ((nelements + 1)*nelements)/2
-     let t4000 = sumU.k.extent_realized*sumU.n.extent_realized
-     let t4004 = U.k.extent_realized*npairs
-     let t4001 = (elemindex.min.1*elemindex.stride.1) + elemindex.min.0
+     let t3355 = nabf3*npairs
+     let t3352 = ((nelements + 1)*nelements)/2
+     let t3350 = sumU.k.extent_realized*sumU.n.extent_realized
+     let t3354 = U.k.extent_realized*npairs
+     let t3351 = (elemindex.min.1*elemindex.stride.1) + elemindex.min.0
      for (dd3.s1.rbfThree, 0, nrbf3) {
-      let t4008 = nrbf3*t4005
-      let t4006 = dd3.s1.rbfThree*t4005
-      let t4009 = dd3.s1.rbfThree*t4004
-      let t4007 = dd3.s1.rbfThree*t4000
-      for (dd3.s1.r210$y, 0, nabf3) {
-       let dd3.s1.r210_x.new_min$1.s = min(pn3[dd3.s1.r210$y - pn3.min.0], k3)
-       let dd3.s1.r210_x.new_max$1.s = max(min(pn3[(dd3.s1.r210$y - pn3.min.0) + 1], k3), dd3.s1.r210_x.new_min$1.s)
-       let t4013 = max(dd3.s1.r210_x.new_min$1.s, 0)
-       let t4010 = max(dd3.s1.r210_x.new_max$1.s, 0) - t4013
-       let t4011 = (dd3.s1.r210$y*npairs) + t4006
-       for (dd3.s1.r210$x.rebased, 0, t4010) {
-        let t4017 = dd3.s1.r210$x.rebased + t4013
-        let t4014 = (sumU.n.extent_realized*t4017) + t4007
-        let t4016 = (npairs*t4017) + t4009
-        let t4015 = (t4013 - pc3.min.0) + dd3.s1.r210$x.rebased
-        for (dd3.s1.r210$z, 0, nelements) {
-         let t4019 = (dd3.s1.r210$z*elemindex.stride.1) - t4001
-         let t4018 = dd3.s1.r210$z + t4014
-         for (dd3.s1.r210$w, 0, npairs) {
-          let t3431 = tj[dd3.s1.r210$w - tj.min.0]
-          let t3430 = dd3.s1.r210$w + t4011
-          let t3385 = sumU[t4018]*float64(pc3[t4015])
-          let t3561 = (max(min(elemindex[(max(min(nelements, t3431), 1) + t4019) + -1], t4002 + -1), 0)*t4008) + t3430
-          dd3[t3561*3] = dd3[t3561*3] + (U[(dd3.s1.r210$w + t4016)*4]*select(dd3.s1.r210$z == (t3431 + -1), t3385*2.000000, t3385))
-          let t3393 = sumU[t4018]*float64(pc3[t4015])
-          let t3563 = (max(min(elemindex[(max(min(nelements, t3431), 1) + t4019) + -1], t4002 + -1), 0)*t4008) + t3430
-          dd3[(t3563*3) + 1] = dd3[(t3563*3) + 1] + (U[((dd3.s1.r210$w + t4016)*4) + 1]*select(dd3.s1.r210$z == (t3431 + -1), t3393*2.000000, t3393))
-          let t3401 = sumU[t4018]*float64(pc3[t4015])
-          let t3565 = (max(min(elemindex[(max(min(nelements, t3431), 1) + t4019) + -1], t4002 + -1), 0)*t4008) + t3430
-          dd3[(t3565*3) + 2] = dd3[(t3565*3) + 2] + (U[((dd3.s1.r210$w + t4016)*4) + 2]*select(dd3.s1.r210$z == (t3431 + -1), t3401*2.000000, t3401))
+      let t3358 = nrbf3*t3355
+      let t3356 = dd3.s1.rbfThree*t3355
+      let t3359 = dd3.s1.rbfThree*t3354
+      let t3357 = dd3.s1.rbfThree*t3350
+      for (dd3.s1.r215$y, 0, nabf3) {
+       let dd3.s1.r215_x.new_min$1.s = min(pn3[dd3.s1.r215$y - pn3.min.0], k3)
+       let dd3.s1.r215_x.new_max$1.s = max(min(pn3[(dd3.s1.r215$y - pn3.min.0) + 1], k3), dd3.s1.r215_x.new_min$1.s)
+       let t3363 = max(dd3.s1.r215_x.new_min$1.s, 0)
+       let t3360 = max(dd3.s1.r215_x.new_max$1.s, 0) - t3363
+       let t3361 = (dd3.s1.r215$y*npairs) + t3356
+       for (dd3.s1.r215$x.rebased, 0, t3360) {
+        let t3367 = dd3.s1.r215$x.rebased + t3363
+        let t3364 = (sumU.n.extent_realized*t3367) + t3357
+        let t3366 = (npairs*t3367) + t3359
+        let t3365 = (t3363 - pc3.min.0) + dd3.s1.r215$x.rebased
+        for (dd3.s1.r215$z, 0, nelements) {
+         let t3369 = (dd3.s1.r215$z*elemindex.stride.1) - t3351
+         let t3368 = dd3.s1.r215$z + t3364
+         for (dd3.s1.r215$w, 0, npairs) {
+          let t2816 = tj[dd3.s1.r215$w - tj.min.0]
+          let t2815 = dd3.s1.r215$w + t3361
+          let t2770 = sumU[t3368]*float64(pc3[t3365])
+          let t2930 = (max(min(elemindex[(max(min(nelements, t2816), 1) + t3369) + -1], t3352 + -1), 0)*t3358) + t2815
+          dd3[t2930*3] = dd3[t2930*3] + (U[(dd3.s1.r215$w + t3366)*4]*select(dd3.s1.r215$z == (t2816 + -1), t2770*2.000000, t2770))
+          let t2778 = sumU[t3368]*float64(pc3[t3365])
+          let t2932 = (max(min(elemindex[(max(min(nelements, t2816), 1) + t3369) + -1], t3352 + -1), 0)*t3358) + t2815
+          dd3[(t2932*3) + 1] = dd3[(t2932*3) + 1] + (U[((dd3.s1.r215$w + t3366)*4) + 1]*select(dd3.s1.r215$z == (t2816 + -1), t2778*2.000000, t2778))
+          let t2786 = sumU[t3368]*float64(pc3[t3365])
+          let t2934 = (max(min(elemindex[(max(min(nelements, t2816), 1) + t3369) + -1], t3352 + -1), 0)*t3358) + t2815
+          dd3[(t2934*3) + 2] = dd3[(t2934*3) + 2] + (U[((dd3.s1.r215$w + t3366)*4) + 2]*select(dd3.s1.r215$z == (t2816 + -1), t2786*2.000000, t2786))
          }
         }
        }
@@ -1756,56 +1622,56 @@ if (!((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)tj.buffer) || ((u
  allocate fij[float64 * npairs * 3]
  produce fij {
   for (fij.s0.n, 0, npairs) {
-   let t4020 = fij.s0.n*3
+   let t3370 = fij.s0.n*3
    for (fij.s0.dim, 0, 3) {
-    fij[fij.s0.dim + t4020] = 0.000000
+    fij[fij.s0.dim + t3370] = 0.000000
    }
   }
   consume rbf$1 {
-   let t4023 = npairs*rbf$1.i.extent_realized
-   let t4021 = (nrbf2*-1) - coeff2.stride.2
-   let t4022 = 0 - ti.min.0
-   for (fij.s1.r115$y, 0, nrbf2) {
-    let t4027 = fij.s1.r115$y*npairs
-    let t4026 = (t4023*3) + t4027
-    let t4025 = (t4023*2) + t4027
-    let t4024 = t4023 + t4027
-    for (fij.s1.r115$x, 0, npairs) {
-     fij[fij.s1.r115$x*3] = fij[fij.s1.r115$x*3] + (coeff2[(max(min(tj[fij.s1.r115$x - tj.min.0], npairs + -1), 1)*nrbf2) + (((max(min(ti[t4022], nelements), 1)*coeff2.stride.2) + t4021) + fij.s1.r115$y)]*rbf$1[fij.s1.r115$x + t4024])
-     fij[(fij.s1.r115$x*3) + 1] = fij[(fij.s1.r115$x*3) + 1] + (coeff2[(max(min(tj[fij.s1.r115$x - tj.min.0], npairs + -1), 1)*nrbf2) + (((max(min(ti[t4022], nelements), 1)*coeff2.stride.2) + t4021) + fij.s1.r115$y)]*rbf$1[fij.s1.r115$x + t4025])
-     fij[(fij.s1.r115$x*3) + 2] = fij[(fij.s1.r115$x*3) + 2] + (coeff2[(max(min(tj[fij.s1.r115$x - tj.min.0], npairs + -1), 1)*nrbf2) + (((max(min(ti[t4022], nelements), 1)*coeff2.stride.2) + t4021) + fij.s1.r115$y)]*rbf$1[fij.s1.r115$x + t4026])
+   let t3373 = npairs*rbf$1.i.extent_realized
+   let t3371 = (nrbf2*-1) - coeff2.stride.2
+   let t3372 = 0 - ti.min.0
+   for (fij.s1.r120$y, 0, nrbf2) {
+    let t3377 = fij.s1.r120$y*npairs
+    let t3376 = (t3373*3) + t3377
+    let t3375 = (t3373*2) + t3377
+    let t3374 = t3373 + t3377
+    for (fij.s1.r120$x, 0, npairs) {
+     fij[fij.s1.r120$x*3] = fij[fij.s1.r120$x*3] + (coeff2[(max(min(tj[fij.s1.r120$x - tj.min.0], npairs + -1), 1)*nrbf2) + (((max(min(ti[t3372], nelements), 1)*coeff2.stride.2) + t3371) + fij.s1.r120$y)]*rbf$1[fij.s1.r120$x + t3374])
+     fij[(fij.s1.r120$x*3) + 1] = fij[(fij.s1.r120$x*3) + 1] + (coeff2[(max(min(tj[fij.s1.r120$x - tj.min.0], npairs + -1), 1)*nrbf2) + (((max(min(ti[t3372], nelements), 1)*coeff2.stride.2) + t3371) + fij.s1.r120$y)]*rbf$1[fij.s1.r120$x + t3375])
+     fij[(fij.s1.r120$x*3) + 2] = fij[(fij.s1.r120$x*3) + 2] + (coeff2[(max(min(tj[fij.s1.r120$x - tj.min.0], npairs + -1), 1)*nrbf2) + (((max(min(ti[t3372], nelements), 1)*coeff2.stride.2) + t3371) + fij.s1.r120$y)]*rbf$1[fij.s1.r120$x + t3376])
     }
    }
   }
   consume cU {
    consume U {
     if (nelements == 1) {
-     let t4029 = U.k.extent_realized*npairs
-     for (fij.s2.r239$x, 0, nrbf3) {
-      let t4030 = (cU.ne.extent_realized*k3)*fij.s2.r239$x
-      let t4031 = fij.s2.r239$x*t4029
-      for (fij.s2.r239$y, 0, k3) {
-       let t4033 = (fij.s2.r239$y*npairs) + t4031
-       let t4032 = (cU.ne.extent_realized*fij.s2.r239$y) + t4030
-       for (fij.s2.r239$z, 0, npairs) {
-        fij[fij.s2.r239$z*3] = fij[fij.s2.r239$z*3] + (cU[t4032]*U[(fij.s2.r239$z + t4033)*4])
-        fij[(fij.s2.r239$z*3) + 1] = fij[(fij.s2.r239$z*3) + 1] + (cU[t4032]*U[((fij.s2.r239$z + t4033)*4) + 1])
-        fij[(fij.s2.r239$z*3) + 2] = fij[(fij.s2.r239$z*3) + 2] + (cU[t4032]*U[((fij.s2.r239$z + t4033)*4) + 2])
+     let t3379 = U.k.extent_realized*npairs
+     for (fij.s2.r244$x, 0, nrbf3) {
+      let t3380 = (cU.ne.extent_realized*k3)*fij.s2.r244$x
+      let t3381 = fij.s2.r244$x*t3379
+      for (fij.s2.r244$y, 0, k3) {
+       let t3383 = (fij.s2.r244$y*npairs) + t3381
+       let t3382 = (cU.ne.extent_realized*fij.s2.r244$y) + t3380
+       for (fij.s2.r244$z, 0, npairs) {
+        fij[fij.s2.r244$z*3] = fij[fij.s2.r244$z*3] + (cU[t3382]*U[(fij.s2.r244$z + t3383)*4])
+        fij[(fij.s2.r244$z*3) + 1] = fij[(fij.s2.r244$z*3) + 1] + (cU[t3382]*U[((fij.s2.r244$z + t3383)*4) + 1])
+        fij[(fij.s2.r244$z*3) + 2] = fij[(fij.s2.r244$z*3) + 2] + (cU[t3382]*U[((fij.s2.r244$z + t3383)*4) + 2])
        }
       }
      }
     } else {
-     let t4035 = U.k.extent_realized*npairs
-     for (fij.s2.r239$x, 0, nrbf3) {
-      let t4036 = (cU.ne.extent_realized*k3)*fij.s2.r239$x
-      let t4037 = fij.s2.r239$x*t4035
-      for (fij.s2.r239$y, 0, k3) {
-       let t4039 = (fij.s2.r239$y*npairs) + t4037
-       let t4038 = (cU.ne.extent_realized*fij.s2.r239$y) + t4036
-       for (fij.s2.r239$z, 0, npairs) {
-        fij[fij.s2.r239$z*3] = fij[fij.s2.r239$z*3] + (cU[(max(min(tj[fij.s2.r239$z - tj.min.0], nelements), 1) + t4038) + -1]*U[(fij.s2.r239$z + t4039)*4])
-        fij[(fij.s2.r239$z*3) + 1] = fij[(fij.s2.r239$z*3) + 1] + (cU[(max(min(tj[fij.s2.r239$z - tj.min.0], nelements), 1) + t4038) + -1]*U[((fij.s2.r239$z + t4039)*4) + 1])
-        fij[(fij.s2.r239$z*3) + 2] = fij[(fij.s2.r239$z*3) + 2] + (cU[(max(min(tj[fij.s2.r239$z - tj.min.0], nelements), 1) + t4038) + -1]*U[((fij.s2.r239$z + t4039)*4) + 2])
+     let t3385 = U.k.extent_realized*npairs
+     for (fij.s2.r244$x, 0, nrbf3) {
+      let t3386 = (cU.ne.extent_realized*k3)*fij.s2.r244$x
+      let t3387 = fij.s2.r244$x*t3385
+      for (fij.s2.r244$y, 0, k3) {
+       let t3389 = (fij.s2.r244$y*npairs) + t3387
+       let t3388 = (cU.ne.extent_realized*fij.s2.r244$y) + t3386
+       for (fij.s2.r244$z, 0, npairs) {
+        fij[fij.s2.r244$z*3] = fij[fij.s2.r244$z*3] + (cU[(max(min(tj[fij.s2.r244$z - tj.min.0], nelements), 1) + t3388) + -1]*U[(fij.s2.r244$z + t3389)*4])
+        fij[(fij.s2.r244$z*3) + 1] = fij[(fij.s2.r244$z*3) + 1] + (cU[(max(min(tj[fij.s2.r244$z - tj.min.0], nelements), 1) + t3388) + -1]*U[((fij.s2.r244$z + t3389)*4) + 1])
+        fij[(fij.s2.r244$z*3) + 2] = fij[(fij.s2.r244$z*3) + 2] + (cU[(max(min(tj[fij.s2.r244$z - tj.min.0], nelements), 1) + t3388) + -1]*U[((fij.s2.r244$z + t3389)*4) + 2])
        }
       }
      }
@@ -1816,15 +1682,16 @@ if (!((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)tj.buffer) || ((u
   consume dd3 {
    consume ind32 {
     consume cf1 {
-     let t4040 = nabf3*npairs
-     for (fij.s3.dim, 0, 3) {
-      let t4043 = nrbf3*t4040
-      for (fij.s3.r263$x, 0, n32) {
-       let t4044 = (n32*2) + fij.s3.r263$x
-       let t4045 = fij.s3.r263$x + n32
-       for (fij.s3.n, 0, npairs) {
-        let t3568 = (fij.s3.n*3) + fij.s3.dim
-        fij[t3568] = fij[t3568] + (cf1[fij.s3.r263$x]*dd3[(fij.s3.n*3) + (((ind32[fij.s3.r263$x]*npairs)*3) + (((ind32[t4045]*t4040)*3) + (((ind32[t4044]*t4043)*3) + fij.s3.dim)))])
+     let t3390 = nabf3*npairs
+     for (fij.s3.r268$x, 0, n32) {
+      let t3393 = nrbf3*t3390
+      let t3392 = (n32*2) + fij.s3.r268$x
+      let t3394 = fij.s3.r268$x + n32
+      for (fij.s3.n, 0, npairs) {
+       let t3395 = fij.s3.n*3
+       for (fij.s3.dim, 0, 3) {
+        let t2937 = fij.s3.dim + t3395
+        fij[t2937] = fij[t2937] + (cf1[fij.s3.r268$x]*dd3[((((ind32[fij.s3.r268$x]*npairs) + ((ind32[t3392]*t3393) + (ind32[t3394]*t3390)))*3) + t3395) + fij.s3.dim])
        }
       }
      }
@@ -1835,15 +1702,17 @@ if (!((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)tj.buffer) || ((u
   consume cf2 {
    consume ind23 {
     consume dd2 {
-     let t4046 = max(nelements, 1)
-     for (fij.s4.dim, 0, 3) {
-      let t4047 = nrbf2*t4046
-      for (fij.s4.r256$x, 0, n23) {
-       let t4048 = (npairs*t4047)*fij.s4.dim
-       let t4049 = fij.s4.r256$x + n23
-       for (fij.s4.n, 0, npairs) {
-        let t3570 = (fij.s4.n*3) + fij.s4.dim
-        fij[t3570] = fij[t3570] + (cf2[fij.s4.r256$x]*dd2[(fij.s4.n*t4047) + ((ind23[t4049]*t4046) + (ind23[fij.s4.r256$x] + t4048))])
+     let t3396 = max(nelements, 1)
+     for (fij.s4.r261$x, 0, n23) {
+      let t3397 = nrbf2*t3396
+      let t3398 = fij.s4.r261$x + n23
+      for (fij.s4.n, 0, npairs) {
+       let t3401 = npairs*t3397
+       let t3400 = fij.s4.n*t3397
+       let t3399 = fij.s4.n*3
+       for (fij.s4.dim, 0, 3) {
+        let t2939 = fij.s4.dim + t3399
+        fij[t2939] = fij[t2939] + (cf2[fij.s4.r261$x]*dd2[(fij.s4.dim*t3401) + ((ind23[fij.s4.r261$x] + (ind23[t3398]*t3396)) + t3400)])
        }
       }
      }
@@ -1855,15 +1724,16 @@ if (!((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)tj.buffer) || ((u
   consume dd3 {
    consume cf133 {
     consume ind33 {
-     let t4050 = nabf3*npairs
-     for (fij.s5.dim, 0, 3) {
-      let t4053 = nrbf3*t4050
-      for (fij.s5.r290$x, 0, n33) {
-       let t4054 = (n33*2) + fij.s5.r290$x
-       let t4055 = fij.s5.r290$x + n33
-       for (fij.s5.n, 0, npairs) {
-        let t3573 = (fij.s5.n*3) + fij.s5.dim
-        fij[t3573] = fij[t3573] + (cf133[fij.s5.r290$x]*dd3[(fij.s5.n*3) + (((ind33[fij.s5.r290$x]*npairs)*3) + (((ind33[t4055]*t4050)*3) + (((ind33[t4054]*t4053)*3) + fij.s5.dim)))])
+     let t3402 = nabf3*npairs
+     for (fij.s5.r297$x, 0, n33) {
+      let t3405 = nrbf3*t3402
+      let t3404 = (n33*2) + fij.s5.r297$x
+      let t3406 = fij.s5.r297$x + n33
+      for (fij.s5.n, 0, npairs) {
+       let t3407 = fij.s5.n*3
+       for (fij.s5.dim, 0, 3) {
+        let t2942 = fij.s5.dim + t3407
+        fij[t2942] = fij[t2942] + (cf133[fij.s5.r297$x]*dd3[((((ind33[fij.s5.r297$x]*npairs) + ((ind33[t3404]*t3405) + (ind33[t3406]*t3402)))*3) + t3407) + fij.s5.dim])
        }
       }
      }
@@ -1874,15 +1744,16 @@ if (!((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)tj.buffer) || ((u
   consume dd3 {
    consume cf233 {
     consume ind33 {
-     let t4056 = nabf3*npairs
-     for (fij.s6.dim, 0, 3) {
-      let t4059 = nrbf3*t4056
-      for (fij.s6.r290$x, 0, n33) {
-       let t4060 = (n33*2) + fij.s6.r290$x
-       let t4061 = fij.s6.r290$x + n33
-       for (fij.s6.n, 0, npairs) {
-        let t3575 = (fij.s6.n*3) + fij.s6.dim
-        fij[t3575] = fij[t3575] + (cf233[fij.s6.r290$x]*dd3[(fij.s6.n*3) + (((ind33[fij.s6.r290$x]*npairs)*3) + (((ind33[t4061]*t4056)*3) + (((ind33[t4060]*t4059)*3) + fij.s6.dim)))])
+     let t3408 = nabf3*npairs
+     for (fij.s6.r297$x, 0, n33) {
+      let t3411 = nrbf3*t3408
+      let t3410 = (n33*2) + fij.s6.r297$x
+      let t3412 = fij.s6.r297$x + n33
+      for (fij.s6.n, 0, npairs) {
+       let t3413 = fij.s6.n*3
+       for (fij.s6.dim, 0, 3) {
+        let t2944 = fij.s6.dim + t3413
+        fij[t2944] = fij[t2944] + (cf233[fij.s6.r297$x]*dd3[((((ind33[fij.s6.r297$x]*npairs) + ((ind33[t3410]*t3411) + (ind33[t3412]*t3408)))*3) + t3413) + fij.s6.dim])
        }
       }
      }
@@ -1894,34 +1765,34 @@ if (!((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)tj.buffer) || ((u
   consume cu4 {
    consume U {
     if (nelements == 1) {
-     let t4062 = (k4 + 1)*cu4.ne.extent_realized
-     let t4063 = U.k.extent_realized*npairs
-     for (fij.s7.r319$x, 0, nrbf4) {
-      let t4065 = fij.s7.r319$x*t4063
-      let t4064 = fij.s7.r319$x*t4062
-      for (fij.s7.r319$y, 0, k4) {
-       let t4067 = (fij.s7.r319$y*npairs) + t4065
-       let t4066 = (cu4.ne.extent_realized*fij.s7.r319$y) + t4064
-       for (fij.s7.r319$z, 0, npairs) {
-        fij[fij.s7.r319$z*3] = fij[fij.s7.r319$z*3] + (cu4[t4066]*U[(fij.s7.r319$z + t4067)*4])
-        fij[(fij.s7.r319$z*3) + 1] = fij[(fij.s7.r319$z*3) + 1] + (cu4[t4066]*U[((fij.s7.r319$z + t4067)*4) + 1])
-        fij[(fij.s7.r319$z*3) + 2] = fij[(fij.s7.r319$z*3) + 2] + (cu4[t4066]*U[((fij.s7.r319$z + t4067)*4) + 2])
+     let t3414 = (k4 + 1)*cu4.ne.extent_realized
+     let t3415 = U.k.extent_realized*npairs
+     for (fij.s7.r328$x, 0, nrbf4) {
+      let t3417 = fij.s7.r328$x*t3415
+      let t3416 = fij.s7.r328$x*t3414
+      for (fij.s7.r328$y, 0, k4) {
+       let t3419 = (fij.s7.r328$y*npairs) + t3417
+       let t3418 = (cu4.ne.extent_realized*fij.s7.r328$y) + t3416
+       for (fij.s7.r328$z, 0, npairs) {
+        fij[fij.s7.r328$z*3] = fij[fij.s7.r328$z*3] + (cu4[t3418]*U[(fij.s7.r328$z + t3419)*4])
+        fij[(fij.s7.r328$z*3) + 1] = fij[(fij.s7.r328$z*3) + 1] + (cu4[t3418]*U[((fij.s7.r328$z + t3419)*4) + 1])
+        fij[(fij.s7.r328$z*3) + 2] = fij[(fij.s7.r328$z*3) + 2] + (cu4[t3418]*U[((fij.s7.r328$z + t3419)*4) + 2])
        }
       }
      }
     } else {
-     let t4068 = (k4 + 1)*cu4.ne.extent_realized
-     let t4069 = U.k.extent_realized*npairs
-     for (fij.s7.r319$x, 0, nrbf4) {
-      let t4071 = fij.s7.r319$x*t4069
-      let t4070 = fij.s7.r319$x*t4068
-      for (fij.s7.r319$y, 0, k4) {
-       let t4073 = (fij.s7.r319$y*npairs) + t4071
-       let t4072 = (cu4.ne.extent_realized*fij.s7.r319$y) + t4070
-       for (fij.s7.r319$z, 0, npairs) {
-        fij[fij.s7.r319$z*3] = fij[fij.s7.r319$z*3] + (cu4[(max(min(tj[fij.s7.r319$z - tj.min.0], nelements), 1) + t4072) + -1]*U[(fij.s7.r319$z + t4073)*4])
-        fij[(fij.s7.r319$z*3) + 1] = fij[(fij.s7.r319$z*3) + 1] + (cu4[(max(min(tj[fij.s7.r319$z - tj.min.0], nelements), 1) + t4072) + -1]*U[((fij.s7.r319$z + t4073)*4) + 1])
-        fij[(fij.s7.r319$z*3) + 2] = fij[(fij.s7.r319$z*3) + 2] + (cu4[(max(min(tj[fij.s7.r319$z - tj.min.0], nelements), 1) + t4072) + -1]*U[((fij.s7.r319$z + t4073)*4) + 2])
+     let t3420 = (k4 + 1)*cu4.ne.extent_realized
+     let t3421 = U.k.extent_realized*npairs
+     for (fij.s7.r328$x, 0, nrbf4) {
+      let t3423 = fij.s7.r328$x*t3421
+      let t3422 = fij.s7.r328$x*t3420
+      for (fij.s7.r328$y, 0, k4) {
+       let t3425 = (fij.s7.r328$y*npairs) + t3423
+       let t3424 = (cu4.ne.extent_realized*fij.s7.r328$y) + t3422
+       for (fij.s7.r328$z, 0, npairs) {
+        fij[fij.s7.r328$z*3] = fij[fij.s7.r328$z*3] + (cu4[(max(min(tj[fij.s7.r328$z - tj.min.0], nelements), 1) + t3424) + -1]*U[(fij.s7.r328$z + t3425)*4])
+        fij[(fij.s7.r328$z*3) + 1] = fij[(fij.s7.r328$z*3) + 1] + (cu4[(max(min(tj[fij.s7.r328$z - tj.min.0], nelements), 1) + t3424) + -1]*U[((fij.s7.r328$z + t3425)*4) + 1])
+        fij[(fij.s7.r328$z*3) + 2] = fij[(fij.s7.r328$z*3) + 2] + (cu4[(max(min(tj[fij.s7.r328$z - tj.min.0], nelements), 1) + t3424) + -1]*U[((fij.s7.r328$z + t3425)*4) + 2])
        }
       }
      }
@@ -1934,10 +1805,10 @@ if (!((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)tj.buffer) || ((u
  produce fij_o {
   consume fij {
    for (fij_o.s0.n, 0, npairs) {
-    let t4074 = fij_o.s0.n*3
+    let t3426 = fij_o.s0.n*3
     for (fij_o.s0.dim, 0, 3) {
-     let t3577 = fij_o.s0.dim + t4074
-     fij_o[t3577] = fij[t3577]
+     let t2946 = fij_o.s0.dim + t3426
+     fij_o[t2946] = fij[t2946]
     }
    }
   }
@@ -1947,11 +1818,11 @@ if (!((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)tj.buffer) || ((u
  produce e {
   e[0] = 0.000000
   consume rbf$1 {
-   let t4075 = (nrbf2*-1) - coeff2.stride.2
-   let t4076 = 0 - ti.min.0
-   for (e.s1.r115$y, 0, nrbf2) {
-    for (e.s1.r115$x, 0, npairs) {
-     e[0] = e[0] + (coeff2[(max(min(tj[e.s1.r115$x - tj.min.0], npairs + -1), 1)*nrbf2) + (((max(min(ti[t4076], nelements), 1)*coeff2.stride.2) + t4075) + e.s1.r115$y)]*rbf$1[(e.s1.r115$y*npairs) + e.s1.r115$x])
+   let t3427 = (nrbf2*-1) - coeff2.stride.2
+   let t3428 = 0 - ti.min.0
+   for (e.s1.r120$y, 0, nrbf2) {
+    for (e.s1.r120$x, 0, npairs) {
+     e[0] = e[0] + (coeff2[(max(min(tj[e.s1.r120$x - tj.min.0], npairs + -1), 1)*nrbf2) + (((max(min(ti[t3428], nelements), 1)*coeff2.stride.2) + t3427) + e.s1.r120$y)]*rbf$1[(e.s1.r120$y*npairs) + e.s1.r120$x])
     }
    }
   }
@@ -1969,13 +1840,13 @@ if (!((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)tj.buffer) || ((u
    consume d3$0 {
     consume ind23 {
      consume d2$0 {
-      let t4078 = max(nelements, 1)
-      let t4080 = nabf3*nrbf3
+      let t3430 = max(nelements, 1)
+      let t3432 = nabf3*nrbf3
       for (d23$0.s0.d23j, 0, n32) {
-       let t4081 = (n32*2) + d23$0.s0.d23j
-       let t4082 = d23$0.s0.d23j + n32
+       let t3433 = (n32*2) + d23$0.s0.d23j
+       let t3434 = d23$0.s0.d23j + n32
        for (d23$0.s0.d23i, 0, n23) {
-        d23$0[(d23$0.s0.d23j*n23) + d23$0.s0.d23i] = d2$0[ind23[d23$0.s0.d23i] + (ind23[d23$0.s0.d23i + n23]*t4078)]*d3$0[(ind32[t4082]*nabf3) + (ind32[d23$0.s0.d23j] + (ind32[t4081]*t4080))]
+        d23$0[(d23$0.s0.d23j*n23) + d23$0.s0.d23i] = d2$0[ind23[d23$0.s0.d23i] + (ind23[d23$0.s0.d23i + n23]*t3430)]*d3$0[(ind32[t3434]*nabf3) + (ind32[d23$0.s0.d23j] + (ind32[t3433]*t3432))]
        }
       }
      }
@@ -1990,11 +1861,11 @@ if (!((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)tj.buffer) || ((u
  produce e23$0 {
   e23$0[0] = 0.000000
   consume d23$0 {
-   let t4084 = 0 - ti.min.0
-   for (e23$0.s1.r251$y, 0, n32) {
-    let t4085 = e23$0.s1.r251$y*n23
-    for (e23$0.s1.r251$x, 0, n23) {
-     e23$0[0] = e23$0[0] + (d23$0[e23$0.s1.r251$x + t4085]*coeff23[(((ti[t4084] + -1)*coeff23.stride.2) + t4085) + e23$0.s1.r251$x])
+   let t3436 = 0 - ti.min.0
+   for (e23$0.s1.r256$y, 0, n32) {
+    let t3437 = e23$0.s1.r256$y*n23
+    for (e23$0.s1.r256$x, 0, n23) {
+     e23$0[0] = e23$0[0] + (d23$0[e23$0.s1.r256$x + t3437]*coeff23[(((ti[t3436] + -1)*coeff23.stride.2) + t3437) + e23$0.s1.r256$x])
     }
    }
   }
@@ -2004,34 +1875,34 @@ if (!((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)tj.buffer) || ((u
  produce e3$0 {
   e3$0[0] = 0.000000
   consume sumU {
-   let t4092 = ((nelements + 1)*nelements)/2
-   let t4086 = sumU.k.extent_realized*sumU.n.extent_realized
-   let t4088 = coeff3.min.3*coeff3.stride.3
-   let t4089 = coeff3.min.2*coeff3.stride.2
-   let t4090 = coeff3.min.1*coeff3.stride.1
-   let t4087 = 0 - ti.min.0
-   for (e3$0.s1.r234$4, 0, nrbf3) {
-    let t4094 = e3$0.s1.r234$4*t4086
-    let t4096 = coeff3.stride.1*e3$0.s1.r234$4
-    for (e3$0.s1.r234$y, 0, nabf3) {
-     let t4098 = e3$0.s1.r234$y - pn3.min.0
-     for (e3$0.s1.r234$z, 0, nelements) {
-      let e3$0.s1.r234$w.new_min.s = min(e3$0.s1.r234$z, nelements)
-      let t4101 = nelements - e3$0.s1.r234$w.new_min.s
-      let t4104 = ((e3$0.s1.r234$z/2)*(((nelements*2) - e3$0.s1.r234$z) + -3)) + e3$0.s1.r234$w.new_min.s
-      let t4105 = e3$0.s1.r234$z + t4094
-      let t4102 = e3$0.s1.r234$w.new_min.s + t4094
-      for (e3$0.s1.r234$w.rebased, 0, t4101) {
-       let e3$0.s1.r234$x.new_min.s = min(pn3[t4098], k3)
-       let e3$0.s1.r234$x.new_max.s = max(min(pn3[t4098 + 1], k3), e3$0.s1.r234$x.new_min.s)
-       let t4111 = max(e3$0.s1.r234$x.new_min.s, 0)
-       let t4110 = max(min(e3$0.s1.r234$w.rebased + t4104, t4092), 1)*coeff3.stride.2
-       let t4109 = coeff3.stride.2*-1
-       let t4106 = max(e3$0.s1.r234$x.new_max.s, 0) - t4111
-       let t4108 = e3$0.s1.r234$w.rebased + t4102
-       for (e3$0.s1.r234$x.rebased, 0, t4106) {
-        let t3581 = (e3$0.s1.r234$x.rebased + t4111)*sumU.n.extent_realized
-        e3$0[0] = e3$0[0] + (sumU[t3581 + t4108]*(coeff3[(((((((((max(min(ti[t4087], nelements), 1)*coeff3.stride.3) - t4088) - t4089) - t4090) - coeff3.min.0) + t4109) - coeff3.stride.3) + t4096) + e3$0.s1.r234$y) + t4110]*(sumU[t3581 + t4105]*float64(pc3[(t4111 - pc3.min.0) + e3$0.s1.r234$x.rebased]))))
+   let t3444 = ((nelements + 1)*nelements)/2
+   let t3438 = sumU.k.extent_realized*sumU.n.extent_realized
+   let t3440 = coeff3.min.3*coeff3.stride.3
+   let t3441 = coeff3.min.2*coeff3.stride.2
+   let t3442 = coeff3.min.1*coeff3.stride.1
+   let t3439 = 0 - ti.min.0
+   for (e3$0.s1.r239$4, 0, nrbf3) {
+    let t3446 = e3$0.s1.r239$4*t3438
+    let t3448 = coeff3.stride.1*e3$0.s1.r239$4
+    for (e3$0.s1.r239$y, 0, nabf3) {
+     let t3450 = e3$0.s1.r239$y - pn3.min.0
+     for (e3$0.s1.r239$z, 0, nelements) {
+      let e3$0.s1.r239$w.new_min.s = min(e3$0.s1.r239$z, nelements)
+      let t3453 = nelements - e3$0.s1.r239$w.new_min.s
+      let t3456 = ((e3$0.s1.r239$z/2)*(((nelements*2) - e3$0.s1.r239$z) + -3)) + e3$0.s1.r239$w.new_min.s
+      let t3457 = e3$0.s1.r239$z + t3446
+      let t3454 = e3$0.s1.r239$w.new_min.s + t3446
+      for (e3$0.s1.r239$w.rebased, 0, t3453) {
+       let e3$0.s1.r239$x.new_min.s = min(pn3[t3450], k3)
+       let e3$0.s1.r239$x.new_max.s = max(min(pn3[t3450 + 1], k3), e3$0.s1.r239$x.new_min.s)
+       let t3463 = max(e3$0.s1.r239$x.new_min.s, 0)
+       let t3462 = max(min(e3$0.s1.r239$w.rebased + t3456, t3444), 1)*coeff3.stride.2
+       let t3461 = coeff3.stride.2*-1
+       let t3458 = max(e3$0.s1.r239$x.new_max.s, 0) - t3463
+       let t3460 = e3$0.s1.r239$w.rebased + t3454
+       for (e3$0.s1.r239$x.rebased, 0, t3458) {
+        let t2950 = (e3$0.s1.r239$x.rebased + t3463)*sumU.n.extent_realized
+        e3$0[0] = e3$0[0] + (sumU[t2950 + t3460]*(coeff3[(((((((((max(min(ti[t3439], nelements), 1)*coeff3.stride.3) - t3440) - t3441) - t3442) - coeff3.min.0) + t3461) - coeff3.stride.3) + t3448) + e3$0.s1.r239$y) + t3462]*(sumU[t2950 + t3457]*float64(pc3[(t3463 - pc3.min.0) + e3$0.s1.r239$x.rebased]))))
        }
       }
      }
@@ -2041,27 +1912,27 @@ if (!((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)tj.buffer) || ((u
  }
  allocate d33$0[float64 * max(((n33 + 1)*n33)/2, 1)]
  produce d33$0 {
-  let t4112 = max(((n33 + 1)*n33)/2, 1)
-  for (d33$0.s0.k, 0, t4112) {
+  let t3464 = max(((n33 + 1)*n33)/2, 1)
+  for (d33$0.s0.k, 0, t3464) {
    d33$0[d33$0.s0.k] = 0.000000
   }
   consume ind33 {
    consume d3$0 {
-    let t4113 = ((n33 + 1)*n33)/2
-    let t4114 = nabf3*nrbf3
-    for (d33$0.s1.r279$y, 0, n33) {
-     let d33$0.s1.r279$x.new_min.s = min(d33$0.s1.r279$y, n33)
-     let t4122 = n33*2
-     let t4117 = (((n33 + -1)*d33$0.s1.r279$y) + d33$0.s1.r279$x.new_min.s) - (((d33$0.s1.r279$y + -1)*d33$0.s1.r279$y)/2)
-     let t4116 = n33 - d33$0.s1.r279$x.new_min.s
-     let t4118 = d33$0.s1.r279$y + t4122
-     let t4120 = d33$0.s1.r279$x.new_min.s + t4122
-     let t4119 = d33$0.s1.r279$y + n33
-     let t4121 = d33$0.s1.r279$x.new_min.s + n33
-     for (d33$0.s1.r279$x.rebased, 0, t4116) {
-      let t3418.s = min(d33$0.s1.r279$x.rebased + t4117, t4113 + -1)
-      let t3419 = let t4240 = max(t3418.s, 0) in if_then_else(t4113 < (t4240 + 1), return_second(halide_print((char *)stringify(t4240, " error!\n")), t4240), t4240)
-      d33$0[t3419] = d33$0[t3419] + (d3$0[(ind33[t4119]*nabf3) + (ind33[d33$0.s1.r279$y] + (ind33[t4118]*t4114))]*d3$0[(ind33[d33$0.s1.r279$x.rebased + t4121]*nabf3) + (ind33[d33$0.s1.r279$x.new_min.s + d33$0.s1.r279$x.rebased] + (ind33[d33$0.s1.r279$x.rebased + t4120]*t4114))])
+    let t3465 = ((n33 + 1)*n33)/2
+    let t3466 = nabf3*nrbf3
+    for (d33$0.s1.r286$y, 0, n33) {
+     let d33$0.s1.r286$x.new_min.s = min(d33$0.s1.r286$y, n33)
+     let t3474 = n33*2
+     let t3469 = (((n33 + -1)*d33$0.s1.r286$y) + d33$0.s1.r286$x.new_min.s) - (((d33$0.s1.r286$y + -1)*d33$0.s1.r286$y)/2)
+     let t3468 = n33 - d33$0.s1.r286$x.new_min.s
+     let t3470 = d33$0.s1.r286$y + t3474
+     let t3472 = d33$0.s1.r286$x.new_min.s + t3474
+     let t3471 = d33$0.s1.r286$y + n33
+     let t3473 = d33$0.s1.r286$x.new_min.s + n33
+     for (d33$0.s1.r286$x.rebased, 0, t3468) {
+      let t2803.s = min(d33$0.s1.r286$x.rebased + t3469, t3465 + -1)
+      let t2804 = let t3562 = max(t2803.s, 0) in if_then_else(t3465 < (t3562 + 1), return_second(halide_print((char *)stringify(t3562, " error!\n")), t3562), t3562)
+      d33$0[t2804] = d33$0[t2804] + (d3$0[(ind33[t3471]*nabf3) + (ind33[d33$0.s1.r286$y] + (ind33[t3470]*t3466))]*d3$0[(ind33[d33$0.s1.r286$x.rebased + t3473]*nabf3) + (ind33[d33$0.s1.r286$x.new_min.s + d33$0.s1.r286$x.rebased] + (ind33[d33$0.s1.r286$x.rebased + t3472]*t3466))])
      }
     }
    }
@@ -2073,10 +1944,10 @@ if (!((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)tj.buffer) || ((u
  produce e33$0 {
   e33$0[0] = 0.000000
   consume d33$0 {
-   let t4123 = ((n33 + 1)*n33)/2
-   let t4124 = 0 - ti.min.0
-   for (e33$0.s1.r284$x, 0, t4123) {
-    e33$0[0] = e33$0[0] + (d33$0[e33$0.s1.r284$x]*coeff33[((max(min(ti[t4124], nelements), 1) + -1)*coeff33.stride.1) + e33$0.s1.r284$x])
+   let t3475 = ((n33 + 1)*n33)/2
+   let t3476 = 0 - ti.min.0
+   for (e33$0.s1.r291$x, 0, t3475) {
+    e33$0[0] = e33$0[0] + (d33$0[e33$0.s1.r291$x]*coeff33[((max(min(ti[t3476], nelements), 1) + -1)*coeff33.stride.1) + e33$0.s1.r291$x])
    }
   }
   free d33$0
@@ -2086,55 +1957,55 @@ if (!((uint1)_halide_buffer_is_bounds_query((halide_buffer_t *)tj.buffer) || ((u
   e4$0[0] = 0.000000
   consume sumU {
    if (nelements == 1) {
-    let t4125 = sumU.k.extent_realized*sumU.n.extent_realized
-    let t4126 = pb4.min.1*pb4.stride.1
-    let t4127 = ((coeff4.min.1*coeff4.stride.1) + ((coeff4.min.3*coeff4.stride.3) + (coeff4.min.2*coeff4.stride.2))) + coeff4.min.0
-    for (e4$0.s1.r312$5, 0, nrbf4) {
-     let t4129 = e4$0.s1.r312$5*t4125
-     let t4132 = (coeff4.stride.1*e4$0.s1.r312$5) - t4127
-     let t4133 = ((pb4.stride.1*2) - t4126) - pb4.min.0
-     let t4130 = (pb4.stride.1 - t4126) - pb4.min.0
-     let t4131 = pb4.min.0 + t4126
-     for (e4$0.s1.r312$4, 0, nabf4) {
-      let e4$0.s1.r312$w.new_min.s = min(pa4[e4$0.s1.r312$4 - pa4.min.0], q4)
-      let e4$0.s1.r312$w.new_max.s = max(min(pa4[(e4$0.s1.r312$4 - pa4.min.0) + 1], q4), e4$0.s1.r312$w.new_min.s)
-      let t4137 = max(e4$0.s1.r312$w.new_min.s, 0)
-      let t4134 = max(e4$0.s1.r312$w.new_max.s, 0) - t4137
-      let t4136 = e4$0.s1.r312$4 + t4132
-      for (e4$0.s1.r312$w.rebased, 0, t4134) {
-       e4$0[0] = e4$0[0] + ((sumU[(pb4[(t4130 + t4137) + e4$0.s1.r312$w.rebased]*sumU.n.extent_realized) + t4129]*(sumU[(pb4[(t4137 - t4131) + e4$0.s1.r312$w.rebased]*sumU.n.extent_realized) + t4129]*float64(pc4[(t4137 - pc4.min.0) + e4$0.s1.r312$w.rebased])))*(coeff4[t4136]*sumU[(pb4[(t4133 + t4137) + e4$0.s1.r312$w.rebased]*sumU.n.extent_realized) + t4129]))
+    let t3477 = sumU.k.extent_realized*sumU.n.extent_realized
+    let t3478 = pb4.min.1*pb4.stride.1
+    let t3479 = ((coeff4.min.1*coeff4.stride.1) + ((coeff4.min.3*coeff4.stride.3) + (coeff4.min.2*coeff4.stride.2))) + coeff4.min.0
+    for (e4$0.s1.r321$5, 0, nrbf4) {
+     let t3481 = e4$0.s1.r321$5*t3477
+     let t3484 = (coeff4.stride.1*e4$0.s1.r321$5) - t3479
+     let t3485 = ((pb4.stride.1*2) - t3478) - pb4.min.0
+     let t3482 = (pb4.stride.1 - t3478) - pb4.min.0
+     let t3483 = pb4.min.0 + t3478
+     for (e4$0.s1.r321$4, 0, nabf4) {
+      let e4$0.s1.r321$w.new_min.s = min(pa4[e4$0.s1.r321$4 - pa4.min.0], q4)
+      let e4$0.s1.r321$w.new_max.s = max(min(pa4[(e4$0.s1.r321$4 - pa4.min.0) + 1], q4), e4$0.s1.r321$w.new_min.s)
+      let t3489 = max(e4$0.s1.r321$w.new_min.s, 0)
+      let t3486 = max(e4$0.s1.r321$w.new_max.s, 0) - t3489
+      let t3488 = e4$0.s1.r321$4 + t3484
+      for (e4$0.s1.r321$w.rebased, 0, t3486) {
+       e4$0[0] = e4$0[0] + ((sumU[(pb4[(t3482 + t3489) + e4$0.s1.r321$w.rebased]*sumU.n.extent_realized) + t3481]*(sumU[(pb4[(t3489 - t3483) + e4$0.s1.r321$w.rebased]*sumU.n.extent_realized) + t3481]*float64(pc4[(t3489 - pc4.min.0) + e4$0.s1.r321$w.rebased])))*(coeff4[t3488]*sumU[(pb4[(t3485 + t3489) + e4$0.s1.r321$w.rebased]*sumU.n.extent_realized) + t3481]))
       }
      }
     }
    } else {
-    let t4138 = sumU.k.extent_realized*sumU.n.extent_realized
-    let t4139 = pb4.min.1*pb4.stride.1
-    let t4141 = coeff4.min.3*coeff4.stride.3
-    let t4142 = coeff4.min.2*coeff4.stride.2
-    let t4143 = coeff4.min.1*coeff4.stride.1
-    let t4140 = 0 - ti.min.0
-    for (e4$0.s1.r312$5, 0, nrbf4) {
-     let t4145 = e4$0.s1.r312$5*t4138
-     let t4148 = coeff4.stride.1*e4$0.s1.r312$5
-     let t4149 = ((pb4.stride.1*2) - t4139) - pb4.min.0
-     let t4146 = (pb4.stride.1 - t4139) - pb4.min.0
-     let t4147 = pb4.min.0 + t4139
-     for (e4$0.s1.r312$4, 0, nabf4) {
-      let e4_0.s1.r312_w.new_min$1.s = min(pa4[e4$0.s1.r312$4 - pa4.min.0], q4)
-      let e4_0.s1.r312_w.new_max$1.s = max(min(pa4[(e4$0.s1.r312$4 - pa4.min.0) + 1], q4), e4_0.s1.r312_w.new_min$1.s)
-      let t4152 = max(e4_0.s1.r312_w.new_min$1.s, 0)
-      let t4150 = max(e4_0.s1.r312_w.new_max$1.s, 0) - t4152
-      for (e4$0.s1.r312$w.rebased, 0, t4150) {
-       let t4154 = (t4152 - t4147) + e4$0.s1.r312$w.rebased
-       let t4155 = (t4152 - pc4.min.0) + e4$0.s1.r312$w.rebased
-       let t4156 = (t4149 + t4152) + e4$0.s1.r312$w.rebased
-       let t4153 = (t4146 + t4152) + e4$0.s1.r312$w.rebased
-       for (e4$0.s1.r312$x, 0, nelements) {
-        let t4157 = (((e4$0.s1.r312$x + 1)*e4$0.s1.r312$x)*(e4$0.s1.r312$x + 2))/6
-        for (e4$0.s1.r312$y, 0, e4$0.s1.r312$x + 1) {
-         let t4158 = (((e4$0.s1.r312$y + 1)*e4$0.s1.r312$y)/2) + t4157
-         for (e4$0.s1.r312$z, 0, e4$0.s1.r312$y + 1) {
-          e4$0[0] = e4$0[0] + ((sumU[((pb4[t4153]*sumU.n.extent_realized) + t4145) + e4$0.s1.r312$y]*(sumU[((pb4[t4154]*sumU.n.extent_realized) + t4145) + e4$0.s1.r312$x]*float64(pc4[t4155])))*(coeff4[((e4$0.s1.r312$z + t4158)*coeff4.stride.2) + ((((((((max(min(ti[t4140], nelements), 1)*coeff4.stride.3) - t4141) - t4142) - t4143) - coeff4.min.0) - coeff4.stride.3) + t4148) + e4$0.s1.r312$4)]*sumU[((pb4[t4156]*sumU.n.extent_realized) + t4145) + e4$0.s1.r312$z]))
+    let t3490 = sumU.k.extent_realized*sumU.n.extent_realized
+    let t3491 = pb4.min.1*pb4.stride.1
+    let t3493 = coeff4.min.3*coeff4.stride.3
+    let t3494 = coeff4.min.2*coeff4.stride.2
+    let t3495 = coeff4.min.1*coeff4.stride.1
+    let t3492 = 0 - ti.min.0
+    for (e4$0.s1.r321$5, 0, nrbf4) {
+     let t3497 = e4$0.s1.r321$5*t3490
+     let t3500 = coeff4.stride.1*e4$0.s1.r321$5
+     let t3501 = ((pb4.stride.1*2) - t3491) - pb4.min.0
+     let t3498 = (pb4.stride.1 - t3491) - pb4.min.0
+     let t3499 = pb4.min.0 + t3491
+     for (e4$0.s1.r321$4, 0, nabf4) {
+      let e4_0.s1.r321_w.new_min$1.s = min(pa4[e4$0.s1.r321$4 - pa4.min.0], q4)
+      let e4_0.s1.r321_w.new_max$1.s = max(min(pa4[(e4$0.s1.r321$4 - pa4.min.0) + 1], q4), e4_0.s1.r321_w.new_min$1.s)
+      let t3504 = max(e4_0.s1.r321_w.new_min$1.s, 0)
+      let t3502 = max(e4_0.s1.r321_w.new_max$1.s, 0) - t3504
+      for (e4$0.s1.r321$w.rebased, 0, t3502) {
+       let t3506 = (t3504 - t3499) + e4$0.s1.r321$w.rebased
+       let t3507 = (t3504 - pc4.min.0) + e4$0.s1.r321$w.rebased
+       let t3508 = (t3501 + t3504) + e4$0.s1.r321$w.rebased
+       let t3505 = (t3498 + t3504) + e4$0.s1.r321$w.rebased
+       for (e4$0.s1.r321$x, 0, nelements) {
+        let t3509 = (((e4$0.s1.r321$x + 1)*e4$0.s1.r321$x)*(e4$0.s1.r321$x + 2))/6
+        for (e4$0.s1.r321$y, 0, e4$0.s1.r321$x + 1) {
+         let t3510 = (((e4$0.s1.r321$y + 1)*e4$0.s1.r321$y)/2) + t3509
+         for (e4$0.s1.r321$z, 0, e4$0.s1.r321$y + 1) {
+          e4$0[0] = e4$0[0] + ((sumU[((pb4[t3505]*sumU.n.extent_realized) + t3497) + e4$0.s1.r321$y]*(sumU[((pb4[t3506]*sumU.n.extent_realized) + t3497) + e4$0.s1.r321$x]*float64(pc4[t3507])))*(coeff4[((e4$0.s1.r321$z + t3510)*coeff4.stride.2) + ((((((((max(min(ti[t3492], nelements), 1)*coeff4.stride.3) - t3493) - t3494) - t3495) - coeff4.min.0) - coeff4.stride.3) + t3500) + e4$0.s1.r321$4)]*sumU[((pb4[t3508]*sumU.n.extent_realized) + t3497) + e4$0.s1.r321$z]))
          }
         }
        }
