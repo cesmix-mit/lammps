@@ -22,11 +22,11 @@ twobody_number_radial_basis_functions 8
 threebody_number_radial_basis_functions 6
 threebody_angular_degree 3
 
-# four-body linear POD potential
+#four-body linear POD potential
 fourbody_number_radial_basis_functions 6
 fourbody_angular_degree 3
 
-# five-body linear POD potential
+#five-body linear POD potential
 fivebody_number_radial_basis_functions 6
 fivebody_angular_degree 3
 
