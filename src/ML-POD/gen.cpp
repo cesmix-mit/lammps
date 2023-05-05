@@ -200,15 +200,6 @@ void tallyTwoBodyLocalForce(Func & fij, Func & e, Func coeff2, Func rbf, Func tj
   e.compute_root();
   fij.compute_root();
   //e.compute_with(fij.update(0), r.x);
-  /*
-   * Unhandled exception: Error: Func "e" is computed at the following invalid location:
-          e.compute_at(fij, n);
-        Legal locations for this function are:
-          e.compute_root();
-          e.compute_at(e_o, Var::outermost());
-        "e" is used in the following places:
-         e_o uses e
-   */
 }
 
 
@@ -390,7 +381,7 @@ void fourbodycoeff(Func & e4, Func  & cU4,
   cU4(mux(scat, {i3, i2, i1}), mux(scat, {j3, j2, j1}), rbf) = gather(c5*c4, c6*c1, c6*c2); // think this is adding if statements
 
   cU4.reorder_storage(ne, kv, rbf);
-  cU4.update().unroll(r[0], 3).specialize(nelements == 1); // not sure if unrolling correct thing, which nelements RDOM
+  cU4.update().specialize(nelements == 1); // not sure if unrolling correct thing, which nelements RDOM
   e4.update().reorder(r[2], r[1], r[0], r[3], r[4], r[5]).specialize(nelements == 1);
   e4.compute_at(cU4, r[2]);
   cU4.compute_root();
