@@ -9,18 +9,22 @@ Expr get_abf_index(Expr original_index, Expr rbf_info_length) {
 }
 //Func & rbf_f, Func & rbfx_f, Func & rbfy_f, Func & rbfz_f,
 void buildRBF( Func & rbfall,
-	       Func xij, Func besselparams, Expr rin, Expr rmax,
-	       Expr bdegree, Expr adegree, Expr nbparams, Expr npairs, Expr ns,
-	       Var bfi, Var bfp, Var np, Var dim)
+	       Func xij, Func besselparams, Func offsets,
+	       Expr rin, Expr rmax,
+	       Expr bdegree, Expr adegree, Expr nbparams, Expr npairs, Expr ns, Expr nijmax,
+	       Var bfi, Var bfp, Var np, Var dim, Var oatom)
 {
 
   Expr one = Expr((double) 1.0);
   Expr zero = Expr((double) 0.0);
   Expr onefive = Expr((double) 1.5);
   Expr PI = Expr( (double)M_PI);
-  Expr xij1 = xij(0, np);
-  Expr xij2 = xij(1, np);
-  Expr xij3 = xij(2, np);
+  Expr oatomnext = min(offsets(oatom) + nijmax, offsets(oatom+1))-1;
+  Expr pairclamp = unsafe_promise_clamped(unsafe_promise_clamped(np + offsets(oatom), offsets(oatom), oatomnext), 0, npairs-1);
+
+  Expr xij1 = xij(0, pairclamp);
+  Expr xij2 = xij(1, pairclamp);
+  Expr xij3 = xij(2, pairclamp);
 
   Expr s = xij1*xij1 + xij2*xij2 + xij3*xij3;
   Expr dij = sqrt(s);
@@ -49,41 +53,41 @@ void buildRBF( Func & rbfall,
 
   Func rbf("rbf"), drbf("drbf_f"), abf("abf_f"), dabf("dabf_f");
 
-  rbf(bfp, bfi, np) = b * fcut * sin(a*x)/r;
+  rbf(bfp, bfi, np, oatom) = b * fcut * sin(a*x)/r;
   // rbf.trace_stores();
-  rbf.bound(bfp, 0, nbparams);
-  rbf.bound(bfi, 0, bdegree);
+  //  rbf.bound(bfp, 0, nbparams);
+  //  rbf.bound(bfi, 0, bdegree);
   //  rbf.bound(np, 0, npairs);
   Expr drbfdr = b*(dfcut*sin(a*x)/r - fcut*sin(a*x)/(r*r) + a*cos(a*x)*fcut*dx/r);
-  drbf(bfp, bfi, np, dim) = (xij(dim, np)/dij) * drbfdr;
+  drbf(bfp, bfi, np, dim, oatom) = (xij(dim, pairclamp)/dij) * drbfdr;
   // drbf.trace_stores();
   drbf.bound(dim, 0, 3);
-  drbf.bound(bfp, 0, nbparams);
-  drbf.bound(bfi, 0, bdegree);
+  //  drbf.bound(bfp, 0, nbparams);
+  //  drbf.bound(bfi, 0, bdegree);
   //  drbf.bound(np, 0, npairs);
 
   Expr power = pow(dij, bfi+one);
-  abf(bfi, np) = fcut/power;;
+  abf(bfi, np, oatom) = fcut/power;;
   // abf.trace_stores();
-  abf.bound(bfi, 0, adegree);
+  //  abf.bound(bfi, 0, adegree);
   //  abf.bound(np, 0, npairs);
   Expr drbfdr_a = dfcut/c - (bfi+one)*fcut/(c*dij);
-  dabf(bfi, np, dim) = (xij(dim, np)/dij) * drbfdr_a;
+  dabf(bfi, np, dim, oatom) = (xij(dim, pairclamp)/dij) * drbfdr_a;
   // dabf.trace_stores();
   dabf.bound(dim, 0, 3);
   dabf.bound(bfi, 0, adegree);
   //  dabf.bound(np, 0, npairs);
 
-  rbf.reorder(bfi, bfp, np);
+  rbf.reorder(bfi, bfp, np, oatom);
   //  rbf.compute_root();
 
-  drbf.reorder(dim, bfi, bfp, np);
+  drbf.reorder(dim, bfi, bfp, np, oatom);
   //  drbf.compute_root();
 
-  abf.reorder(bfi, np);
+  abf.reorder(bfi, np, oatom);
   //  abf.compute_root();
   
-  dabf.reorder(dim, bfi, np);
+  dabf.reorder(dim, bfi, np, oatom);
   //  dabf.compute_root();
 
   //  rbf.compute_with(drbf, bfi);
@@ -108,16 +112,16 @@ void buildRBF( Func & rbfall,
   Expr rbf_info_length = nbparams * bdegree;
   Expr nsp = rbf_info_length + adegree;
   // Set up rbf_info
-  rbfall(np, rbf_abf_info, rbfty) = zero;
+  rbfall(np, rbf_abf_info, rbfty, oatom) = zero;
   rbfall.bound(rbfty, 0, 4);
   //  rbfall.bound(np, 0, npairs);
   rbfall.bound(rbf_abf_info, 0, ns);
 
-  rbfall(np, r1.y + r1.x * bdegree, 0) = rbf(r1.x, r1.y, np);
-  rbfall(np, get_abf_index(r2.x, rbf_info_length), 0) = abf(r2.x, np);
+  rbfall(np, r1.y + r1.x * bdegree, 0, oatom) = rbf(r1.x, r1.y, np, oatom);
+  rbfall(np, get_abf_index(r2.x, rbf_info_length), 0, oatom) = abf(r2.x, np, oatom);
 
-  rbfall(np, r1.y + r1.x * bdegree, r1.z + 1) = drbf(r1.x, r1.y, np, r1.z);
-  rbfall(np, get_abf_index(r2.x, rbf_info_length), r2.y + 1) = dabf(r2.x, np, r2.y);
+  rbfall(np, r1.y + r1.x * bdegree, r1.z + 1, oatom) = drbf(r1.x, r1.y, np, r1.z, oatom);
+  rbfall(np, get_abf_index(r2.x, rbf_info_length), r2.y + 1, oatom) = dabf(r2.x, np, r2.y, oatom);
 
   /*
     rbfall(r1.z, r1.y + r1.x * bdegree, 1) = drbf(r1.x, r1.y, r1.z, 0);
@@ -130,11 +134,11 @@ void buildRBF( Func & rbfall,
 
   // This seems like it was the most important thing that needed to be changed 
   // rbfall.compute_root();  // 19353.844 ms .001 ms 0%
-  rbfall.reorder(rbfty, rbf_abf_info, np);
-  rbfall.update(0).reorder(r1.y, r1.z);
-  rbfall.update(1).reorder(r2.y, r2.x);
-  rbfall.update(2).reorder(r1.x, r1.y, r1.z);
-  rbfall.update(3).reorder(r2.y, r2.x);
+  rbfall.reorder(rbfty, rbf_abf_info, np, oatom);
+  rbfall.update(0).reorder(r1.y, r1.z, oatom);
+  rbfall.update(1).reorder(r2.y, r2.x, oatom);
+  rbfall.update(2).reorder(r1.x, r1.y, r1.z, oatom);
+  rbfall.update(3).reorder(r2.y, r2.x, oatom);
   //rbfall.store_root().compute_root();  // 19247.139 ms .001 ms 0%
   // nothing? TERRIBLE TERRIBLE TERRIBLE, possibly bottleneck from earlier? 295 seconds total! with rbft taking 2.378 ms (77%)
 }
@@ -154,17 +158,18 @@ void radialAngularBasis(Func & sumU, Func & U,
   sumU(ne, k, m, oatom) = zero;
 
 
-  Func prodU("prodU");
-  prodU(n, k, m, oatom)= rbf(n, m, 0)  * abf(n, k, 0, oatom);
-  Expr c1 = rbf(n, m, 0);
+  //  Func prodU("prodU");
+  //  prodU(n, k, m, oatom)= rbf(n, m, 0)  * abf(n, k, 0, oatom);
+  Expr npoff = unsafe_promise_clamped(n + offsets(oatom), 0 , N-1);
+  Expr c1 = rbf(n, m, 0, oatom);
   Expr c2 = abf(n, k, 0, oatom);
 
 
-  U(n, k, m, c, oatom) = select(c == 0, rbf(n, m, 0)  * abf(n, k, 0, oatom),
-				select(c == 1, abf(n, k, 1, oatom) * c1 + c2 * rbf(n, m, 1),
-				       select(c== 2, abf(n, k, 2, oatom) * c1 + c2 * rbf(n, m, 2) ,
-					      select(c==3, abf(n, k, 3, oatom) * c1+ c2 * rbf(n, m, 3), Expr((double) 0.0)))));
-  U.reorder(c, m, k, n);
+  U(n, k, m, c, oatom) = select(c == 0, rbf(n, m, 0, oatom)  * abf(n, k, 0, oatom),
+				select(c == 1, abf(n, k, 1, oatom) * c1 + c2 * rbf(n, m, 1, oatom),
+				       select(c== 2, abf(n, k, 2, oatom) * c1 + c2 * rbf(n, m, 2, oatom) ,
+					      select(c==3, abf(n, k, 3, oatom) * c1+ c2 * rbf(n, m, 3, oatom), Expr((double) 0.0)))));
+  U.reorder(c, m, k, n, oatom);
   // sumU(r.x, r.y, clamp(in, 0, Ne - 1)) += rbf(r.x, r.z) * abf(r.y, r.z);
 
   RDom r(0, M, 0, K, 0, nijmax);
@@ -177,7 +182,7 @@ void radialAngularBasis(Func & sumU, Func & U,
   Expr ry = r.y;
   Expr rx = r.x;
   Expr in = atomtype(rzboundeds) - 1;
-  sumU(clamp(in, 0, Ne - 1), r.y, r.x, rzz) += rbf(rzboundeds, r.x, 0)  * abf(rzboundeds, r.y, 0, oatom); //prodU(rzbounded, ry, rx); //rbf(r.z, r.x, 0) * abf(r.z, r.y, 0);
+  sumU(clamp(in, 0, Ne - 1), r.y, r.x, rzz) += rbf(r.z, r.x, 0, oatom)  * abf(r.z, r.y, 0, oatom); //prodU(rzbounded, ry, rx); //rbf(r.z, r.x, 0) * abf(r.z, r.y, 0);
 
   //  sumU.update(0).reorder(r.x);
   //  abf.in(sumU).compute_at(sumU, oatom);
@@ -231,19 +236,20 @@ void twoBodyDescDeriv(Func & d2, Func & dd2,
   //  dd2(ne, m, n, dim, oatom) = zero;
   dd2(dim, n, ne, m, oatom) = zero;
 
-  RDom r(0, nrbf2, 0, N);
-  r.where(offsets(oatom) <= r.y);
-  r.where(r.y < offsets(oatom+1));
+  RDom r(0, nrbf2, 0, nijmax);
+  //  r.where(offsets(oatom) <= r.y);
+  //  r.where(r.y < offsets(oatom+1));
+  r.where(r.y < offsets(oatom + 1) - offsets(oatom));
 
   
 
   //  Expr acc = unsafe_promise_clamped(aj(r.x), 0, natoms - 1);
-  Expr oatommax = min(offsets(oatom + 1), nijmax + offsets(oatom)) - 1;
-  Expr bound = unsafe_promise_clamped(r.y, offsets(oatom), oatommax);
-  Expr boundlhs = unsafe_promise_clamped(r.y- offsets(oatom), 0, nijmax);
+  //  Expr oatommax = min(offsets(oatom + 1), nijmax + offsets(oatom)) - 1;
+  Expr bound = unsafe_promise_clamped(r.y + offsets(oatom), 0, N-1);
+  //  Expr boundlhs = unsafe_promise_clamped(r.y- offsets(oatom), 0, nijmax);
   Expr ty = clamp(tj(bound)-1, 0, Ne - 1);
-  d2(ty, r.x, oatom) += rbf(bound, r.x, 0);
-  dd2(dim, boundlhs, ty, r.x, oatom) += rbf(bound, r.x, dim + 1);
+  d2(ty, r.x, oatom) += rbf(r.y, r.x, 0, oatom);
+  dd2(dim, r.y, ty, r.x, oatom) += rbf(r.y, r.x, dim + 1, oatom);
 
   //dd2.reorder_storage(dim, n, m, ne, oatom);
   //  dd2.reorder_storage(oatom, ne, m, n, dim);
@@ -282,8 +288,8 @@ void tallyTwoBodyLocalForce(Func & fij, Func & e,
   Expr bound = unsafe_promise_clamped(unsafe_promise_clamped(r.x + offsets(oatom), 0, N - 1), offsets(oatom), oatommax);
   
   Expr c = coeff2(clamp(tj(bound), 1, N - 1) - 1, r.y, clamp(clamp(tA(oatom), 0, natoms -1) - 1, 0, nelements - 1));
-  e(oatom) += c * rbf(bound, r.y, 0);
-  fij(dim, r.x, oatom) += c * rbf(bound, r.y, dim + 1);
+  e(oatom) += c * rbf(r.x, r.y, 0, oatom);
+  fij(dim, r.x, oatom) += c * rbf(r.x, r.y, dim + 1, oatom);
 
 
   fij.bound(dim, 0, 3);
@@ -300,7 +306,7 @@ void buildAngularBasis(Expr k3, Expr npairs, Expr nijmax,
 		       Var c, Var pair, Var abfi,Var abfip, Var oatom){
 
   Expr oatomnext = min(offsets(oatom) + nijmax, offsets(oatom+1))-1;
-  Expr pairclamp = unsafe_promise_clamped(pair, offsets(oatom), oatomnext);
+  Expr pairclamp = unsafe_promise_clamped(unsafe_promise_clamped(pair + offsets(oatom), offsets(oatom), oatomnext), 0, npairs-1);
       
   Expr x = rij(0, pairclamp);
   Expr y = rij(1, pairclamp);
@@ -372,8 +378,8 @@ void buildAngularBasis(Expr k3, Expr npairs, Expr nijmax,
 				       select(dim_p == 2,
 					      dwdz, zero))), zero)));
 
-  abf4(pair, abfi, c, oatom) = select(c == 0, tm(pairclamp, abfi, 0, oatom),
-				      tm(pairclamp, abfi, 1, oatom) * jacobian(pairclamp, c-1, 0, oatom) + tm(pairclamp, abfi, 2, oatom) * jacobian(pairclamp, c-1, 1, oatom) + tm(pairclamp, abfi, 3, oatom) * jacobian(pairclamp, c-1, 2, oatom));
+  abf4(pair, abfi, c, oatom) = select(c == 0, tm(pair, abfi, 0, oatom),
+				      tm(pair, abfi, 1, oatom) * jacobian(pair, c-1, 0, oatom) + tm(pair, abfi, 2, oatom) * jacobian(pair, c-1, 1, oatom) + tm(pair, abfi, 3, oatom) * jacobian(pair, c-1, 2, oatom));
   // tm.compute_root(); // 21697.324 ms total -- .119 ms tm -- 52%
   // tm.store_root().compute_root(); abf4.compute_root(); // 21753.123 ms total -- .118 ms tm -- 52%
   // tm.store_root().compute_at(abf4, pair); // 66554 ms total
@@ -927,9 +933,10 @@ public:
 
 
     Func rbft("rbft");
-    buildRBF(rbft, rijs, besselparams, rin, rcut-rin,
-	     bdegree, adegree, nbesselparams, npairs, ns,
-	     bfi, bfp, np, dim);
+    buildRBF(rbft, rijs, besselparams, offsets,
+	     rin, rcut-rin,
+	     bdegree, adegree, nbesselparams, npairs, ns, nijmax,
+	     bfi, bfp, np, dim, oatom);
 
     // MatMul
     //rbft.dim(2).set_bounds(0, 4).set_stride(npairs * ns);
@@ -940,11 +947,11 @@ public:
     Var k("k");
     Var c("c");
     Func prod("prod");
-    prod(c, k, i, j) = Phi(k, i) * rbft(j, k, c);
+    prod(c, k, i, j, oatom) = Phi(k, i) * rbft(j, k, c, oatom);
     Func rbf("rbf");
-    rbf(j, i, c) = Expr((double) 0.0);
+    rbf(j, i, c, oatom) = Expr((double) 0.0);
     RDom r(0, ns);
-    rbf(j, i, c) += prod(c, r, i, j);
+    rbf(j, i, c, oatom) += prod(c, r, i, j, oatom);
     //j is num pairs so we sum over basis functions here...
     //rbf.update(0).reorder(c, r, i, j); // TODO
     
@@ -984,7 +991,8 @@ public:
     Var a3("a3");
     Func UW("UW");
     Expr offset2 = min(nijmax + offsets(oatom), offsets(oatom+1)) - 1;
-    UW(a0,a1,a2,a3, oatom) = U(unsafe_promise_clamped(unsafe_promise_clamped(a0 +offsets(oatom), offsets(oatom), offset2), 0, npairs-1), a1, a2, a3, oatom);
+    //unsafe_promise_clamped(unsafe_promise_clamped(a0 +offsets(oatom), offsets(oatom), offset2), 0, npairs-1)
+    UW(a0,a1,a2,a3, oatom) = U(a0, a1, a2, a3, oatom);
     //    UW.bound()
 
 
@@ -1127,6 +1135,7 @@ public:
     
 
     fife_o.compute_root();
+    fife_o.update(0).atomic(true).parallel(rout.z);
     fife_o.update(0).unroll(rout.y);
     etemp.compute_at(fife_o, rout.z);
     fijAtom.compute_at(fife_o, rout.z);
@@ -1140,7 +1149,7 @@ public:
     dd3.compute_at(fife_o, rout.z);
     dd2.compute_at(fife_o, rout.z);
     d2.compute_at(fife_o, rout.z);
-    UW.compute_at(fife_o, rout.z);
+    //    UW.compute_at(fife_o, rout.z);
     U.compute_at(fife_o, rout.z);
     ///    U.in(fijAtom).compute_at(, oatom);
 

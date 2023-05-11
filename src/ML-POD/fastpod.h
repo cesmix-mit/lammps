@@ -225,6 +225,9 @@ public:
 
   double energyforce(double *force, double *x, int *atomtype, int *alist,
           int *jlist, int *pairnumsum, int natom);
+  double energyforceinterface(double *force, double *rij, double *eo,
+			    int * ai, int * aj, int *ti, int *tj, int *tA, int *pairnumsum,
+			      int npairs, int natom, int nijmax);
 
   void tallyforce(double *force, double *fij,  int *ai, int *aj, int N, int me);
   void tallyforce(double **force, double *fij,  int *ai, int *aj, int N);

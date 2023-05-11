@@ -755,6 +755,84 @@ double FASTPOD::peratomenergyforce(double *fij, double *rij, double *temp,
   return (e1+e2+e3+e4+e23+e33+e34+e44);
  }
 }
+double FASTPOD::energyforceinterface(double * force, double *rij, double *eo,
+			    int * ai, int * aj, int *ti, int *tj, int *tA, int *pairnumsum,
+				     int npairs, int natom, int nijmax)
+{
+  int bdegree = pdegree[0];
+  int adegree = pdegree[1];
+  double etot = 0.0;
+  int natoms = natom;
+    double *coeff1 = &newcoeff[0];
+  double *coeff2 = &newcoeff[nl1*nelements];
+  double *coeff3 = &newcoeff[(nl1 + nl2)*nelements];
+  double *coeff4 = &newcoeff[(nl1 + nl2 + nl3)*nelements];
+  double *coeff23 = &newcoeff[(nl1 + nl2 + nl3 + nl4)*nelements];
+  double *coeff33 = &newcoeff[(nl1 + nl2 + nl3 + nl4 + nl23)*nelements];
+  double *coeff34 = &newcoeff[(nl1 + nl2 + nl3 + nl4 + nl23 + nl33)*nelements];
+  double *coeff44 = &newcoeff[(nl1 + nl2 + nl3 + nl4 + nl23 + nl33 + nl34)*nelements];
+
+  Halide::Runtime::Buffer<int> tj_buffer(tj, npairs);
+  Halide::Runtime::Buffer<int> ti_buffer(ti, npairs);
+  Halide::Runtime::Buffer<int> aj_buffer(aj, npairs);
+  Halide::Runtime::Buffer<int> ai_buffer(ai, npairs);
+  Halide::Runtime::Buffer<int> tA_buffer(tA, natom);
+
+  Halide::Runtime::Buffer<double> rijs_buffer(rij, {{0, 3, 1}, {0, npairs, 3}});
+  Halide::Runtime::Buffer<double> besselparams_buffer(besselparams, nbesselpars);
+  Halide::Runtime::Buffer<double> phi_buffer(Phi, {{0, ns, 1}, {0, ns, ns}});
+  Halide::Runtime::Buffer<int> offset_buffer(pairnumsum, natom+1);
+
+
+  Halide::Runtime::Buffer<int> pq_buffer(pq3, K3*2);
+  Halide::Runtime::Buffer<int> pn3_buffer(pn3, nabf3 + 1);
+  Halide::Runtime::Buffer<int> pc3_buffer(pc3, K3 + 1);
+  Halide::Runtime::Buffer<int> pa4_buffer(pa4, nabf4 + 1);
+  Halide::Runtime::Buffer<int> pb4_buffer(pb4, {{0, Q4, 1}, {0, 3, Q4}});
+  Halide::Runtime::Buffer<int> pc4_buffer(pc4, Q4);
+
+  Halide::Runtime::Buffer<int> elemindex_buffer(elemindex, {{0, nelements, 1}, {0, nelements, nelements}});
+  
+  int me = nelements * (nelements + 1)/2;
+  int s33 = std::max(n33 * (n33+1)/2, 0);
+  int nelemsn33 = n33 > 0  ? nelements : 0;
+  int sym3Ne = nelements*(nelements+1)*(nelements+2)/6;
+  
+  Halide::Runtime::Buffer<double> coeff1_buffer(coeff1, nelements);
+  Halide::Runtime::Buffer<double> coeff2_buffer(coeff2, {{0, npairs, nrbf2}, {0, nrbf2, 1}, {0, nelements, nrbf2 * npairs}});
+  Halide::Runtime::Buffer<double> coeff3_buffer(coeff3, {{0, nabf3, 1}, {0, nrbf3, nabf3}, {0, me, nabf3 * nrbf3}, {0, nelements, me * nabf3 * nrbf3}});
+  Halide::Runtime::Buffer<double> coeff23_buffer(coeff23, {{0, n23, 1}, {0, n32, n23}, {0, nelements, n23 * n32}});
+  Halide::Runtime::Buffer<double> coeff33_buffer(coeff33, {{0, s33, std::min(s33, 1)}, {0, nelemsn33, s33}});
+  Halide::Runtime::Buffer<double> coeff4_buffer(coeff4, {{0, nabf4, 1}, {0, nrbf4, nabf4}, {0, sym3Ne, nabf4 * nrbf4}, {0, nelements, sym3Ne * nrbf4 * nabf4}});
+  Halide::Runtime::Buffer<double> coeff34_buffer(coeff34, {1});
+  Halide::Runtime::Buffer<double> coeff44_buffer(coeff44, {1});
+
+  Halide::Runtime::Buffer<double> fij_o_buffer(force, {{0, natoms, 3}, {0, 3, 1}});
+  Halide::Runtime::Buffer<double> e_o_buffer(eo, natoms);
+  auto etot_buffer = Halide::Runtime::Buffer<double, 0>::make_scalar(&etot);
+  
+  poddescOuter(rijs_buffer, besselparams_buffer,
+	       nbesselpars, bdegree, adegree, npairs, natoms, nrbfmax, nijmax,
+	       rin, rcut,
+	       phi_buffer, ns,
+	       ti_buffer, tj_buffer, ai_buffer, aj_buffer,
+	       offset_buffer, tA_buffer,
+	       K3, K4,Q4,
+	       pq_buffer, pn3_buffer, pc3_buffer, pa4_buffer, pb4_buffer, pc4_buffer,
+	       elemindex_buffer,
+	       nrbf2, nrbf3, nrbf4,
+	       nelements,
+	       nd23, nd33, nd34, n32, n23, n33, n43, n34, n44,
+	       nabf3, nabf4, nrbf23, nrbf33, nrbf34, nrbf44,
+	       nabf23, nabf33, nabf34, nabf44,
+	       coeff1_buffer, coeff2_buffer, coeff3_buffer, coeff23_buffer, coeff33_buffer, coeff4_buffer,coeff34_buffer, coeff44_buffer,
+	       fij_o_buffer, e_o_buffer, etot_buffer
+	       );
+
+  return etot;
+
+
+}
 
 double FASTPOD::energyforce(double *force, double *x, int *atomtype, int *alist,
           int *jlist, int *pairnumsum, int natom)

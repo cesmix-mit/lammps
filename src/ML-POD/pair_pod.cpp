@@ -197,10 +197,74 @@ void PairPOD::compute(int eflag, int vflag)
     }
   }
   else if (descriptormethod == 1) {
+    
 
     double rcutsq = fastpodptr->rcut*fastpodptr->rcut;
     double evdwl = 0.0;
+#ifdef HALIDEPOD
+    //build neighbor list:
+    int upNP = 0;
+    for (int ii = 0; ii < inum; ii++) {
+      int i = ilist[ii];
+      int jnum = numneigh[i];
+      upNP+=jnum;
+    }
+    int * tmpint;
+    double * tmpmen;
+    memory->grow(tmpmem, 3 *  upNP+  inum , "tmpmem");
+    memory->grow(tmpint, 4* upNP + inum + (inum+1), "tmpint");
 
+    double *rij = &tmpmem[0];    // 3*Nj
+    //  double *fij = &tmpmem[3 * npairs]; // 3*natoms
+    double *eo = &tmpmem[3 * upNP]; //natoms
+ 
+    int *ai = &tmpint[0];        // npairs
+    int *aj = &tmpint[upNP];       // npairs
+    int *ti = &tmpint[2*upNP];     // npairs
+    int *tj = &tmpint[3*upNP];     // npairs
+    int *tA = &tmpint[4*upNP];     // natoms
+    int *pairnumsum = &tmpint[4*upNP + inum];     // npairs
+
+    int npairs = 0;
+    int nijmax = 0;
+    for (int ii = 0; ii < inum; ii++) {
+      
+      int gi = ilist[ii];
+      int itype = map[type[gi]] + 1;
+
+      tA[ii] = itype;
+      pairnumsum[ii] = npairs;
+      
+      int m = numneigh[gi];
+      int icount = 0;
+      for (int l = 0; l < m; l++) {           // loop over each atom around atom i
+	int gj = firstneigh[gi][l];           // atom j
+	double delx = x[gj][0] - x[gi][0];    // xj - xi
+	double dely = x[gj][1] - x[gi][1];    // xj - xi
+	double delz = x[gj][2] - x[gi][2];    // xj - xi
+	double rsq = delx * delx + dely * dely + delz * delz;
+	if (rsq < rcutsq && rsq > 1e-20) {
+	  rij[npairs * 3 + 0] = delx;
+	  rij[npairs * 3 + 1] = dely;
+	  rij[npairs * 3 + 2] = delz;
+	  ai[npairs] = gi;
+	  aj[npairs] = gj;
+	  ti[npairs] = itype;
+	  tj[npairs] = map[type[gj]] + 1;
+	  npairs+=1;
+	  icount +=1;
+	}
+      }
+      nijmax = std::max(nijmax, icount);
+    }
+    pairnumsum[inum] = npairs;
+    
+    evdwl = fastpodptr->energyforceinterface(f[0], rij, eo, ai, aj, ti, tj, tA, pairnumsum, npairs, inum, nijmax);
+    eng_vdwl = evdwl;
+
+
+
+#else
 
 
               
@@ -227,22 +291,53 @@ void PairPOD::compute(int eflag, int vflag)
       evdwl = fastpodptr->peratomenergyforce(fij, rij, tmpmem, ti, tj, nij);
 
       // tally atomic energy to global energy
-      std::cout << "eflag_atom: " << eflag_atom << "\n"; //yes
-      std::cout << "eflag_either: " << eflag_either << "\n";
-      std::cout << "eflag_global: " << eflag_global << "\n";
+      //      std::cout << "eflag_atom: " << eflag_atom << "\n"; //yes
+      //      std::cout << "eflag_either: " << eflag_either << "\n";
+      //      std::cout << "eflag_global: " << eflag_global << "\n";
       ev_tally_full(i,2.0*evdwl,0.0,0.0,0.0,0.0,0.0);
 
       // tally atomic force to global force
 
       tallyforce(f, fij, ai, aj, nij);
       
-      // tally atomic stress 
+      // tally atomic stress
+//       eflag_atom: 0
+// eflag_either: 1
+// eflag_global: 1
+// newton_pair:1
+// vflag_either:0
+// vflag_global:0
+// nlocal: 16000
+  //      if (eflag_either) {
+  //   if (eflag_global) {
+  //     if (newton_pair) {
+  //       eng_vdwl += evdwl;
+  //       eng_coul += ecoul;
+  //     } else {
+  //       evdwlhalf = 0.5*evdwl;
+  //       ecoulhalf = 0.5*ecoul;
+  //       if (i < nlocal) {
+  //         eng_vdwl += evdwlhalf;
+  //         eng_coul += ecoulhalf;
+  //       }
+  //       if (j < nlocal) {
+  //         eng_vdwl += evdwlhalf;
+  //         eng_coul += ecoulhalf;
+  //       }
+  //     }
+  //   }
+  //   if (eflag_atom) {
+  //     epairhalf = 0.5 * (evdwl + ecoul);
+  //     if (newton_pair || i < nlocal) eatom[i] += epairhalf;
+  //     if (newton_pair || j < nlocal) eatom[j] += epairhalf;
+  //   }
+  // }
       //      std::cout << "vflag" << vflag << "\n";    //Yes  
       if (vflag) {
-	std::cout << "newton_pair:" << newton_pair << "\n";
-	std::cout << "vflag_either:" << vflag_either << "\n";
-	std::cout << "vflag_global:" << vflag_global << "\n";
-	std::cout << "nlocal: " << nlocal << "\n";
+	// std::cout << "newton_pair:" << newton_pair << "\n";
+	// std::cout << "vflag_either:" << vflag_either << "\n";
+	// std::cout << "vflag_global:" << vflag_global << "\n";
+	// std::cout << "nlocal: " << nlocal << "\n";
         for (int jj = 0; jj < nij; jj++) {
           int j = aj[jj];
           ev_tally_xyz(i,j,nlocal,newton_pair,0.0,0.0,
@@ -251,6 +346,7 @@ void PairPOD::compute(int eflag, int vflag)
         }
       }
     }
+#endif
   }
 
 
