@@ -166,8 +166,8 @@ void radialAngularBasis(Func & sumU, Func & U,
 					     select(c==3, abf(n, k, 3) * c1+ c2 * rbf(n, m, 3), Expr((double) 0.0)))));
   U.reorder(c, m, k, n);
   // sumU(r.x, r.y, clamp(in, 0, Ne - 1)) += rbf(r.x, r.z) * abf(r.y, r.z);
-  Expr nijmaxp = require(nijmax <= N, nijmax);
-  RDom r(0, M, 0, K, 0, nijmaxp);
+
+  RDom r(0, M, 0, K, 0, nijmax);
   Expr rzz = oatom;
   Expr rz = r.z;
   r.where(rz < offsets(rzz + 1) - offsets(rzz));
@@ -177,10 +177,10 @@ void radialAngularBasis(Func & sumU, Func & U,
   Expr ry = r.y;
   Expr rx = r.x;
   Expr in = atomtype(rzboundeds) - 1;
-  sumU(clamp(in, 0, Ne - 1), r.y, r.x, rzz) += rbf(rzboundeds, ry, 0)  * abf(rzbounded, rx, 0); //prodU(rzbounded, ry, rx); //rbf(r.z, r.x, 0) * abf(r.z, r.y, 0);
+  sumU(clamp(in, 0, Ne - 1), r.y, r.x, rzz) += rbf(rzboundeds, r.x, 0)  * abf(rzboundeds, r.y, 0); //prodU(rzbounded, ry, rx); //rbf(r.z, r.x, 0) * abf(r.z, r.y, 0);
 
   //  sumU.update(0).reorder(r.x);
-  abf.in(sumU).compute_at(sumU, oatom);
+  //  abf.in(sumU).compute_at(sumU, oatom);
   //sumU.update(0).reorder(oatom, r.z, r.x, r.y);
 
   //  rbf.in(prodU).compute_at(prodU, oatom);
@@ -422,6 +422,7 @@ void tallyLocalForceRev(Func & fij,
   Expr rzbounded = unsafe_promise_clamped(r.z, offsets(oatom), oatommax);
   Expr erg = unsafe_promise_clamped(clamp(r.z, 0, npairs - 1), offsets(oatom), oatommax);
   Expr lhs =  unsafe_promise_clamped(r.z - offsets(oatom), 0, nijmax - 1);
+  //    fij(dim, lhs, oatom) += c * U(rzbounded, r.y, r.x, dim + 1);
   fij(dim, lhs, oatom) += c * UW(lhs, r.y, r.x, dim + 1, oatom);
   if (up != -1){
     fij.update(up).reorder(dim, r.z, r.y, r.x, oatom);
@@ -972,10 +973,14 @@ public:
 		       npairs, k3, nrbf3, nelements,
 		       natoms,nijmax,
 		       oatom);
-    Var a,b,d;
+    Var a0("a0");
+    Var a1("a1");
+    Var a2("a2");
+    Var a3("a3");
     Func UW("UW");
-    Expr offset2 = min(nijmax, offsets(oatom+1)) - 1;
-    UW(a,b,c,d, oatom) = U(unsafe_promise_clamped(unsafe_promise_clamped(a +offsets(oatom), offsets(oatom), offset2), 0, npairs-1), b, c, d);
+    Expr offset2 = min(nijmax + offsets(oatom), offsets(oatom+1)) - 1;
+    UW(a0,a1,a2,a3, oatom) = U(unsafe_promise_clamped(unsafe_promise_clamped(a0 +offsets(oatom), offsets(oatom), offset2), 0, npairs-1), a1, a2, a3);
+    //    UW.bound()
 
 
 
@@ -1131,11 +1136,11 @@ public:
     dd2.compute_at(fife_o, rout.z);
     d2.compute_at(fife_o, rout.z);
     UW.compute_at(fife_o, rout.z);
-    //    U.compute_at(fife_o, rout.z);
+    U.compute_at(fife_o, rout.z);
     ///    U.in(fijAtom).compute_at(, oatom);
 
-    //abf4.compute_at(fife_o, rout.z);
-    //    tm.compute_at(abf4, np);
+    abf4.compute_at(fife_o, rout.z);
+    tm.compute_at(abf4, np);
     rbf.compute_at(fife_o, rout.z);
     rbft.compute_at(fife_o, rout.z);
 
