@@ -1150,11 +1150,11 @@ public:
     dd2.compute_at(fife_o, rout.z);
     d2.compute_at(fife_o, rout.z);
     //    UW.compute_at(fife_o, rout.z);
-    U.compute_at(fife_o, rout.z);
+    //U.compute_at(fife_o, rout.z);
     ///    U.in(fijAtom).compute_at(, oatom);
 
     abf4.compute_at(fife_o, rout.z);
-    tm.compute_at(abf4, np);
+    tm.compute_at(fife_o, rout.z);
     rbf.compute_at(fife_o, rout.z);
     rbft.compute_at(fife_o, rout.z);
 
