@@ -32,6 +32,8 @@
 
 #include <cmath>
 #include <cstring>
+#include <iostream>
+
 
 using namespace LAMMPS_NS;
 
@@ -173,6 +175,7 @@ void PairPOD::compute(int eflag, int vflag)
       
       // tally atomic energy to global energy
 
+
       ev_tally_full(i,2.0*evdwl,0.0,0.0,0.0,0.0,0.0);
       
       // tally atomic force to global force
@@ -180,8 +183,9 @@ void PairPOD::compute(int eflag, int vflag)
       tallyforce(f, fij, ai, aj, nij);
       
       // tally atomic stress 
-      
+
       if (vflag) {
+	
         for (int jj = 0; jj < nij; jj++) {
           int j = aj[jj];
           ev_tally_xyz(i,j,nlocal,newton_pair,0.0,0.0,
@@ -223,7 +227,9 @@ void PairPOD::compute(int eflag, int vflag)
       evdwl = fastpodptr->peratomenergyforce(fij, rij, tmpmem, ti, tj, nij);
 
       // tally atomic energy to global energy
-
+      std::cout << "eflag_atom: " << eflag_atom << "\n"; //yes
+      std::cout << "eflag_either: " << eflag_either << "\n";
+      std::cout << "eflag_global: " << eflag_global << "\n";
       ev_tally_full(i,2.0*evdwl,0.0,0.0,0.0,0.0,0.0);
 
       // tally atomic force to global force
@@ -231,8 +237,12 @@ void PairPOD::compute(int eflag, int vflag)
       tallyforce(f, fij, ai, aj, nij);
       
       // tally atomic stress 
-      
+      //      std::cout << "vflag" << vflag << "\n";    //Yes  
       if (vflag) {
+	std::cout << "newton_pair:" << newton_pair << "\n";
+	std::cout << "vflag_either:" << vflag_either << "\n";
+	std::cout << "vflag_global:" << vflag_global << "\n";
+	std::cout << "nlocal: " << nlocal << "\n";
         for (int jj = 0; jj < nij; jj++) {
           int j = aj[jj];
           ev_tally_xyz(i,j,nlocal,newton_pair,0.0,0.0,

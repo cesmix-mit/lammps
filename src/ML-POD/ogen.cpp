@@ -155,15 +155,15 @@ void radialAngularBasis(Func & sumU, Func & U,
 
 
   Func prodU("prodU");
-  prodU(n, k, m)= rbf(n, m, 0)  * abf(n, k, 0);
+  prodU(n, k, m, oatom)= rbf(n, m, 0)  * abf(n, k, 0, oatom);
   Expr c1 = rbf(n, m, 0);
-  Expr c2 = abf(n, k, 0);
+  Expr c2 = abf(n, k, 0, oatom);
 
 
-  U(n, k, m, c) = select(c == 0, rbf(n, m, 0)  * abf(n, k, 0),
-			       select(c == 1, abf(n, k, 1) * c1 + c2 * rbf(n, m, 1),
-				      select(c== 2, abf(n, k, 2) * c1 + c2 * rbf(n, m, 2) ,
-					     select(c==3, abf(n, k, 3) * c1+ c2 * rbf(n, m, 3), Expr((double) 0.0)))));
+  U(n, k, m, c, oatom) = select(c == 0, rbf(n, m, 0)  * abf(n, k, 0, oatom),
+				select(c == 1, abf(n, k, 1, oatom) * c1 + c2 * rbf(n, m, 1),
+				       select(c== 2, abf(n, k, 2, oatom) * c1 + c2 * rbf(n, m, 2) ,
+					      select(c==3, abf(n, k, 3, oatom) * c1+ c2 * rbf(n, m, 3), Expr((double) 0.0)))));
   U.reorder(c, m, k, n);
   // sumU(r.x, r.y, clamp(in, 0, Ne - 1)) += rbf(r.x, r.z) * abf(r.y, r.z);
 
@@ -171,13 +171,13 @@ void radialAngularBasis(Func & sumU, Func & U,
   Expr rzz = oatom;
   Expr rz = r.z;
   r.where(rz < offsets(rzz + 1) - offsets(rzz));
-  Expr oatommax = nijmax + offsets(oatom) - 1;
+  Expr oatommax = min(nijmax + offsets(oatom), offsets(oatom+1))-1;
   Expr rzboundeds = unsafe_promise_clamped(unsafe_promise_clamped(rz + offsets(oatom), offsets(oatom), offsets(oatom)+nijmax - 1), 0, N-1);
   Expr rzbounded = clamp(rz + offsets(oatom), offsets(oatom), offsets(oatom)+nijmax - 1);
   Expr ry = r.y;
   Expr rx = r.x;
   Expr in = atomtype(rzboundeds) - 1;
-  sumU(clamp(in, 0, Ne - 1), r.y, r.x, rzz) += rbf(rzboundeds, r.x, 0)  * abf(rzboundeds, r.y, 0); //prodU(rzbounded, ry, rx); //rbf(r.z, r.x, 0) * abf(r.z, r.y, 0);
+  sumU(clamp(in, 0, Ne - 1), r.y, r.x, rzz) += rbf(rzboundeds, r.x, 0)  * abf(rzboundeds, r.y, 0, oatom); //prodU(rzbounded, ry, rx); //rbf(r.z, r.x, 0) * abf(r.z, r.y, 0);
 
   //  sumU.update(0).reorder(r.x);
   //  abf.in(sumU).compute_at(sumU, oatom);
@@ -294,13 +294,17 @@ void tallyTwoBodyLocalForce(Func & fij, Func & e,
 
 
 
-void buildAngularBasis(Expr k3, Expr npairs, Func pq, Func rij,
+void buildAngularBasis(Expr k3, Expr npairs, Expr nijmax,
+		       Func pq, Func rij, Func offsets,
 		       Func & abf4, Func & tm,
-		       Var c, Var pair, Var abfi,Var abfip){
+		       Var c, Var pair, Var abfi,Var abfip, Var oatom){
+
+  Expr oatomnext = min(offsets(oatom) + nijmax, offsets(oatom+1))-1;
+  Expr pairclamp = unsafe_promise_clamped(pair, offsets(oatom), oatomnext);
       
-  Expr x = rij(0, pair);
-  Expr y = rij(1, pair);
-  Expr z = rij(2, pair);
+  Expr x = rij(0, pairclamp);
+  Expr y = rij(1, pairclamp);
+  Expr z = rij(2, pairclamp);
       
   Expr xx = x*x;
   Expr yy = y*y;
@@ -330,22 +334,22 @@ void buildAngularBasis(Expr k3, Expr npairs, Func pq, Func rij,
   Expr zero = Expr((double) 0.0);
 
 
-  tm(pair, abfi, c) = zero;
-  tm(pair, 0, 0) = Expr((double) 1.0);
+  tm(pair, abfi, c, oatom) = zero;
+  tm(pair, 0, 0, oatom) = Expr((double) 1.0);
   RDom rn(1, k3 - 1, 0, 4);
   Expr m = clamp(pq(rn.x) - 1, 0, 3 * k3 - 1);
-  Expr prev0 = tm(pair, m, 0);
+  Expr prev0 = tm(pairclamp, m, 0, oatom);
   Expr d = clamp(pq(rn.x + k3), 1, 3);
   Var selected("selected");
   Func uvw("uvw");
-  uvw(pair, selected) = select(selected == 1, u, select(selected==2, v, select(selected==3, w, Expr((double) 0.0))));
-  tm(pair, rn.x, rn.y) = tm(pair, m, rn.y) * uvw(pair, d) + select(d == rn.y, tm(pair, m, 0), zero);
+  uvw(pair, selected, oatom) = select(selected == 1, u, select(selected==2, v, select(selected==3, w, Expr((double) 0.0))));
+  tm(pair, rn.x, rn.y, oatom) = tm(pair, m, rn.y, oatom) * uvw(pair, d, oatom) + select(d == rn.y, tm(pair, m, 0, oatom), zero);
   // TODO: maybe something we can do with select statement -- ordering seems to be correct
 
 
   Func jacobian("jacobian");
   Var dim("dim"), dim_p("dim_p");
-  jacobian(pair, dim, dim_p) =
+  jacobian(pair, dim, dim_p, oatom) =
     select(dim == 0,
 	   select(dim_p == 0,
 		  dudx,
@@ -368,8 +372,8 @@ void buildAngularBasis(Expr k3, Expr npairs, Func pq, Func rij,
 				       select(dim_p == 2,
 					      dwdz, zero))), zero)));
 
-  abf4(pair, abfi, c) = select(c == 0, tm(pair, abfi, 0),
-			       tm(pair, abfi, 1) * jacobian(pair, c-1, 0) + tm(pair, abfi, 2) * jacobian(pair, c-1, 1) + tm(pair, abfi, 3) * jacobian(pair, c-1, 2));   
+  abf4(pair, abfi, c, oatom) = select(c == 0, tm(pairclamp, abfi, 0, oatom),
+				      tm(pairclamp, abfi, 1, oatom) * jacobian(pairclamp, c-1, 0, oatom) + tm(pairclamp, abfi, 2, oatom) * jacobian(pairclamp, c-1, 1, oatom) + tm(pairclamp, abfi, 3, oatom) * jacobian(pairclamp, c-1, 2, oatom));
   // tm.compute_root(); // 21697.324 ms total -- .119 ms tm -- 52%
   // tm.store_root().compute_root(); abf4.compute_root(); // 21753.123 ms total -- .118 ms tm -- 52%
   // tm.store_root().compute_at(abf4, pair); // 66554 ms total
@@ -387,10 +391,10 @@ void buildAngularBasis(Expr k3, Expr npairs, Func pq, Func rij,
     //tm.update(0).reorder(abfip, pair);
     tm.compute_at(abf4, pair);
   */
-  tm.reorder(pair, abfi, c);
+  tm.reorder(pair, abfi, c, oatom);
   //  tm.store_root().compute_root();
   //  abf4.compute_at(fife_o, rout.z);
-  abf4.reorder(pair, abfi, c);//.unroll(c, 4);
+  abf4.reorder(pair, abfi, c, oatom);//.unroll(c, 4);
   // tm.compute_at(abf4, pair);
   //  abf4.store_root().compute_root();
   //abf4.store_root().compute_root();
@@ -959,9 +963,10 @@ public:
     Func tm("tm");
     Var abfi("abfi");
     Var abfip("abfip");
-    buildAngularBasis(k3, npairs, pq, rijs,
+    buildAngularBasis(k3, npairs, nijmax,
+		      pq, rijs, offsets,
 		      abf4, tm,
-		      c, np,  abfi, abfip
+		      c, np,  abfi, abfip, oatom
 		      );
 
 
@@ -979,7 +984,7 @@ public:
     Var a3("a3");
     Func UW("UW");
     Expr offset2 = min(nijmax + offsets(oatom), offsets(oatom+1)) - 1;
-    UW(a0,a1,a2,a3, oatom) = U(unsafe_promise_clamped(unsafe_promise_clamped(a0 +offsets(oatom), offsets(oatom), offset2), 0, npairs-1), a1, a2, a3);
+    UW(a0,a1,a2,a3, oatom) = U(unsafe_promise_clamped(unsafe_promise_clamped(a0 +offsets(oatom), offsets(oatom), offset2), 0, npairs-1), a1, a2, a3, oatom);
     //    UW.bound()
 
 
@@ -1073,7 +1078,7 @@ public:
 
     sumU4(m4v, k4v, e4v, oatom) = sumU(m4v, k4v, e4v, oatom);
     sumU4.bound(m4v, 0, nelements).bound(k4v, 0, min(k3, k4)).bound(e4v, 0, min(nrbf4, nrbf3)); //.bound(oatom, 0, natoms);
-    U4(m4v, k4v, e4v, dim4v) = U(m4v, k4v, e4v, dim4v);
+    U4(m4v, k4v, e4v, dim4v, oatom) = U(m4v, k4v, e4v, dim4v, oatom);
     U4.bound(k4v, 0, min(k3, k4)).bound(e4v, 0, min(nrbf4, nrbf3)).bound(dim4v, 0, 4);
 
     Func cu4("cu4");
