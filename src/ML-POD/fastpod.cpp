@@ -495,7 +495,7 @@ void buildTwoBody(double *rijs, double *besselparams, int nbesselpars, int bdegr
   Halide::Runtime::Buffer<double> coeff33_buffer(coeff33, {{0, s33, 1}, {0, nelements, s33}});
   int sym3Ne = nelements*(nelements+1)*(nelements+2)/6;
   Halide::Runtime::Buffer<double> coeff4_buffer(coeff4, {{0, nabf4, 1}, {0, nrbf4, nabf4}, {0, sym3Ne, nabf4 * nrbf4}, {0, nelements, sym3Ne * nrbf4 * nabf4}});
-  Halide::Runtime::Buffer<double> coeff34_buffer(coeff34, {1});
+  Halide::Runtime::Buffer<double> coeff34_buffer(coeff34, {{0, n34, 1}, {0, n43, n34}, {0, nelements, n34 * n43}});
   Halide::Runtime::Buffer<double> coeff44_buffer(coeff44, {1});
   auto e3_buffer = Halide::Runtime::Buffer<double, 0>::make_scalar(e3);
 
@@ -763,7 +763,7 @@ double FASTPOD::energyforceinterface(double * force, double *rij, double *eo,
   int adegree = pdegree[1];
   double etot = 0.0;
   int natoms = natom;
-    double *coeff1 = &newcoeff[0];
+  double *coeff1 = &newcoeff[0];
   double *coeff2 = &newcoeff[nl1*nelements];
   double *coeff3 = &newcoeff[(nl1 + nl2)*nelements];
   double *coeff4 = &newcoeff[(nl1 + nl2 + nl3)*nelements];
@@ -804,7 +804,7 @@ double FASTPOD::energyforceinterface(double * force, double *rij, double *eo,
   Halide::Runtime::Buffer<double> coeff23_buffer(coeff23, {{0, n23, 1}, {0, n32, n23}, {0, nelements, n23 * n32}});
   Halide::Runtime::Buffer<double> coeff33_buffer(coeff33, {{0, s33, std::min(s33, 1)}, {0, nelemsn33, s33}});
   Halide::Runtime::Buffer<double> coeff4_buffer(coeff4, {{0, nabf4, 1}, {0, nrbf4, nabf4}, {0, sym3Ne, nabf4 * nrbf4}, {0, nelements, sym3Ne * nrbf4 * nabf4}});
-  Halide::Runtime::Buffer<double> coeff34_buffer(coeff34, {1});
+  Halide::Runtime::Buffer<double> coeff34_buffer(coeff34, {{0, n34, 1}, {0, n43, n34}, {0, nelements, n34 * n43}});
   Halide::Runtime::Buffer<double> coeff44_buffer(coeff44, {1});
 
   Halide::Runtime::Buffer<double> fij_o_buffer(force, {{0, natoms, 3}, {0, 3, 1}});
@@ -824,7 +824,7 @@ double FASTPOD::energyforceinterface(double * force, double *rij, double *eo,
 	       nelements,
 	       nd23, nd33, nd34, n32, n23, n33, n43, n34, n44,
 	       nabf3, nabf4, nrbf23, nrbf33, nrbf34, nrbf44,
-	       nabf23, nabf33, nabf34, nabf44,
+	       nabf23, nabf33, nabf34, nabf44, nabf43,
 	       coeff1_buffer, coeff2_buffer, coeff3_buffer, coeff23_buffer, coeff33_buffer, coeff4_buffer,coeff34_buffer, coeff44_buffer,
 	       fij_o_buffer, e_o_buffer, etot_buffer
 	       );
@@ -907,7 +907,7 @@ double FASTPOD::energyforce(double *force, double *x, int *atomtype, int *alist,
   Halide::Runtime::Buffer<double> coeff23_buffer(coeff23, {{0, n23, 1}, {0, n32, n23}, {0, nelements, n23 * n32}});
   Halide::Runtime::Buffer<double> coeff33_buffer(coeff33, {{0, s33, std::min(s33, 1)}, {0, nelemsn33, s33}});
   Halide::Runtime::Buffer<double> coeff4_buffer(coeff4, {{0, nabf4, 1}, {0, nrbf4, nabf4}, {0, sym3Ne, nabf4 * nrbf4}, {0, nelements, sym3Ne * nrbf4 * nabf4}});
-  Halide::Runtime::Buffer<double> coeff34_buffer(coeff34, {1});
+  Halide::Runtime::Buffer<double> coeff34_buffer(coeff34, {{0, n34, 1}, {0, n43, n34}, {0, nelements, n34 * n43}});
   Halide::Runtime::Buffer<double> coeff44_buffer(coeff44, {1});
 
   Halide::Runtime::Buffer<double> fij_o_buffer(force, {{0, natoms, 3}, {0, 3, 1}});
@@ -926,7 +926,7 @@ double FASTPOD::energyforce(double *force, double *x, int *atomtype, int *alist,
 	       nelements,
 	       nd23, nd33, nd34, n32, n23, n33, n43, n34, n44,
 	       nabf3, nabf4, nrbf23, nrbf33, nrbf34, nrbf44,
-	       nabf23, nabf33, nabf34, nabf44,
+	       nabf23, nabf33, nabf34, nabf44, nabf43,
 	       coeff1_buffer, coeff2_buffer, coeff3_buffer, coeff23_buffer, coeff33_buffer, coeff4_buffer,coeff34_buffer, coeff44_buffer,
 	       fij_o_buffer, e_o_buffer, etot_buffer
 	       );
