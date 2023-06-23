@@ -740,7 +740,7 @@ double FASTPOD::peratomenergyforce(double *fij, double *rij, double *temp,
         double *d34 = &temp[0];
         sixbodydesc34(d34, d3, d4);
         e34 = dotproduct(&coeff34[nl34*t0], d34, nl34);
-        sixbodyfij34(fij, temp, &coeff34[nl34*t0], d3, d4, dd3, dd4, 3*Nj);
+	sixbodyfij34(fij, temp, &coeff34[nl34*t0], d3, d4, dd3, dd4, 3*Nj);
       }
 
       if (nd44>0) {
@@ -759,6 +759,7 @@ double FASTPOD::energyforceinterface(double * force, double *rij, double *eo,
 			    int * ai, int * aj, int *ti, int *tj, int *tA, int *pairnumsum,
 				     int npairs, int natom, int nijmax)
 {
+    std::cout << "Halidepod;\n";
   int bdegree = pdegree[0];
   int adegree = pdegree[1];
   double etot = 0.0;
@@ -840,6 +841,7 @@ double FASTPOD::energyforce(double *force, double *x, int *atomtype, int *alist,
   
   double etot = 0.0;
 #ifdef HALIDEPOD
+  std::cout << "Halidepod;\n";
   double *coeff1 = &newcoeff[0];
   double *coeff2 = &newcoeff[nl1*nelements];
   double *coeff3 = &newcoeff[(nl1 + nl2)*nelements];
@@ -2589,6 +2591,7 @@ int FASTPOD::estimate_memory(int Nj)
 
 int FASTPOD::indexmap3(int *indx, int n1, int n2, int n3, int N1, int N2)
 {
+  
   int k = 0;
   for (int i3=0; i3<n3; i3++)
     for (int i2=0; i2<n2; i2++)

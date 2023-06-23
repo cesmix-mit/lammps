@@ -555,7 +555,7 @@ void fourbodycoeff(Func & e4, Func  & cU4, Func & d4,
   cU4(ne, kv, rbf, oatom) = zero;
   //  cU4.bound(ne,0, nelements).bound(kv, 0, k4 + 1).bound(rbf, 0, nrbf4);//.bound(oatom, 0, natoms);
   e4(oatom) = zero;
-  d4(kv, rbf, ne, oatom)=zero;
+  d4(ne, kv, rbf, oatom)=Expr((double)0.0);
   Expr q = pa4(nabf4);
   RDom r(0, nelements, 0, nelements, 0, nelements, 0, Q4, 0, nabf4, 0, nrbf4);
   Expr rbfr = r[5];
@@ -574,14 +574,14 @@ void fourbodycoeff(Func & e4, Func  & cU4, Func & d4,
   Expr i2 = r[1];
   Expr i3 = r[2];
   r.where(i1 >= i2 && i2 >= i3);
-  Expr sym3NE = (nelements) * (nelements+1) * (nelements+2)/6;
-  Expr k = unsafe_promise_clamped((i1*(i1+1)*(i1+2)/6) + (i2*(i2+1)/2) + i3, 0, sym3NE);
+  Expr sym3NE = ((nelements) * (nelements+1) * (nelements+2))/6;
+  Expr k = unsafe_promise_clamped(((i1*(i1+1)*(i1+2))/6) + (i2*(i2+1)/2) + i3, 0, sym3NE);
 
   Expr c1 = c * sumU4(i1, j1, rbfr, oatom);
-  Expr c0 = sumU4(i2, j2, rbfr, oatom);
+  Expr c22 = sumU4(i2, j2, rbfr, oatom);
   Expr c3 = sumU4(i3, j3, rbfr, oatom);
-  Expr c2 = c * c0;
-  Expr c4 = c1 * c0;
+  Expr c2 = c * c22;
+  Expr c4 = c1 * c22;
   Expr c5 = coeff4(p, rbfr, k, acc);
   Expr c6 = c5 * sumU4(i3, j3, rbfr, oatom);
 
@@ -724,14 +724,36 @@ void indexMap3(Func & indexmap, Expr n1, Expr n2, Expr n3, Expr N1, Expr N2){
   Var k("k");
   Var c("c");
 
+  Expr i3 =  k / (n1 * n2);
+  Expr kp = (k - i3 * n1 * n2);
+  Expr i2 = kp/ n1;
+  Expr i1 = kp % n1;
+
+  indexmap(k, c) = mux(c, {i1, i2, i3});
+  indexmap.bound(k, 0, n1 * n2 * n3);
+  indexmap.bound(c, 0, 3);
+  indexmap.compute_root();
+  indexmap.trace_stores();
+  //  indexmap.
+}
+
+
+void indexMap4(Func & indexmap, Expr n1, Expr n2, Expr n3, Expr N1, Expr N2){
+  Var v1("vv1");
+  Var v2("vv2");
+  Var v3("vv3");
+  Var k("kk");
+  Var c("cc");
+
   Expr i3 =  k / (N1 * N2);
   Expr kp = (k - i3 * N1 * N2);
   Expr i2 = kp/ N1;
   Expr i1 = kp % N1;
 
   indexmap(k, c) = mux(c, {i1, i2, i3});
-  indexmap.bound(k, 0, n1 * n2 * n3);
-  indexmap.bound(c, 0, 3);
+  //  indexmap.bound(k, 0, n1 * n2 * n3);
+  //  indexmap.bound(c, 0, 3);
+  indexmap.trace_stores();
   indexmap.compute_root();
   //  indexmap.
 }
@@ -979,14 +1001,13 @@ public:
     Func ind43("ind43");
     Func ind44("ind44");
     Expr symMe = nelements*(nelements+1)/2;
-    Expr symMe3 = nelements*(nelements+1)*(nelements+2)/6;
+    Expr symMe3 = (nelements*(nelements+1)*(nelements+2))/6;
+
     indexMap3(ind23, Expr(1), nrbf23, nelements, Expr(1), nrbf2);
-    
     indexMap3(ind32, nabf23, nrbf23, symMe, nabf3, nrbf3);
     indexMap3(ind33, nabf33, nrbf33, symMe, nabf3, nrbf3);
     indexMap3(ind34, nabf34, nrbf34, symMe, nabf3, nrbf3);
-    
-    indexMap3(ind43, nabf43, nrbf34, symMe3, nabf4, nrbf4);
+    indexMap3(ind43, nabf43, nrbf34, symMe3, nabf4, nrbf4);    
     indexMap3(ind44, nabf44, nrbf44, symMe3, nabf4, nrbf4);
       
 
@@ -1006,6 +1027,7 @@ public:
     besselparams.dim(0).set_bounds(0, nbesselparams);
 
     Expr me = nelements * (nelements + 1)/2;
+    Expr me3 = (nelements * (nelements + 1) * (nelements + 2))/6;
     
     Var bfi("basis function index");
     Var bfp("basis function param");
@@ -1181,8 +1203,7 @@ public:
 		  coeff4, sumU4, ti, pa4, pb4, pc4, tA,
 		  nrbf4, nabf4, nelements, k4, q4, natoms, oatom);
 
-    fourbodydescriptorsDerv(dd4, U4, offsets, coeff4, sumU4, ti, tj, pa4, pb4, pc4, tA,
-			    nrbf4, nabf4, nelements, k4, q4, natoms, nijmax, oatom, np, dim);
+ 
 
 
     tallyLocalForceRev(fijAtom,
@@ -1191,6 +1212,8 @@ public:
 		       nrbf4, k4, npairs, nelements, natoms, nijmax,
 		       oatom, dim, 6);
 
+    fourbodydescriptorsDerv(dd4, U4, offsets, coeff4, sumU4, ti, tj, pa4, pb4, pc4, tA,
+			    nrbf4, nabf4, nelements, k4, q4, natoms, nijmax, oatom, np, dim);
 
     Func d34("d34");
     Var d34i("d34i");
@@ -1199,19 +1222,23 @@ public:
 
     //ind34 acc
     //ind43 acc
-    
-    d34(d34i, d34j, oatom) = d3(unsafe_promise_clamped(ind34(d34i, 0), 0, nabf3- 1),
-		       unsafe_promise_clamped(ind34(d34i, 1),0, nrbf3 - 1),
-		       unsafe_promise_clamped(ind34(d34i, 2), 0, me -1),
-		       oatom)  * d4(unsafe_promise_clamped(ind34(d34j, 2), 0, me -1),
-				    unsafe_promise_clamped(ind34(d34j, 0), 0, nabf3- 1),
-				    unsafe_promise_clamped(ind34(d34j, 1),0, nrbf3 - 1),
-				    oatom);
+    //
+
+    d34(d34i, d34j, oatom) =d3(unsafe_promise_clamped(ind34(d34i, 0), 0, nabf34- 1),
+			       unsafe_promise_clamped(ind34(d34i, 1), 0, nrbf34 - 1),
+			       unsafe_promise_clamped(ind34(d34i, 2), 0, me -1),
+			       oatom) * d4(unsafe_promise_clamped(ind43(d34j, 2), 0, me3 -1),
+					   unsafe_promise_clamped(ind43(d34j, 0), 0, nabf43- 1),
+					   unsafe_promise_clamped(ind43(d34j, 1),0, nrbf34 - 1),
+					   oatom);
+
+  
     Expr acc = clamp(tA(oatom) - 1, 0, nelements - 1);
 
     RDom re34(0, n43, 0, n34);
-    e34(oatom)+= d34(re34.x, re34.y, oatom) * coeff34(re34.y, re34.x, acc);
-    
+    e34(oatom) = Expr((double) 0.0);
+    e34(oatom)+= d34(re34.y, re34.x, oatom) * coeff34(re34.y, re34.x, acc);
+  
 
     Func cf61("cf61");
     Func cf62("cf62");
@@ -1222,36 +1249,45 @@ public:
     RDom r62f(0, n34, 0, nijmax);
     r62f.where(r62f.y < offsets(oatom + 1) - offsets(oatom));
 
-    
-    cf61(d34i, oatom) += d3(unsafe_promise_clamped(ind34(d34i, 0), 0, nabf3- 1),
-			    unsafe_promise_clamped(ind34(d34i, 1),0, nrbf3 - 1),
-			    unsafe_promise_clamped(ind34(d34i, 2), 0, me -1),
-			    oatom) * coeff34(d34i, r61, acc);
-    cf62(d34j, oatom) += d4(unsafe_promise_clamped(ind43(d34j, 2), 0, me -1),
-			    unsafe_promise_clamped(ind43(d34j, 0), 0, nabf4- 1),
-			    unsafe_promise_clamped(ind43(d34j, 1),0, nrbf4 - 1),
-			    oatom) * coeff34(r62, d34j, acc);
+    cf61(d34i, oatom) = Expr((double) 0.0);
+    cf61(d34i, oatom) += d3(unsafe_promise_clamped(ind34(r62, 0), 0, nabf34- 1),
+			    unsafe_promise_clamped(ind34(r62, 1),0, nrbf34 - 1),
+			    unsafe_promise_clamped(ind34(r62, 2), 0, me -1),
+			    oatom) * coeff34(r62, d34i, acc);
+
+    cf61.trace_stores();
 
 
-    fijAtom(dim, r62f.y, oatom) += cf61(r62f.x, oatom) * dd4(dim,
-							     unsafe_promise_clamped(ind43(r62f.x, 0), 0, nabf4- 1),
-							     unsafe_promise_clamped(ind43(r62f.x, 1),0, nrbf4 - 1),
-							     unsafe_promise_clamped(ind43(r62f.x, 2), 0, me -1),
-							     r62f.y, oatom);
-    fijAtom(dim, r61f.y, oatom) +=   cf62(r61f.x, oatom) * dd3(dim, r61f.y,
-							       unsafe_promise_clamped(ind32(r61f.x, 0), 0, nabf3- 1),
-							       unsafe_promise_clamped(ind32(r61f.x, 1),0, nrbf3 - 1),
-							       unsafe_promise_clamped(ind32(r61f.x, 2), 0, me -1),
-							       oatom);
-    
+
+
+    fijAtom(dim, r61f.y, oatom) += cf61(r61f.x, oatom) * dd4(dim,
+							     unsafe_promise_clamped(ind43(r61f.y, 2), 0, me -1),
+							     unsafe_promise_clamped(ind43(r61f.y, 0), 0, nabf43- 1),
+							     unsafe_promise_clamped(ind43(r61f.y, 1),0, nrbf34 - 1),
+							     r61f.y, oatom);
 
     
+    // cf62(d34j, oatom) = Expr((double) 0.0);
+    // cf62(d34j, oatom) += d4(unsafe_promise_clamped(ind43(r61, 2), 0, me -1),
+    // 			    unsafe_promise_clamped(ind43(r61, 0), 0, nabf43- 1),
+    // 			    unsafe_promise_clamped(ind43(r61, 1),0, nrbf34 - 1),
+    // 			    oatom) * coeff34(d34j, r61, acc);
+    
+    // fijAtom(dim, r62f.y, oatom) +=   cf62(r62f.x, oatom) * dd3(dim, r62f.y,
+    // 							       unsafe_promise_clamped(ind32(r62f.x, 0), 0, nabf23- 1),
+    // 							       unsafe_promise_clamped(ind32(r62f.x, 1),0, nrbf23 - 1),
+    // 							       unsafe_promise_clamped(ind32(r62f.x, 2), 0, me -1),
+    // 							       oatom);
+    
+
+    cf61.compute_at(fijAtom, oatom);
+    //cf62.compute_at(fijAtom, oatom);
     
 
  
 
     Func etemp("etemp");
-    etemp(oatom) =  e34(oatom) + e33(oatom) + e23(oatom) + e4(oatom) + e3(oatom) + e2(oatom) + coeff1(clamp(tA(oatom) - 1, 0, nelements-1));
+    etemp(oatom) = e34(oatom) + e33(oatom) + e23(oatom) + e4(oatom) + e3(oatom) + e2(oatom) + coeff1(clamp(tA(oatom) - 1, 0, nelements-1));
     RDom rout(0, nijmax, 0, 7, 0, natoms, "finrdom");
     rout.where(rout.x < offsets(rout.z + 1) - offsets(rout.z));
     Expr npp = clamp(rout.x + offsets(rout.z), 0, npairs - 1);
@@ -1293,6 +1329,9 @@ public:
     dd3.compute_at(fife_o, rout.z);
     dd2.compute_at(fife_o, rout.z);
     d2.compute_at(fife_o, rout.z);
+    d4.compute_at(fife_o, rout.z);
+    d34.compute_at(fife_o, rout.z);
+     
     //    UW.compute_at(fife_o, rout.z);
     //U.compute_at(fife_o, rout.z);
     ///    U.in(fijAtom).compute_at(, oatom);

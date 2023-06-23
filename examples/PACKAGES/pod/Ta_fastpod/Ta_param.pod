@@ -30,7 +30,7 @@ fourbody_angular_degree 3
 fivebody_number_radial_basis_functions 6
 fivebody_angular_degree 3
 
-# six-body linear POD potential
+#six-body linear POD potential
 sixbody_number_radial_basis_functions 5
 sixbody_angular_degree 2
 
