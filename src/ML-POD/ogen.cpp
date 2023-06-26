@@ -1336,7 +1336,7 @@ public:
 							     rN44.y,  
 							     oatom);
     cf72(d44i, oatom) = Expr((double) 0.0);
-    cf72(rn44.x, oatom) +=  d4(unsafe_promise_clamped(ind44(rn44.x, 2), 0, symMe3 -1),
+    cf72(rn44.y, oatom) +=  d4(unsafe_promise_clamped(ind44(rn44.x, 2), 0, symMe3 -1),
 			       unsafe_promise_clamped(ind44(rn44.x, 0), 0, nabf44- 1),
 			       unsafe_promise_clamped(ind44(rn44.x, 1),0, nrbf44 - 1),
 			       oatom) * coeff44(k44, acc);
