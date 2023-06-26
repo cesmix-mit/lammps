@@ -473,7 +473,7 @@ void threeBodyCoeff(Func & cU, Func & e,
   cU(r[3], r.x, r[4], oatom) += t2;
   cU(r.z, r.x, r[4], oatom) += pc3(r.x) * c2 * c3;
 }
-void fourbodydescriptorsDerv(Func & dd4, Func & U,
+void fourbodydescriptorsDerv(Func & dd4, Func  U,
 			     Func offsets, Func coeff4, Func  sumU4, Func ti, Func at, Func pa4, Func pb4, Func pc4, Func tA,
 			     Expr nrbf4, Expr nabf4, Expr nelements, Expr k4, Expr Q4, Expr natoms, Expr nijmax,
 			     Var oatom, Var np, Var dim){
@@ -522,13 +522,14 @@ void fourbodydescriptorsDerv(Func & dd4, Func & U,
   Expr t13 = c1 * c3;
   Expr t23 = c2 * c3;
   //d4(dim, kv, rbf, ne, np, oatom)=zero;
-  Expr tjacc = unsafe_promise_clamped(at(ni) - 1, 0, nelements- 1);
+  //+ offsets(oatom)
+  Expr tjacc = unsafe_promise_clamped(at(ni ) - 1, 0, nelements- 1);
   Expr lhs = dd4(dim, p, rbfr, k, ni, oatom);
 
-  Expr temp = (select(tjacc == i3, t12 * U(ni, p, rbfr, dim + 1, oatom), zero) + select(tjacc == i2, t13 * U(ni, p, rbfr, dim + 1, oatom), zero) + select(tjacc == i1, t23 * U(ni, p, rbfr, dim + 1, oatom), zero));
+  Expr temp = (select(tjacc == i3, t12 * U(ni, j3, rbfr, dim + 1, oatom), zero) + select(tjacc == i2, t13 * U(ni, j2, rbfr, dim + 1, oatom), zero) + select(tjacc == i1, t23 * U(ni, j1, rbfr, dim + 1, oatom), zero));
   dd4(dim, p, rbfr, k, ni, oatom) +=   temp;
 
-  dd4.update(0).reorder(dim, r[0], r[1], r[2], r[3], r[4], r[5], r[6]);
+  dd4.update(0).reorder(dim, r[6], r[0], r[1], r[2], r[3], r[4], r[5]);
   //  dd4.trace_stores();
   //Three updates via select
   //select on the  || nelements == 1
@@ -1259,6 +1260,7 @@ public:
 			    unsafe_promise_clamped(ind34(r62, 1),0, nrbf34 - 1),
 			    unsafe_promise_clamped(ind34(r62, 2), 0, me -1),
 			    oatom) * coeff34(r62, d34i, acc);
+
 
 
 
