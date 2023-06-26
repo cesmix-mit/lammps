@@ -987,7 +987,7 @@ public:
   Input<Buffer<double>> coeff33{"coeff33", 2};
   Input<Buffer<double>> coeff4{"coeff4", 4};
   Input<Buffer<double>> coeff34{"coeff34", 3};
-  Input<Buffer<double>> coeff44{"coeff44", 1};
+  Input<Buffer<double>> coeff44{"coeff44", 2};
 
   Output<Buffer<double>> fij_o{"fij_o", 2};
   Output<Buffer<double>> e_o{"e_o", 1};
@@ -1292,12 +1292,68 @@ public:
 
     cf61.compute_at(fijAtom, oatom);
     cf62.compute_at(fijAtom, oatom);
+
+    Func d44("d44");
+    Func e44("e44");
+    Func cf71("cf71");
+    Func cf72("cf72");
+    Expr nl44 = (n44*(n44+1))/2;
+    RDom rn44(0, n44, 0, n44);
+    RDom rN44(0, n44, 0, nijmax);
+    Var d44i("d44i");
+    Var d44j("d44j");
+    rN44.where(rN44.y <= offsets(oatom + 1) - offsets(oatom));
+    rn44.where(rn44.x >= rn44.y);
+    
+    
+    d44(d44i, d44j, oatom) = Expr((double) 0.0);
+    //Expr k44 = (rn44.x * (rn44.x +1))/2 + rn44.y;
+    //  Expr k = (2 * nelements - 3 - r.z) * (r.z/ 2) + r[3] - 1; //mem  - ki + kij;
+    // Expr k44 = clamp((2 * n44 - 3 - rn44.x) * (rn44.x/2) + rn44.y - 1, 0, nl44-1);
+    //    Expr k44o = ((n44*(n44-1))/2) - ((n44-rn44.x)*((n44-rn44.x)-1))/2 + rn44.y - rn44.x - 1;
+    Expr k44o = rn44.x + rn44.y * (n44 - 1) - (rn44.y * (rn44.y - 1))/2;
+    Expr k44  = clamp(print_when(k44o <0 || k44o >= nl44, k44o, "ooops....", rn44.x, rn44.y), 0, nl44-1);
+    d44(rn44.x, rn44.y, oatom) = d4(unsafe_promise_clamped(ind44(rn44.x, 2), 0, symMe3-1),
+			 unsafe_promise_clamped(ind44(rn44.x, 0), 0, nabf44- 1),
+			 unsafe_promise_clamped(ind44(rn44.x, 1),0, nrbf44 - 1),
+			 oatom) * d4(unsafe_promise_clamped(ind44(rn44.y, 2), 0, symMe3 -1),
+				     unsafe_promise_clamped(ind44(rn44.y, 0), 0, nabf44- 1),
+				     unsafe_promise_clamped(ind44(rn44.y, 1),0, nrbf44 - 1),
+				     oatom);
+
+    e44(oatom) = Expr((double) 0.0);
+    e44(oatom) += coeff44(k44, acc) * d44(rn44.x, rn44.y, oatom);
+
+    cf71(d44i, oatom) =  Expr((double) 0.0);
+    cf71(rn44.x, oatom) +=  d4(unsafe_promise_clamped(ind44(rn44.y, 2), 0, symMe3 -1),
+			       unsafe_promise_clamped(ind44(rn44.y, 0), 0, nabf44- 1),
+			       unsafe_promise_clamped(ind44(rn44.y, 1),0, nrbf44 - 1),
+			       oatom) * coeff44(k44, acc);
+    fijAtom(dim, rN44.y, oatom) += cf71(rN44.x, oatom) * dd4(dim,
+							     unsafe_promise_clamped(ind44(rN44.x, 0), 0, nabf44- 1),
+							     unsafe_promise_clamped(ind44(rN44.x, 1), 0, nrbf44 - 1),
+							     unsafe_promise_clamped(ind44(rN44.x, 2), 0, symMe3 -1),
+							     rN44.y,  
+							     oatom);
+    cf72(d44i, oatom) = Expr((double) 0.0);
+    cf72(rn44.x, oatom) +=  d4(unsafe_promise_clamped(ind44(rn44.x, 2), 0, symMe3 -1),
+			       unsafe_promise_clamped(ind44(rn44.x, 0), 0, nabf44- 1),
+			       unsafe_promise_clamped(ind44(rn44.x, 1),0, nrbf44 - 1),
+			       oatom) * coeff44(k44, acc);
+    fijAtom(dim, rN44.y, oatom) += cf72(rN44.x, oatom)  *dd4(dim,
+							     unsafe_promise_clamped(ind44(rN44.x, 0), 0, nabf44- 1),
+							     unsafe_promise_clamped(ind44(rN44.x, 1), 0, nrbf44 - 1),
+							     unsafe_promise_clamped(ind44(rN44.x, 2), 0, symMe3 -1),
+							     rN44.y,  
+							     oatom);
+
+
     
 
  
 
     Func etemp("etemp");
-    etemp(oatom) = e34(oatom) + e33(oatom) + e23(oatom) + e4(oatom) + e3(oatom) + e2(oatom) + coeff1(clamp(tA(oatom) - 1, 0, nelements-1));
+    etemp(oatom) = e44(oatom) + e34(oatom) + e33(oatom) + e23(oatom) + e4(oatom) + e3(oatom) + e2(oatom) + coeff1(clamp(tA(oatom) - 1, 0, nelements-1));
     RDom rout(0, nijmax, 0, 7, 0, natoms, "finrdom");
     rout.where(rout.x < offsets(rout.z + 1) - offsets(rout.z));
     Expr npp = clamp(rout.x + offsets(rout.z), 0, npairs - 1);
@@ -1342,6 +1398,7 @@ public:
     d4.compute_at(fife_o, rout.z);
     d34.compute_at(fife_o, rout.z);
     dd4.compute_at(fife_o, rout.z);
+    d44.compute_at(fife_o, rout.z);
      
     //    UW.compute_at(fife_o, rout.z);
     //U.compute_at(fife_o, rout.z);
