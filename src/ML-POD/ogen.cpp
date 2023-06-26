@@ -485,6 +485,7 @@ void fourbodydescriptorsDerv(Func & dd4, Func & U,
   Expr zero = Expr((double) 0.0);
 
   dd4(dim, kv, rbf, ne, np, oatom)=zero;
+  dd4.reorder(dim, kv, rbf, ne, np, oatom);
 
   Expr q = pa4(nabf4);
   RDom r(0, nelements, 0, nelements, 0, nelements, 0, Q4, 0, nabf4, 0, nrbf4, 0, nijmax);
@@ -506,25 +507,29 @@ void fourbodydescriptorsDerv(Func & dd4, Func & U,
   Expr i2 = r[1];
   Expr i3 = r[2];
   r.where(i1 >= i2 && i2 >= i3);
-  Expr sym3NE = (nelements) * (nelements+1) * (nelements+2)/6;
-  Expr k = unsafe_promise_clamped((i1*(i1+1)*(i1+2)/6) + (i2*(i2+1)/2) + i3, 0, sym3NE);
+  Expr sym3NE = ((nelements) * (nelements+1) * (nelements+2))/6;
+  Expr k = unsafe_promise_clamped((i1*((i1+1)*(i1+2))/6) + (i2*(i2+1)/2) + i3, 0, sym3NE - 1);
 
   Expr c1 = c * sumU4(i1, j1, rbfr, oatom);
   Expr c0 = sumU4(i2, j2, rbfr, oatom);
   Expr c2 = c * c0;
   Expr c3 = sumU4(i3, j3, rbfr, oatom);
-  Expr c4 = c1 * c0;
-  Expr c5 = coeff4(p, rbfr, k, acc);
-  Expr c6 = c5 * sumU4(i3, j3, rbfr, oatom);
+  //  Expr c4 = c1 * c0;
+  //  Expr c5 = coeff4(p, rbfr, k, acc);
+  //  Expr c6 = c5 * sumU4(i3, j3, rbfr, oatom);
 
-  Expr t12 = c1 * c2;
+  Expr t12 = c1 * c0;
   Expr t13 = c1 * c3;
   Expr t23 = c2 * c3;
   //d4(dim, kv, rbf, ne, np, oatom)=zero;
-  Expr tjacc = unsafe_promise_clamped(at(ni), 0, nelements- 1);
+  Expr tjacc = unsafe_promise_clamped(at(ni) - 1, 0, nelements- 1);
   Expr lhs = dd4(dim, p, rbfr, k, ni, oatom);
 
-  lhs = lhs + select(tjacc == i3, t12 * U(ni, p, rbfr, dim + 1, oatom), zero) + select(tjacc == i2, t13 * U(ni, p, rbfr, dim + 1, oatom), zero) + select(tjacc == i1, t23 * U(ni, p, rbfr, dim + 1, oatom), zero);
+  Expr temp = (select(tjacc == i3, t12 * U(ni, p, rbfr, dim + 1, oatom), zero) + select(tjacc == i2, t13 * U(ni, p, rbfr, dim + 1, oatom), zero) + select(tjacc == i1, t23 * U(ni, p, rbfr, dim + 1, oatom), zero));
+  dd4(dim, p, rbfr, k, ni, oatom) +=   temp;
+
+  dd4.update(0).reorder(dim, r[0], r[1], r[2], r[3], r[4], r[5], r[6]);
+  //  dd4.trace_stores();
   //Three updates via select
   //select on the  || nelements == 1
   //mux on them and the ux,uy,yz
@@ -1255,33 +1260,36 @@ public:
 			    unsafe_promise_clamped(ind34(r62, 2), 0, me -1),
 			    oatom) * coeff34(r62, d34i, acc);
 
-    cf61.trace_stores();
 
 
+
+   
 
 
     fijAtom(dim, r61f.y, oatom) += cf61(r61f.x, oatom) * dd4(dim,
-							     unsafe_promise_clamped(ind43(r61f.y, 2), 0, me -1),
-							     unsafe_promise_clamped(ind43(r61f.y, 0), 0, nabf43- 1),
-							     unsafe_promise_clamped(ind43(r61f.y, 1),0, nrbf34 - 1),
-							     r61f.y, oatom);
+							     unsafe_promise_clamped(ind43(r61f.x, 0), 0, nabf43- 1),
+							     unsafe_promise_clamped(ind43(r61f.x, 1), 0, nrbf34 - 1),
+							     unsafe_promise_clamped(ind43(r61f.x, 2), 0, symMe3 -1),
+							     r61f.y,  
+							     oatom);
 
     
-    // cf62(d34j, oatom) = Expr((double) 0.0);
-    // cf62(d34j, oatom) += d4(unsafe_promise_clamped(ind43(r61, 2), 0, me -1),
-    // 			    unsafe_promise_clamped(ind43(r61, 0), 0, nabf43- 1),
-    // 			    unsafe_promise_clamped(ind43(r61, 1),0, nrbf34 - 1),
-    // 			    oatom) * coeff34(d34j, r61, acc);
+    cf62(d34j, oatom) = Expr((double) 0.0);
+    cf62(d34j, oatom) += d4(unsafe_promise_clamped(ind43(r61, 2), 0, me -1),
+			    unsafe_promise_clamped(ind43(r61, 0), 0, nabf43- 1),
+			    unsafe_promise_clamped(ind43(r61, 1),0, nrbf34 - 1),
+			    oatom) * coeff34(d34j, r61, acc);
     
-    // fijAtom(dim, r62f.y, oatom) +=   cf62(r62f.x, oatom) * dd3(dim, r62f.y,
-    // 							       unsafe_promise_clamped(ind32(r62f.x, 0), 0, nabf23- 1),
-    // 							       unsafe_promise_clamped(ind32(r62f.x, 1),0, nrbf23 - 1),
-    // 							       unsafe_promise_clamped(ind32(r62f.x, 2), 0, me -1),
-    // 							       oatom);
+    fijAtom(dim, r62f.y, oatom) +=   cf62(r62f.x, oatom) * dd3(dim, r62f.y,
+							       unsafe_promise_clamped(ind34(r62f.x, 0), 0, nabf34- 1),
+							       unsafe_promise_clamped(ind34(r62f.x, 1),0, nrbf34 - 1),
+							       unsafe_promise_clamped(ind34(r62f.x, 2), 0, me -1),
+							       oatom);
+    
     
 
     cf61.compute_at(fijAtom, oatom);
-    //cf62.compute_at(fijAtom, oatom);
+    cf62.compute_at(fijAtom, oatom);
     
 
  
@@ -1331,6 +1339,7 @@ public:
     d2.compute_at(fife_o, rout.z);
     d4.compute_at(fife_o, rout.z);
     d34.compute_at(fife_o, rout.z);
+    dd4.compute_at(fife_o, rout.z);
      
     //    UW.compute_at(fife_o, rout.z);
     //U.compute_at(fife_o, rout.z);
