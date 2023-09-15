@@ -193,6 +193,11 @@ class MLPOD : protected Pointers {
 
     double rin;
     double rcut;
+    double *rinvec;
+    double *rcutvec;
+    int rcutsize;
+    bool rcutvecflag;
+    
     double *besselparams;
     double *coeff;
     double *Phi2, *Phi3, *Phi4, *Lambda2, *Lambda3, *Lambda4;

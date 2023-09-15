@@ -358,6 +358,27 @@ void MLPOD::read_pod(const std::string &pod_file)
       pod.pbc[2] = utils::inumeric(FLERR,words[3],false,lmp);
     }
 
+    pod.rcutsize = pod.nelements*(pod.nelements+1)/2;
+    memory->create(pod.rinvec, pod.rcutsize, "FPOD:rinvec");
+    if (keywd == "rinvec") {
+      pod.rcutvecflag = true;
+      if (words.size() != pod.rcutsize + 1)
+        error->one(FLERR,"Improper POD file. Please supply rin for all pairwise interactions", utils::getsyserror());
+      for (int irin = 1; irin <= pod.rcutsize; irin++) {
+        pod.rinvec[irin] = utils::inumeric(FLERR,words[irin],false,lmp);
+      }
+    }
+
+    memory->create(pod.rcutvec, pod.rcutsize, "FPOD:rcutvec");
+    if (keywd == "rcutvec") {
+      pod.rcutvecflag = true;
+      if (words.size() != pod.rcutsize + 1)
+        error->one(FLERR,"Improper POD file. Please supply rcut for all pairwise interactions", utils::getsyserror());
+      for (int ircut = 1; ircut <= pod.rcutsize; ircut++) {
+        pod.rcutvec[ircut] = utils::inumeric(FLERR,words[ircut],false,lmp);
+      }
+    }
+    
     if ((keywd != "#") && (keywd != "species") && (keywd != "pbc")) {
 
       if (words.size() != 2)

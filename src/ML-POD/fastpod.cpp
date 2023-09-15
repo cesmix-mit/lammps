@@ -1127,8 +1127,7 @@ int FASTPOD::myneighbors(double *rij, double *rinij, double *rcutij, double *x, 
     int jtype = atomtype[alist[j]];
     double rcut = rcutvec[(itype-1)*nelements + jtype-1];
     double rin = rinvec[(itype-1)*nelements + jtype-1];
-    double rcutsq = rcut*rcut;
-    
+    double rcutsq = rcut*rcut;    
     double delx   = x[0 + 3*j] -  x[0 + 3*i];
     double dely   = x[1 + 3*j] -  x[1 + 3*i];
     double delz   = x[2 + 3*j] -  x[2 + 3*i];    
@@ -1141,6 +1140,8 @@ int FASTPOD::myneighbors(double *rij, double *rinij, double *rcutij, double *x, 
       rij[0 + 3*nij]   = delx;
       rij[1 + 3*nij]   = dely;
       rij[2 + 3*nij]   = delz;      
+      rinij[nij] = rin;
+      rcutij[nij] = rcut;
       nij++;
     }    
   }
