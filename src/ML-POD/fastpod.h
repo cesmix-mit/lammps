@@ -48,7 +48,7 @@ private:
   void myneighbors(double *rij, double *x, int *ai, int *aj, int *ti, int *tj,
         int *jlist, int *pairnumsum, int *atomtype, int *alist, int i);
 
-  int myneighbors(double *rij, double *rinij, double *rcutij, double *x, int *ai, int *aj, int *ti, int *tj,
+  int myneighbors(double *rij, double *x, int *ai, int *aj, int *ti, int *tj,
         double *rinvec, double *rcutvec, int *jlist, int *pairnumsum, int *atomtype, int *alist, int i);
         
   void twobodycoeff(double *newcoeff2, double *coeff2);
@@ -122,7 +122,10 @@ public:
   double *rcutvec;
   int rcutsize;
   bool rcutvecflag;
-          
+
+  double *rinij;
+  double *rcutij;
+
   int nelements;
   int pbc[3];
   int *elemindex ;

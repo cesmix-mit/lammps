@@ -59,7 +59,7 @@ class PairPOD : public Pair {
   void lammpsNeighListFPOD(double **x, int **firstneigh, int *atomtype, int *map, int *numneigh,
                         double rcutsq, int i);
   void lammpsNeighListOPOD(double **x, int **firstneigh, int *atomtype, int *map, int *numneigh,
-                        double *rcutvecsq, int i);
+                        double *rinvec, double *rcutvec, int i);
   void lammpsNeighListFPOD(double **x, int **firstneigh, int *atomtype, int *map, int *numneigh,
                         double *rinvec, double *rcutvec, int i);
   void tallyforce(double **force, double *fij,  int *ai, int *aj, int N);
@@ -82,7 +82,6 @@ class PairPOD : public Pair {
   double *rcutij;      // cutoff radius for all pairs (I, J)
   double *rinij;       // inner cutoff radius for all pairs (I, J)
   double *fij;         // force for all pairs (I, J)
-  double rcutsqvec[100];  // cutoff radii square
   int *idxi;           // storing linear indices for all pairs (I, J)
   int *ai;             // IDs of atoms I for all pairs (I, J)
   int *aj;             // IDs of atoms J for all pairs (I, J)

@@ -492,6 +492,42 @@ void PairPOD::lammpsNeighListFPOD(double **x, int **firstneigh, int *atomtypes, 
   }
 }
 
+void PairPOD::lammpsNeighListOPOD(double **x, int **firstneigh, int *atomtypes, int *map,
+                        int *numneigh, double *rinvec, double *rcutvec, int gi)
+{
+  nij = 0;
+  int itype = map[atomtypes[gi]] + 1;
+  int m = numneigh[gi];
+  typeai[0] = itype;
+  for (int l = 0; l < m; l++) {           // loop over each atom around atom i
+    int gj = firstneigh[gi][l];           // atom j
+    double delx = x[gj][0] - x[gi][0];    // xj - xi
+    double dely = x[gj][1] - x[gi][1];    // xj - xi
+    double delz = x[gj][2] - x[gi][2];    // xj - xi
+    double rsq = delx * delx + dely * dely + delz * delz;
+    int jtype = map[atomtypes[gj]] + 1;
+    double rcut = rcutvec[(itype-1)*nelements + jtype-1];
+    double rin = rinvec[(itype-1)*nelements + jtype-1];
+    double rcutsq = rcut*rcut;
+    if (rsq < rcutsq && rsq > 1e-20) {
+      rij[nij * 3 + 0] = delx;
+      rij[nij * 3 + 1] = dely;
+      rij[nij * 3 + 2] = delz;
+      rcutij[nij] = rcut;
+      rinij[nij] = rin;
+      idxi[nij] = 0;
+      ai[nij] = gi;
+      aj[nij] = gj;
+      ti[nij] = itype;
+      tj[nij] = map[atomtypes[gj]] + 1;
+      nij++;
+    }
+  }
+
+  numneighsum[0] = 0;
+  numneighsum[1] = nij;
+}
+
 void PairPOD::lammpsNeighListFPOD(double **x, int **firstneigh, int *atomtypes, int *map,
                                int *numneigh, double *rinvec, double *rcutvec, int gi)
 {
@@ -513,7 +549,7 @@ void PairPOD::lammpsNeighListFPOD(double **x, int **firstneigh, int *atomtypes, 
       rij[nij * 3 + 1] = dely;
       rij[nij * 3 + 2] = delz;
       rcutij[nij] = rcut;
-      rinij[nij] = rin;      
+      rinij[nij] = rin;
       ai[nij] = gi;
       aj[nij] = gj;
       ti[nij] = itype;
