@@ -44,7 +44,7 @@ FASTPOD::FASTPOD(LAMMPS *_lmp, const std::string &pod_file, const std::string &c
     pc3(nullptr), pq4(nullptr), pa4(nullptr), pb4(nullptr), pc4(nullptr), ind23(nullptr),
     ind32(nullptr), ind33(nullptr), ind34(nullptr), ind43(nullptr), ind44(nullptr)
 {
-  rcutvecflag = false;    
+  rcutvecflag = false;
   rcutsize = 1;
   rin = 0.5;
   rcut = 5.0;
@@ -202,18 +202,18 @@ void FASTPOD::read_pod_file(std::string pod_file)
 
       if (words.size() != 2)
         error->one(FLERR,"Improper POD file.", utils::getsyserror());
-      
+
       if (rcutvecflag == false) {
         if (keywd == "rin") rin = utils::numeric(FLERR,words[1],false,lmp);
-        if (keywd == "rcut") rcut = utils::numeric(FLERR,words[1],false,lmp);        
+        if (keywd == "rcut") rcut = utils::numeric(FLERR,words[1],false,lmp);
       }
       else {
         rcut = rcutvec[0];
         for (int ircut = 1; ircut <= rcutsize; ircut++)
           if (rcut<rcutvec[ircut])
-            rcut = rcutvec[ircut];        
+            rcut = rcutvec[ircut];
       }
-            
+
       if (keywd == "bessel_polynomial_degree")
         besseldegree = utils::inumeric(FLERR,words[1],false,lmp);
       if (keywd == "inverse_polynomial_degree")
@@ -382,7 +382,7 @@ void FASTPOD::read_pod_file(std::string pod_file)
       utils::logmesg(lmp, "outer cut-off radius: ");
       for (int i=0; i<rcutsize; i++)
         utils::logmesg(lmp, "{} ", rcutvec[i]);
-      utils::logmesg(lmp, "\n");    
+      utils::logmesg(lmp, "\n");
     }
     else {
       utils::logmesg(lmp, "inner cut-off radius: {}\n", rin);
@@ -1115,7 +1115,7 @@ void FASTPOD::myneighbors(double *rij, double *x, int *ai, int *aj, int *ti, int
   }
 }
 
-int FASTPOD::myneighbors(double *rij, double *rinij, double *rcutij, double *x, int *ai, int *aj, int *ti, int *tj,
+int FASTPOD::myneighbors(double *rij, double *x, int *ai, int *aj, int *ti, int *tj,
         double *rinvec, double *rcutvec, int *jlist, int *pairnumsum, int *atomtype, int *alist, int i)
 {
   int itype = atomtype[i];
@@ -1127,11 +1127,11 @@ int FASTPOD::myneighbors(double *rij, double *rinij, double *rcutij, double *x, 
     int jtype = atomtype[alist[j]];
     double rcut = rcutvec[(itype-1)*nelements + jtype-1];
     double rin = rinvec[(itype-1)*nelements + jtype-1];
-    double rcutsq = rcut*rcut;    
+    double rcutsq = rcut*rcut;
     double delx   = x[0 + 3*j] -  x[0 + 3*i];
     double dely   = x[1 + 3*j] -  x[1 + 3*i];
-    double delz   = x[2 + 3*j] -  x[2 + 3*i];    
-    double rsq = delx * delx + dely * dely + delz * delz;    
+    double delz   = x[2 + 3*j] -  x[2 + 3*i];
+    double rsq = delx * delx + dely * dely + delz * delz;
     if (rsq < rcutsq && rsq > 1e-20) {
       ai[nij]        = i;
       aj[nij]        = alist[j];
@@ -1139,11 +1139,11 @@ int FASTPOD::myneighbors(double *rij, double *rinij, double *rcutij, double *x, 
       tj[nij]        = atomtype[alist[j]];
       rij[0 + 3*nij]   = delx;
       rij[1 + 3*nij]   = dely;
-      rij[2 + 3*nij]   = delz;      
+      rij[2 + 3*nij]   = delz;
       rinij[nij] = rin;
       rcutij[nij] = rcut;
       nij++;
-    }    
+    }
   }
   return nij;
 }
@@ -1757,7 +1757,7 @@ void FASTPOD::radialbasis(double *rbf, double *rbfx, double *rbfy, double *rbfz,
     double xij2 = rij[1+3*n];
     double xij3 = rij[2+3*n];
     double rcut = rcutij[n];
-    double rin = rinij[n];        
+    double rin = rinij[n];
     double rmax = rcut - rin;
 
     double dij = sqrt(xij1*xij1 + xij2*xij2 + xij3*xij3);
