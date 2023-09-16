@@ -218,11 +218,11 @@ void PairPOD::compute(int eflag, int vflag)
 
       // get neighbor list for atom i
 
-      lammpsNeighListFPOD(x, firstneigh, type, map, numneigh, rcutsq, i);
+      lammpsNeighListFPOD(x, firstneigh, type, map, numneigh, fastpodptr->rinvec, fastpodptr->rcutvec, i);
 
       // compute atomic energy and force for atom i
 
-      evdwl = fastpodptr->peratomenergyforce(fij, rij, tmpmem, ti, tj, nij);
+      evdwl = fastpodptr->peratomenergyforce(fij, rij, rinij, rcutij, tmpmem, ti, tj, nij);
 
       // tally atomic energy to global energy
 
@@ -365,6 +365,8 @@ double PairPOD::memory_usage()
 void PairPOD::free_tempmemory()
 {
   memory->destroy(rij);
+  memory->destroy(rinij);
+  memory->destroy(rcutij);
   memory->destroy(fij);
   memory->destroy(idxi);
   memory->destroy(ai);
@@ -379,6 +381,8 @@ void PairPOD::free_tempmemory()
 void PairPOD::allocate_tempmemory()
 {  
   memory->create(rij, dim * nijmax, "pair:rij");
+  memory->create(rinij, nijmax, "pair:rij");
+  memory->create(rcutij, nijmax, "pair:rij");
   memory->create(fij, dim * nijmax, "pair:fij");
   memory->create(idxi, nijmax, "pair:idxi");
   memory->create(ai, nijmax, "pair:ai");
@@ -418,6 +422,8 @@ void PairPOD::estimate_tempmemory()
 void PairPOD::free_tempmemory_fastpod()
 {
   memory->destroy(rij);
+  memory->destroy(rcutij);
+  memory->destroy(rinij);
   memory->destroy(fij);
   memory->destroy(ai);
   memory->destroy(aj);
@@ -429,6 +435,8 @@ void PairPOD::free_tempmemory_fastpod()
 void PairPOD::allocate_tempmemory_fastpod(int nmem)
 {
   memory->create(rij, dim * nijmax, "pair:rij");
+  memory->create(rinij, nijmax, "pair:rij");
+  memory->create(rcutij, nijmax, "pair:rij");
   memory->create(fij, dim * nijmax, "pair:fij");
   memory->create(ai, nijmax, "pair:ai");
   memory->create(aj, nijmax, "pair:aj");
@@ -506,15 +514,15 @@ void PairPOD::lammpsNeighListOPOD(double **x, int **firstneigh, int *atomtypes, 
     double delz = x[gj][2] - x[gi][2];    // xj - xi
     double rsq = delx * delx + dely * dely + delz * delz;
     int jtype = map[atomtypes[gj]] + 1;
-    double rcut = rcutvec[(itype-1)*nelements + jtype-1];
-    double rin = rinvec[(itype-1)*nelements + jtype-1];
-    double rcutsq = rcut*rcut;
+    double rcut1 = rcutvec[(itype-1)*nelements + jtype-1];
+    double rin1 = rinvec[(itype-1)*nelements + jtype-1];
+    double rcutsq = rcut1*rcut1;
     if (rsq < rcutsq && rsq > 1e-20) {
       rij[nij * 3 + 0] = delx;
       rij[nij * 3 + 1] = dely;
       rij[nij * 3 + 2] = delz;
-      rcutij[nij] = rcut;
-      rinij[nij] = rin;
+      rcutij[nij] = rcut1;
+      rinij[nij] = rin1;
       idxi[nij] = 0;
       ai[nij] = gi;
       aj[nij] = gj;
@@ -541,15 +549,15 @@ void PairPOD::lammpsNeighListFPOD(double **x, int **firstneigh, int *atomtypes, 
     double delz = x[gj][2] - x[gi][2];    // xj - xi
     double rsq = delx * delx + dely * dely + delz * delz;
     int jtype = map[atomtypes[gj]] + 1;
-    double rcut = rcutvec[(itype-1)*nelements + jtype-1];
-    double rin = rinvec[(itype-1)*nelements + jtype-1];
-    double rcutsq = rcut*rcut;
+    double rcut1 = rcutvec[(itype-1)*nelements + jtype-1];
+    double rin1 = rinvec[(itype-1)*nelements + jtype-1];
+    double rcutsq = rcut1*rcut1;
     if (rsq < rcutsq && rsq > 1e-20) {
       rij[nij * 3 + 0] = delx;
       rij[nij * 3 + 1] = dely;
       rij[nij * 3 + 2] = delz;
-      rcutij[nij] = rcut;
-      rinij[nij] = rin;
+      rcutij[nij] = rcut1;
+      rinij[nij] = rin1;
       ai[nij] = gi;
       aj[nij] = gj;
       ti[nij] = itype;
