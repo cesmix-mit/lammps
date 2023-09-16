@@ -207,12 +207,14 @@ void FASTPOD::read_pod_file(std::string pod_file)
         if (keywd == "rin") {
           rin = utils::numeric(FLERR,words[1],false,lmp);
           memory->create(rinvec, rcutsize, "FPOD:rinvec");
-          rinvec[0] = rin;
+          for (int i = 0; i < rcutsize; i++)
+            rinvec[i] = rin;
         }
         if (keywd == "rcut") {
           rcut = utils::numeric(FLERR,words[1],false,lmp);         
           memory->create(rcutvec, rcutsize, "FPOD:rcutvec");
-          rcutvec[0] = rcut;
+          for (int i = 0; i < rcutsize; i++)
+            rcutvec[i] = rcut;          
         }        
       }
       else {
