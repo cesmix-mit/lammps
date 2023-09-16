@@ -705,7 +705,7 @@ void FitPOD::get_data(datastruct &data, const std::vector<std::string> &species)
       we_group = data.fitting_weights[0];
       wf_group = data.fitting_weights[1];
     }
-    utils::logmesg(lmp, "Read xyz file: {}\n", group_name);
+    //utils::logmesg(lmp, "Read xyz file: {}\n", group_name);
     read_exyz_file(&data.lattice[9*nconfigs], &data.stress[9*nconfigs], &data.energy[nconfigs], &data.we[nconfigs], &data.wf[nconfigs],
         &data.position[3*natoms], &data.force[3*natoms], &data.atomtype[natoms],
         data.data_files[i], species, we_group, wf_group);

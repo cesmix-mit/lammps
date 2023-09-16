@@ -177,43 +177,55 @@ void FASTPOD::read_pod_file(std::string pod_file)
       pbc[2] = utils::inumeric(FLERR,words[3],false,lmp);
     }
 
-    rcutsize = nelements*(nelements+1)/2;
-    memory->create(rinvec, rcutsize, "FPOD:rinvec");
+    rcutsize = nelements*(nelements+1)/2;    
     if (keywd == "rinvec") {
       rcutvecflag = true;
+      memory->create(rinvec, rcutsize, "FPOD:rinvec");
       if (words.size() != rcutsize + 1)
         error->one(FLERR,"Improper POD file. Please supply rin for all pairwise interactions", utils::getsyserror());
       for (int irin = 1; irin <= rcutsize; irin++) {
-        rinvec[irin] = utils::inumeric(FLERR,words[irin],false,lmp);
+        rinvec[irin-1] = utils::numeric(FLERR,words[irin],false,lmp);
       }
     }
-
-    memory->create(rcutvec, rcutsize, "FPOD:rcutvec");
+    
     if (keywd == "rcutvec") {
       rcutvecflag = true;
+      memory->create(rcutvec, rcutsize, "FPOD:rcutvec");
       if (words.size() != rcutsize + 1)
         error->one(FLERR,"Improper POD file. Please supply rcut for all pairwise interactions", utils::getsyserror());
       for (int ircut = 1; ircut <= rcutsize; ircut++) {
-        rcutvec[ircut] = utils::inumeric(FLERR,words[ircut],false,lmp);
+        rcutvec[ircut-1] = utils::numeric(FLERR,words[ircut],false,lmp);
       }
     }
 
-    if ((keywd != "#") && (keywd != "species") && (keywd != "pbc")) {
+    if ((keywd != "#") && (keywd != "species") && (keywd != "pbc") && (keywd != "rinvec") && (keywd != "rcutvec")) {
 
       if (words.size() != 2)
         error->one(FLERR,"Improper POD file.", utils::getsyserror());
 
       if (rcutvecflag == false) {
-        if (keywd == "rin") rin = utils::numeric(FLERR,words[1],false,lmp);
-        if (keywd == "rcut") rcut = utils::numeric(FLERR,words[1],false,lmp);
+        if (keywd == "rin") {
+          rin = utils::numeric(FLERR,words[1],false,lmp);
+          memory->create(rinvec, rcutsize, "FPOD:rinvec");
+          rinvec[0] = rin;
+        }
+        if (keywd == "rcut") {
+          rcut = utils::numeric(FLERR,words[1],false,lmp);         
+          memory->create(rcutvec, rcutsize, "FPOD:rcutvec");
+          rcutvec[0] = rcut;
+        }        
       }
       else {
+        rin = rinvec[0];
+        for (int ircut = 1; ircut < rcutsize; ircut++)
+          if (rin>rinvec[ircut])
+            rin = rinvec[ircut];        
         rcut = rcutvec[0];
-        for (int ircut = 1; ircut <= rcutsize; ircut++)
+        for (int ircut = 1; ircut < rcutsize; ircut++)
           if (rcut<rcutvec[ircut])
             rcut = rcutvec[ircut];
       }
-
+      
       if (keywd == "bessel_polynomial_degree")
         besseldegree = utils::inumeric(FLERR,words[1],false,lmp);
       if (keywd == "inverse_polynomial_degree")
@@ -557,11 +569,12 @@ double FASTPOD::peratomenergyforce(double *fij, double *rij, double *temp,
 
   //begin = std::chrono::high_resolution_clock::now();
 
-  if (rcutvecflag==false)
-    radialbasis(rbft, rbfxt, rbfyt, rbfzt, rij, besselparams, rin, rcut-rin, pdegree[0], pdegree[1], nbesselpars, Nj);
-  else
-    radialbasis(rbft, rbfxt, rbfyt, rbfzt, rij, besselparams, rinvec, rcutvec, pdegree[0], pdegree[1], nbesselpars, Nj);
-
+  radialbasis(rbft, rbfxt, rbfyt, rbfzt, rij, besselparams, rin, rcut-rin, pdegree[0], pdegree[1], nbesselpars, Nj);
+  
+//   if (rcutvecflag==false)
+//     radialbasis(rbft, rbfxt, rbfyt, rbfzt, rij, besselparams, rin, rcut-rin, pdegree[0], pdegree[1], nbesselpars, Nj);
+//   else
+//     radialbasis(rbft, rbfxt, rbfyt, rbfzt, rij, besselparams, rinvec, rcutvec, pdegree[0], pdegree[1], nbesselpars, Nj);
   //end = std::chrono::high_resolution_clock::now();
   //comptime[0] += std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count()/1e6;
 

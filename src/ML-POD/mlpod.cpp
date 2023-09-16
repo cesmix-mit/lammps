@@ -358,34 +358,55 @@ void MLPOD::read_pod(const std::string &pod_file)
       pod.pbc[2] = utils::inumeric(FLERR,words[3],false,lmp);
     }
 
-    pod.rcutsize = pod.nelements*(pod.nelements+1)/2;
-    memory->create(pod.rinvec, pod.rcutsize, "FPOD:rinvec");
-    if (keywd == "rinvec") {
-      pod.rcutvecflag = true;
+    pod.rcutsize = pod.nelements*(pod.nelements+1)/2;    
+    if (keywd == "rinvec") {      
+      pod.rcutvecflag = true;      
+      memory->create(pod.rinvec, pod.rcutsize, "FPOD:rinvec");      
       if (words.size() != pod.rcutsize + 1)
-        error->one(FLERR,"Improper POD file. Please supply rin for all pairwise interactions", utils::getsyserror());
+        error->one(FLERR,"Improper POD file. Please supply rinvec for all pairwise interactions", utils::getsyserror());
       for (int irin = 1; irin <= pod.rcutsize; irin++) {
-        pod.rinvec[irin] = utils::inumeric(FLERR,words[irin],false,lmp);
+        pod.rinvec[irin-1] = utils::numeric(FLERR,words[irin],false,lmp);
       }
     }
-
-    memory->create(pod.rcutvec, pod.rcutsize, "FPOD:rcutvec");
-    if (keywd == "rcutvec") {
+        
+    if (keywd == "rcutvec") {      
       pod.rcutvecflag = true;
+      memory->create(pod.rcutvec, pod.rcutsize, "FPOD:rcutvec");
       if (words.size() != pod.rcutsize + 1)
         error->one(FLERR,"Improper POD file. Please supply rcut for all pairwise interactions", utils::getsyserror());
       for (int ircut = 1; ircut <= pod.rcutsize; ircut++) {
-        pod.rcutvec[ircut] = utils::inumeric(FLERR,words[ircut],false,lmp);
+        pod.rcutvec[ircut-1] = utils::numeric(FLERR,words[ircut],false,lmp);
       }
-    }
-    
-    if ((keywd != "#") && (keywd != "species") && (keywd != "pbc")) {
+    }        
+              
+    if ((keywd != "#") && (keywd != "species") && (keywd != "pbc") && (keywd != "rinvec") && (keywd != "rcutvec")) {
 
       if (words.size() != 2)
         error->one(FLERR,"Improper POD file.", utils::getsyserror());
 
-      if (keywd == "rin") pod.rin = utils::numeric(FLERR,words[1],false,lmp);
-      if (keywd == "rcut") pod.rcut = utils::numeric(FLERR,words[1],false,lmp);
+      if (pod.rcutvecflag == false) {
+        if (keywd == "rin") {
+          pod.rin = utils::numeric(FLERR,words[1],false,lmp);
+          memory->create(pod.rinvec, pod.rcutsize, "FPOD:rinvec");    
+          pod.rinvec[0] = pod.rin;
+        }
+        if (keywd == "rcut") {
+          pod.rcut = utils::numeric(FLERR,words[1],false,lmp);
+          memory->create(pod.rcutvec, pod.rcutsize, "FPOD:rcutvec");
+          pod.rcutvec[0] = pod.rcut;
+        }
+      }
+      else {
+        pod.rin = pod.rinvec[0];
+        for (int ircut = 1; ircut < pod.rcutsize; ircut++)
+          if (pod.rin>pod.rinvec[ircut])
+            pod.rin = pod.rinvec[ircut];        
+        pod.rcut = pod.rcutvec[0];
+        for (int ircut = 1; ircut < pod.rcutsize; ircut++)
+          if (pod.rcut<pod.rcutvec[ircut])
+            pod.rcut = pod.rcutvec[ircut];
+      }
+      
       if (keywd == "bessel_scaling_parameter1")
         pod.besselparams[0] = utils::numeric(FLERR,words[1],false,lmp);
       if (keywd == "bessel_scaling_parameter2")
@@ -635,8 +656,20 @@ void MLPOD::read_pod(const std::string &pod_file)
       utils::logmesg(lmp, "{} ", pod.species[i]);
     utils::logmesg(lmp, "\n");
     utils::logmesg(lmp, "periodic boundary conditions: {} {} {}\n", pod.pbc[0], pod.pbc[1], pod.pbc[2]);
-    utils::logmesg(lmp, "inner cut-off radius: {}\n", pod.rin);
-    utils::logmesg(lmp, "outer cut-off radius: {}\n", pod.rcut);
+    if (pod.rcutvecflag==1) {
+      utils::logmesg(lmp, "inner cut-off radius: ");
+      for (int i=0; i<pod.rcutsize; i++)
+        utils::logmesg(lmp, "{} ", pod.rinvec[i]);
+      utils::logmesg(lmp, "\n");
+      utils::logmesg(lmp, "outer cut-off radius: ");
+      for (int i=0; i<pod.rcutsize; i++)
+        utils::logmesg(lmp, "{} ", pod.rcutvec[i]);
+      utils::logmesg(lmp, "\n");
+    }
+    else {
+      utils::logmesg(lmp, "inner cut-off radius: {}\n", pod.rin);
+      utils::logmesg(lmp, "outer cut-off radius: {}\n", pod.rcut);    
+    }        
     utils::logmesg(lmp, "bessel polynomial degree: {}\n", pod.besseldegree);
     utils::logmesg(lmp, "inverse polynomial degree: {}\n", pod.inversedegree);
     utils::logmesg(lmp, "one-body potential: {}\n", pod.onebody);
