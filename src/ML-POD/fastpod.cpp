@@ -177,7 +177,7 @@ void FASTPOD::read_pod_file(std::string pod_file)
       pbc[2] = utils::inumeric(FLERR,words[3],false,lmp);
     }
 
-    rcutsize = nelements*(nelements+1)/2;    
+    rcutsize = nelements*nelements;    
     if (keywd == "rinvec") {
       rcutvecflag = true;
       memory->create(rinvec, rcutsize, "FPOD:rinvec");

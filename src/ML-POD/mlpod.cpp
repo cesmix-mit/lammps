@@ -358,7 +358,7 @@ void MLPOD::read_pod(const std::string &pod_file)
       pod.pbc[2] = utils::inumeric(FLERR,words[3],false,lmp);
     }
 
-    pod.rcutsize = pod.nelements*(pod.nelements+1)/2;    
+    pod.rcutsize = pod.nelements*pod.nelements;    
     if (keywd == "rinvec") {      
       pod.rcutvecflag = true;      
       memory->create(pod.rinvec, pod.rcutsize, "FPOD:rinvec");      
