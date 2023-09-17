@@ -41,9 +41,9 @@ private:
 
   void init4body(int Pa4);
 
-  void snapshots(double *rbf, double *xij, int N);
+  void snapshots(double *rbf, double *xij, double rin, double rcut, int N);
 
-  void eigenvaluedecomposition(double *Phi, double *Lambda, int N);
+  void eigenvaluedecomposition(double *Phi, double *Lambda, double rin, double rcut, int N);
 
   void myneighbors(double *rij, double *x, int *ai, int *aj, int *ti, int *tj,
         int *jlist, int *pairnumsum, int *atomtype, int *alist, int i);
@@ -70,7 +70,7 @@ private:
         double *rcutij, int besseldegree, int inversedegree, int nbesselpars, int N);
   
   void orthogonalradialbasis(double *orthorbf, double *rij, double *Phi, double *besselparams,
-        double *rinij, double *rcutij, int besseldegree, int inversedegree, int nbesselpars, int nrbf2, int N);
+        double *rinij, double *rcutij, int *ti, int *tj, int besseldegree, int inversedegree, int nbesselpars, int nrbf2, int N);
   
   void angularfunctions(double *abf, double *rij, double *tm, int *pq, int N, int K);
 
@@ -94,7 +94,7 @@ private:
 
   void unifiedbasis(double *U, double *Ux, double *Uy, double *Uz, double *sumU, double *rij,
         double *Phi, double *besselparams, double *tmpmem, double *rinij, double *rcutij, int *pdegree,
-        int *tj, int *pq, int nbesselpars, int nrbf, int K, int nelements, int Nj);
+        int *ti, int *tj, int *pq, int nbesselpars, int nrbf, int K, int nelements, int Nj);
   
   void tallytwobodyglobdesc(double *gd, double *d, int *elemindex, int nrbf, int nelements, int ti);
 
@@ -113,6 +113,8 @@ private:
 
   void MatMul(double *c, double *a, double *b, int r1, int c1, int c2);
 
+  void MatMulij(double *c, double *a, double *b, int *ti, int *tj, int r1, int c1, int c2);
+  
   void scalarproduct(double *d, double c, int N);
 
   double dotproduct(double *c, double *d, int ndesc);
@@ -122,8 +124,8 @@ private:
 public:
   std::vector<std::string> species;
 
-  double rin;
-  double rcut;
+  double rinmin;
+  double rcutmax;
   double *rinvec;
   double *rcutvec;
   bool rcutvecflag;

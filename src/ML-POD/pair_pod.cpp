@@ -190,7 +190,7 @@ void PairPOD::compute(int eflag, int vflag)
   }
   else if (descriptormethod == 1) {
 
-    double rcutsq = fastpodptr->rcut*fastpodptr->rcut;
+    double rcutsq = fastpodptr->rcutmax*fastpodptr->rcutmax;
     double evdwl = 0.0;
 
 //     fastpodptr->timing = 1;
@@ -312,7 +312,7 @@ void PairPOD::coeff(int narg, char **arg)
     memory->destroy(fastpodptr->tmpint);
 
     for (int ii = 0; ii < np1; ii++)
-      for (int jj = 0; jj < np1; jj++) cutsq[ii][jj] = fastpodptr->rcut * fastpodptr->rcut;
+      for (int jj = 0; jj < np1; jj++) cutsq[ii][jj] = fastpodptr->rcutmax * fastpodptr->rcutmax;
   }
 }
 
@@ -342,7 +342,7 @@ double PairPOD::init_one(int i, int j)
 
   double rcut = 0.0;
   if (descriptormethod == 0) rcut = podptr->pod.rcut;
-  else if (descriptormethod == 1) rcut = fastpodptr->rcut;
+  else if (descriptormethod == 1) rcut = fastpodptr->rcutmax;
 
   return rcut;
 }

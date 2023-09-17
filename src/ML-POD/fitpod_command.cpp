@@ -99,8 +99,8 @@ void FitPOD::command(int narg, char **arg)
 //       allocate_memory_fastpod(traindata);
 //     else if ((int) testdata.data_path.size() > 1)
 //       allocate_memory_fastpod(testdata);
-    estimate_memory_neighborstruct(traindata, fastpodptr->pbc, fastpodptr->rcut, fastpodptr->nelements);
-    estimate_memory_neighborstruct(testdata, fastpodptr->pbc, fastpodptr->rcut, fastpodptr->nelements);
+    estimate_memory_neighborstruct(traindata, fastpodptr->pbc, fastpodptr->rcutmax, fastpodptr->nelements);
+    estimate_memory_neighborstruct(testdata, fastpodptr->pbc, fastpodptr->rcutmax, fastpodptr->nelements);
     allocate_memory_neighborstruct();
     estimate_memory_fastpod(traindata);
     estimate_memory_fastpod(testdata);
@@ -1155,7 +1155,7 @@ void FitPOD::estimate_memory_fastpod(const datastruct &data)
   int natom_max = data.num_atom_max;
   int nelements = fastpodptr->nelements;
   int *pbc = fastpodptr->pbc;
-  double rcut = fastpodptr->rcut;
+  double rcut = fastpodptr->rcutmax;
   
   int Nij=0, Nijmax=0;    
   for (int ci=0; ci<(int) data.num_atom.size(); ci++)
@@ -1308,7 +1308,7 @@ void FitPOD::allocate_memory_fastpod(const datastruct &data)
   int natom_max = data.num_atom_max;
   int nelements = fastpodptr->nelements;
   int *pbc = fastpodptr->pbc;
-  double rcut = fastpodptr->rcut;
+  double rcut = fastpodptr->rcutmax;
 
   int Nij=0, Nijmax=0;
   int m=0, n=0, p=0, nl=0, ny=0, na=0, np=0;
@@ -1410,7 +1410,7 @@ void FitPOD::linear_descriptors_fastpod(const datastruct &data, int ci)
 {
   int dim = 3;
   int *pbc = fastpodptr->pbc;
-  double rcut = fastpodptr->rcut;
+  double rcut = fastpodptr->rcutmax;
 
   int natom = data.num_atom[ci];
   int natom_cumsum = data.num_atom_cumsum[ci];
@@ -1792,7 +1792,7 @@ double FitPOD::energyforce_calculation_fastpod(double *force, const datastruct &
 {
   int dim = 3;
   int *pbc = fastpodptr->pbc;
-  double rcut = fastpodptr->rcut;
+  double rcut = fastpodptr->rcutmax;
 
   int natom = data.num_atom[ci];
   int natom_cumsum2 = data.num_atom_cumsum[ci];
