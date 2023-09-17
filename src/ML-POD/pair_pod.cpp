@@ -623,7 +623,7 @@ int PairPOD::query_pod(std::string pod_file)
 
     auto keywd = words[0];
 
-    if ((keywd != "#") && (keywd != "species") && (keywd != "pbc")) {
+    if ((keywd != "#") && (keywd != "species") && (keywd != "pbc") && (keywd != "rinvec") && (keywd != "rcutvec")) {
 
       if (words.size() != 2)
         error->one(FLERR,"Improper POD file.", utils::getsyserror());
