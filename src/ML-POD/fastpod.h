@@ -45,14 +45,26 @@ private:
 
   void eigenvaluedecomposition(double *Phi, double *Lambda, int N);
 
+  void myneighbors(double *rij, double *x, int *ai, int *aj, int *ti, int *tj,
+        int *jlist, int *pairnumsum, int *atomtype, int *alist, int i);
+
   int myneighbors(double *rij, double *rinij, double *rcutij, double *x, int *ai, int *aj, int *ti, int *tj,
         double *rinvec, double *rcutvec, int *jlist, int *pairnumsum, int *atomtype, int *alist, int i);
-        
+  
   void twobodycoeff(double *newcoeff2, double *coeff2);
 
   double threebodycoeff(double *cU, double *coeff3, double *sumU, int N);
 
   double fourbodycoeff(double *cU, double *sumU, double *coeff4, int N);
+
+  void radialfunctions(double *rbf, double *rij, double *besselparams, double rin,
+        double rmax, int besseldegree, int inversedegree, int nbesselpars, int N);
+
+  void radialbasis(double *rbf, double *rbfx, double *rbfy, double *rbfz, double *rij, double *besselparams, double rin,
+        double rmax, int besseldegree, int inversedegree, int nbesselpars, int N);
+
+  void orthogonalradialbasis(double *orthorbf, double *rij, double *Phi, double *besselparams,
+        double rin, double rmax, int besseldegree, int inversedegree, int nbesselpars, int nrbf2, int N);
 
   void radialbasis(double *rbf, double *rbfx, double *rbfy, double *rbfz, double *rij, double *besselparams, double *rinij,
         double *rcutij, int besseldegree, int inversedegree, int nbesselpars, int N);
@@ -64,15 +76,21 @@ private:
 
   void angularbasis(double *abf, double *abfx, double *abfy, double *abfz, double *rij, double *tm, int *pq, int N, int K);
 
+  void radialangularfunctions(double *U, double *rbf, double *abf, int N, int K, int M);
+
   void radialangularbasis(double *U, double *Ux, double *Uy, double *Uz,
         double *rbf, double *rbfx, double *rbfy, double *rbfz, double *abf,
         double *abfx, double *abfy, double *abfz, int N, int K, int M);
 
-  void sumradialangularfunctions(double *sumU, double *U, int *atomtype, int N, int K, int M, int Ne);
-  
   void radialangularbasis(double *sumU, double *U, double *Ux, double *Uy, double *Uz,
         double *rbf, double *rbfx, double *rbfy, double *rbfz, double *abf,
         double *abfx, double *abfy, double *abfz, double *tm, int *atomtype, int N, int K, int M, int Ne);
+
+  void sumradialangularfunctions(double *sumU, double *U, int *atomtype, int N, int K, int M, int Ne);
+
+  void unifiedbasis(double *U, double *Ux, double *Uy, double *Uz, double *sumU, double *rij,
+        double *Phi, double *besselparams, double *tmpmem, double rin, double rcut, int *pdegree,
+        int *tj, int *pq, int nbesselpars, int nrbf, int K, int nelements, int Nj);
 
   void unifiedbasis(double *U, double *Ux, double *Uy, double *Uz, double *sumU, double *rij,
         double *Phi, double *besselparams, double *tmpmem, double *rinij, double *rcutij, int *pdegree,
@@ -106,12 +124,10 @@ public:
 
   double rin;
   double rcut;
-  
   double *rinvec;
   double *rcutvec;
-  int rcutsize;
   bool rcutvecflag;
-  
+
   int nelements;
   int pbc[3];
   int *elemindex ;
@@ -182,6 +198,11 @@ public:
   void twobodydescderiv(double *d2, double *dd2, double *rbf, double *rbfx,
         double *rbfy, double *rbfz, int *tj, int N);
 
+  void twobodydescriptors(double *d2, double *dd2, double *rij, double *tempmem, int *tj, int Nj);
+
+  void twobodydescriptors(double *gd2, double *gdd2, double *d2, double *dd2, double *rij,
+        double *tempmem, int *ai, int *aj, int *ti, int *tj, int Nj, int natom);
+
   void twobodydescriptors(double *gd2, double *gdd2, double *d2, double *dd2, double *rij,
         double *rinij, double *rcutij, double *tempmem, int *ai, int *aj, int *ti, int *tj, int Nj, int natom);
   
@@ -192,17 +213,27 @@ public:
   void threebodydescderiv(double *dd3, double *sumU, double *Ux, double *Uy, double *Uz,
         int *atomtype, int N);
 
+  void threebodydescriptors(double *d3, double *dd3, double *rij, double *tempmem, int *tj, int Nj);
+
+  void threebodydescriptors(double *gd3, double *gdd3, double *d3, double *dd3, double *rij,
+        double *tempmem, int *ai, int *aj, int *ti, int *tj, int Nj, int natom);
+
   void threebodydescriptors(double *gd3, double *gdd3, double *d3, double *dd3, double *rij,
         double *rinij, double *rcutij, double *tempmem, int *ai, int *aj, int *ti, int *tj, int Nj, int natom);
-
+  
   double threebodyenergyforce(double *fij, double *rij, double *coeff3, double *tempmem, int *tj, int Nj);
 
   void fourbodydescderiv(double *d4, double *dd4, double *sumU, double *Ux, double *Uy, double *Uz,
       int *atomtype, int N);
 
+  void fourbodydescriptors(double *d4, double *dd4, double *rij, double *tempmem, int *tj, int Nj);
+
+  void fourbodydescriptors(double *gd4, double *gdd4, double *d4, double *dd4, double *rij,
+        double *tempmem, int *ai, int *aj, int *ti, int *tj, int Nj, int natom);
+
   void fourbodydescriptors(double *gd4, double *gdd4, double *d4, double *dd4, double *rij,
         double *rinij, double *rcutij, double *tempmem, int *ai, int *aj, int *ti, int *tj, int Nj, int natom);
-
+  
   double fourbodyenergyforce(double *fij, double *rij, double *coeff4, double *tempmem,
          int *tj, int Nj);
 
