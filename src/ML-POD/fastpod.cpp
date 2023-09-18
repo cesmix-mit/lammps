@@ -612,7 +612,7 @@ double FASTPOD::peratomenergyforce(double *fij, double *rij, double *rinij, doub
   //end = std::chrono::high_resolution_clock::now();
   //comptime[1] += std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count()/1e6;
 
-  if (nd3 > 0) {
+  if ((nd3 > 0) && (Nj>1)) {
     double *abf = &temp[4*n1 + n5 + 4*n2]; // Nj*K3
     double *abfx = &temp[4*n1 + n5 + 4*n2 + n4]; // Nj*K3
     double *abfy = &temp[4*n1 + n5 + 4*n2 + 2*n4]; // Nj*K3
@@ -679,14 +679,14 @@ double FASTPOD::peratomenergyforce(double *fij, double *rij, double *rinij, doub
     //end = std::chrono::high_resolution_clock::now();
     //comptime[6] += std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count()/1e6;
 
-    if (nd23>0) {
+    if ((nd23>0) && (Nj>2)) {
       double *d23 = &temp[0];
       fourbodydesc23(d23, d2, d3);
       e23 = dotproduct(&coeff23[nl23*t0], d23, nl23);
       fourbodyfij23(fij, temp, &coeff23[nl23*t0], d2, d3, dd2, dd3, 3*Nj);
     }
 
-    if (nd33>0) {
+    if ((nd33>0) && (Nj>3)) {
       //begin = std::chrono::high_resolution_clock::now();
 
       double *d33 = &temp[0];
@@ -698,7 +698,7 @@ double FASTPOD::peratomenergyforce(double *fij, double *rij, double *rinij, doub
       //comptime[10] += std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count()/1e6;
     }
 
-    if (nd4 > 0) {
+    if ((nd4 > 0) && (Nj>2)) {
       if (K4 < K3) {
         for (int m=0; m<nrbf4; m++)
           for (int k=0; k<K4; k++)
@@ -734,14 +734,14 @@ double FASTPOD::peratomenergyforce(double *fij, double *rij, double *rinij, doub
       //end = std::chrono::high_resolution_clock::now();
       //comptime[8] += std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count()/1e6;
 
-      if (nd34>0) {
+      if ((nd34>0) && (Nj>4)) {
         double *d34 = &temp[0];
         sixbodydesc34(d34, d3, d4);
         e34 = dotproduct(&coeff34[nl34*t0], d34, nl34);
         sixbodyfij34(fij, temp, &coeff34[nl34*t0], d3, d4, dd3, dd4, 3*Nj);
       }
 
-      if (nd44>0) {
+      if ((nd44>0) && (Nj>5)) {
         double *d44 = &temp[0];
         sevenbodydesc44(d44, d4);
         e44 = dotproduct(&coeff44[nl44*t0], d44, nl44);
@@ -869,17 +869,17 @@ void FASTPOD::descriptors(double *gd, double *gdd, double *x, int *atomtype, int
     for (int j=0; j<3*Nj*nl2; j++) dd2[j] = 0.0;
 
     //if (nd2>0) twobodydescriptors(gd2, gdd2, d2, dd2, rij, tmp, ai, aj, ti, tj, Nj, natom);
-    if (nd2>0) twobodydescriptors(gd2, gdd2, d2, dd2, rij, rinij, rcutij, tmp, ai, aj, ti, tj, nij, natom);    
-    
+    if ((nd2>0) && (nij>0)) twobodydescriptors(gd2, gdd2, d2, dd2, rij, rinij, rcutij, tmp, ai, aj, ti, tj, nij, natom);    
+        
     double *d3= &tmpmem[5*Nj + nl2 + 3*Nj*nl2];
     double *dd3= &tmpmem[5*Nj + nl2 + 3*Nj*nl2 + nl3];
     tmp = &tmpmem[5*Nj + nl2 + 3*Nj*nl2 + nl3 + 3*Nj*nl3];
 
     for (int j=0; j<nl3; j++) d3[j] = 0.0;
     for (int j=0; j<3*Nj*nl3; j++) dd3[j] = 0.0;
-
+    
     //if (nd3>0) threebodydescriptors(gd3, gdd3, d3, dd3, rij, tmp, ai, aj, ti, tj, nij, natom);
-    if (nd3>0) threebodydescriptors(gd3, gdd3, d3, dd3, rij, rinij, rcutij, tmp, ai, aj, ti, tj, nij, natom);
+    if ((nd3>0) && (nij>1)) threebodydescriptors(gd3, gdd3, d3, dd3, rij, rinij, rcutij, tmp, ai, aj, ti, tj, nij, natom);
     
     double *d4= &tmpmem[5*Nj + nl2 + 3*Nj*nl2 + nl3 + 3*Nj*nl3];
     double *dd4= &tmpmem[5*Nj + nl2 + 3*Nj*nl2 + nl3 + 3*Nj*nl3 + nl4];
@@ -889,28 +889,28 @@ void FASTPOD::descriptors(double *gd, double *gdd, double *x, int *atomtype, int
     for (int j=0; j<3*Nj*nl4; j++) dd4[j] = 0.0;
 
     //if (nd4>0) fourbodydescriptors(gd4, gdd4, d4, dd4, rij, tmp, ai, aj, ti, tj, nij, natom);
-    if (nd4>0) fourbodydescriptors(gd4, gdd4, d4, dd4, rij, rinij, rcutij, tmp, ai, aj, ti, tj, nij, natom);
+    if ((nd4>0) && (nij>2)) fourbodydescriptors(gd4, gdd4, d4, dd4, rij, rinij, rcutij, tmp, ai, aj, ti, tj, nij, natom);
         
     int nld = 5*Nj + nl2 + 3*Nj*nl2 + nl3 + 3*Nj*nl3 + nl4 + 3*Nj*nl4;
 
     double *d23 = &tmpmem[nld];
     double *dd23 = &tmpmem[nld + nl23];
-    if (nd23>0) fourbodydescriptors23(gd23, gdd23, d23, dd23, d2, d3, dd2, dd3,
+    if ((nd23>0) && (nij>2)) fourbodydescriptors23(gd23, gdd23, d23, dd23, d2, d3, dd2, dd3,
             ai, aj, ti, tj, nij, natom);
     
     double *d33 = &tmpmem[nld];
     double *dd33 = &tmpmem[nld + nl33];
-    if (nd33>0) fivebodydescriptors33(gd33, gdd33, d33, dd33, d3, dd3,
+    if ((nd33>0) && (nij>3)) fivebodydescriptors33(gd33, gdd33, d33, dd33, d3, dd3,
             ai, aj, ti, tj, nij, natom);
     
     double *d34 = &tmpmem[nld];
     double *dd34 = &tmpmem[nld + nl34];
-    if (nd34>0) sixbodydescriptors34(gd34, gdd34, d34, dd34, d3, d4, dd3, dd4,
+    if ((nd34>0) && (nij>4)) sixbodydescriptors34(gd34, gdd34, d34, dd34, d3, d4, dd3, dd4,
             ai, aj, ti, tj, nij, natom);
 
     double *d44 = &tmpmem[nld];
     double *dd44 = &tmpmem[nld + nl44];
-    if (nd44>0) sevenbodydescriptors44(gd44, gdd44, d44, dd44, d4, dd4,
+    if ((nd44>0) && (nij>5)) sevenbodydescriptors44(gd44, gdd44, d44, dd44, d4, dd4,
             ai, aj, ti, tj, nij, natom);    
   }
   }
