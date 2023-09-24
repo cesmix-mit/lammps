@@ -128,6 +128,7 @@ public:
   double rcutmax;
   double *rinvec;
   double *rcutvec;
+  bool rcutvecflag;
   int true4BodyDesc;
 
   int nelements;
