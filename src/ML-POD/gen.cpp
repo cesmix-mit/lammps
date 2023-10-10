@@ -479,7 +479,7 @@ void fourbodycoeff(Func & e4, Func  & cU4,
   Expr acc = clamp(ti(0) - 1, 0, nelements - 1);
   Expr zero = Expr((double) 0.0);
   cU4(ne, kv, rbf) = zero;
-  cU4.bound(ne,0, nelements).bound(kv, 0, k4 + 1).bound(rbf, 0, nrbf4);
+  cU4.bound(ne,0, nelements).bound(kv, 0, k4).bound(rbf, 0, nrbf4);
   e4() = zero;
   Expr q = pa4(nabf4);
   RDom r(0, nelements, 0, nelements, 0, nelements, 0, Q4, 0, nabf4, 0, nrbf4);
@@ -492,9 +492,9 @@ void fourbodycoeff(Func & e4, Func  & cU4,
   r.where(n1 <= n1pq);
   r.where(n1pq < n2);
   Expr c = pc4(n1pq);
-  Expr j1 = unsafe_promise_clamped(pb4(n1pq, 0), 0, k4);
-  Expr j2 = unsafe_promise_clamped(pb4(n1pq, 1), 0, k4);
-  Expr j3 = unsafe_promise_clamped(pb4(n1pq, 2), 0, k4);
+  Expr j1 = unsafe_promise_clamped(pb4(n1pq, 0), 0, k4 -1);
+  Expr j2 = unsafe_promise_clamped(pb4(n1pq, 1), 0, k4-1);
+  Expr j3 = unsafe_promise_clamped(pb4(n1pq, 2), 0, k4-1);
   Expr i1 = r[0];
   Expr i2 = r[1];
   Expr i3 = r[2];
@@ -881,28 +881,28 @@ public:
     radialAngularBasis(sumU, U, rbf, abf4,
 		       tj, npairs, k3, nrbf3, nelements);
 
-    Func d2("d2"), dd2("dd2");
-    twoBodyDescDeriv(d2, dd2, rbf, tj, npairs, nelements, nrbf2);
+    // Func d2("d2"), dd2("dd2");
+    // twoBodyDescDeriv(d2, dd2, rbf, tj, npairs, nelements, nrbf2);
 
-    Func d3("d3");
+    // Func d3("d3");
     Var abfThree("abfThree");
     Var rbfThree("rbfThree");
-    Var kme("kme");
-    threeBodyDesc(d3, sumU, pn3, pc3,
-		  npairs, nelements, nrbf3, nabf3, k3,
-		  abfThree, rbfThree, kme);
+    // Var kme("kme");
+    // threeBodyDesc(d3, sumU, pn3, pc3,
+    // 		  npairs, nelements, nrbf3, nabf3, k3,
+    // 		  abfThree, rbfThree, kme);
 
-    d3.compute_root();
+    // d3.compute_root();
     
-    Func dd3("dd3");
+    // Func dd3("dd3");
     Var nj("nj");    
-    RDom r3body(0, k3, 0, nabf3, 0, nelements, 0, npairs);
-    threeBodyDescDeriv(dd3, sumU, U, tj, pn3, pc3,
-		       elemindex, npairs, k3, nelements, dim, nj, abfThree, nabf3, 
-		       rbfThree, nrbf3, kme, me, r3body);
+    // RDom r3body(0, k3, 0, nabf3, 0, nelements, 0, npairs);
+    // threeBodyDescDeriv(dd3, sumU, U, tj, pn3, pc3,
+    // 		       elemindex, npairs, k3, nelements, dim, nj, abfThree, nabf3, 
+    // 		       rbfThree, nrbf3, kme, me, r3body);
 
-    dd3.update(0).reorder(dim, r3body[3], r3body.x, r3body.y, rbfThree);
-    dd3.compute_root();
+    // dd3.update(0).reorder(dim, r3body[3], r3body.x, r3body.y, rbfThree);
+    // dd3.compute_root();
  
     Func cU("cU");
     Func e3("e3");
@@ -915,16 +915,16 @@ public:
     e3_o() = e3();
 
     tallyLocalForce(fij, tj, cU, U, nrbf3, k3, npairs, nelements, dim);
-    Func e23("e23");
-    fourbodystuff(fij, e23, ind23, ind32, coeff23, d2, d3, dd3, dd2, ti, npairs, n23, n32, nelements, nrbf2, nrbf3, nabf3,me, n);
-    e3_o() += e23();
+    // Func e23("e23");
+    // fourbodystuff(fij, e23, ind23, ind32, coeff23, d2, d3, dd3, dd2, ti, npairs, n23, n32, nelements, nrbf2, nrbf3, nabf3,me, n);
+    // e3_o() += e23();
 
-    Func e33("e33");
-    fivebodystuff(fij, e33,
-		  ind33, coeff33, d3, ti, dd3,
-		  npairs, n33, nelements, nabf3, nrbf3, me,
-		  n);
-    e3_o() += e33();
+    // Func e33("e33");
+    // fivebodystuff(fij, e33,
+    // 		  ind33, coeff33, d3, ti, dd3,
+    // 		  npairs, n33, nelements, nabf3, nrbf3, me,
+    // 		  n);
+    // e3_o() += e33();
 
     Func sumU4("sumU4");
     Func U4("u4");
