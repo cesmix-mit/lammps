@@ -739,7 +739,7 @@ void indexMap3(Func & indexmap, Expr n1, Expr n2, Expr n3, Expr N1, Expr N2){
   indexmap.bound(k, 0, n1 * n2 * n3);
   indexmap.bound(c, 0, 3);
   indexmap.compute_root();
-  indexmap.trace_stores();
+  //  indexmap.trace_stores();
   //  indexmap.
 }
 
@@ -759,7 +759,7 @@ void indexMap4(Func & indexmap, Expr n1, Expr n2, Expr n3, Expr N1, Expr N2){
   indexmap(k, c) = mux(c, {i1, i2, i3});
   //  indexmap.bound(k, 0, n1 * n2 * n3);
   //  indexmap.bound(c, 0, 3);
-  indexmap.trace_stores();
+  //  indexmap.trace_stores();
   indexmap.compute_root();
   //  indexmap.
 }
@@ -1031,6 +1031,7 @@ public:
     coeff33.dim(0).set_bounds(0, n33 * (n33+1)/2).set_stride(1);
     coeff33.dim(1).set_bounds(0, nelements).set_stride(n33 * (n33+1)/2);
     besselparams.dim(0).set_bounds(0, nbesselparams);
+    offsets.dim(0).set_bounds(0, natoms+1);
 
     Expr me = nelements * (nelements + 1)/2;
     Expr me3 = (nelements * (nelements + 1) * (nelements + 2))/6;
@@ -1312,7 +1313,7 @@ public:
     // Expr k44 = clamp((2 * n44 - 3 - rn44.x) * (rn44.x/2) + rn44.y - 1, 0, nl44-1);
     //    Expr k44o = ((n44*(n44-1))/2) - ((n44-rn44.x)*((n44-rn44.x)-1))/2 + rn44.y - rn44.x - 1;
     Expr k44o = rn44.x + rn44.y * (n44 - 1) - (rn44.y * (rn44.y - 1))/2;
-    Expr k44  = clamp(print_when(k44o <0 || k44o >= nl44, k44o, "ooops....", rn44.x, rn44.y), 0, nl44-1);
+    Expr k44  = clamp(k44o, 0, nl44 - 1);//clamp(print_when(k44o <0 || k44o >= nl44, k44o, "ooops....", rn44.x, rn44.y), 0, nl44-1);
     d44(rn44.x, rn44.y, oatom) = d4(unsafe_promise_clamped(ind44(rn44.x, 2), 0, symMe3-1),
 			 unsafe_promise_clamped(ind44(rn44.x, 0), 0, nabf44- 1),
 			 unsafe_promise_clamped(ind44(rn44.x, 1),0, nrbf44 - 1),
@@ -1354,6 +1355,10 @@ public:
 
     Func etemp("etemp");
     etemp(oatom) = e44(oatom) + e34(oatom) + e33(oatom) + e23(oatom) + e4(oatom) + e3(oatom) + e2(oatom) + coeff1(clamp(tA(oatom) - 1, 0, nelements-1));
+
+    Func energyForce("energyForce");
+    energyForce(dim, np, oatom) = select(np == -1 && dim == 0, etemp(oatom), fijAtom(dim, clamp(np, 0, nijmax-1), oatom));
+    
     RDom rout(0, nijmax, 0, 7, 0, natoms, "finrdom");
     rout.where(rout.x < offsets(rout.z + 1) - offsets(rout.z));
     Expr npp = clamp(rout.x + offsets(rout.z), 0, npairs - 1);
@@ -1375,39 +1380,48 @@ public:
 		  select(rout.y > 2 && rout.y < 6, app,
 			 select(rout.y <= 2, rout.z, 0))),
 	   select(rout.y == 6, 3, dimp)
-	   ) = select(rout.y == 6, etemp(rout.z),
-		      select(rout.y > 2 && rout.y < 6, lhs + -1 * fijAtom(dimp, rout.x, rout.z),
-			     select(rout.y <= 2, lhs+fijAtom(dimp, rout.x, rout.z), Expr((double) -1.0))));
+	   ) = select(rout.y == 6, energyForce(0, -1, rout.z),
+		      select(rout.y > 2 && rout.y < 6, lhs + -1 * energyForce(dimp, rout.x, rout.z),
+			     select(rout.y <= 2, lhs+energyForce(dimp, rout.x, rout.z), Expr((double) -1.0))));
     
 
     fife_o.compute_root();
-    fife_o.update(0).atomic(true).parallel(rout.z);
-    fife_o.update(0).unroll(rout.y);
-    etemp.compute_at(fife_o, rout.z);
-    fijAtom.compute_at(fife_o, rout.z);
-    cu4.compute_at(fife_o, rout.z);
-    cU.compute_at(fife_o, rout.z);
-    sumU.compute_at(fife_o, rout.z);
-    d33.compute_at(fife_o, rout.z);
-    d23.compute_at(fife_o, rout.z);
+    RVar cputhreadi("cputhread");
+    RVar cputhreado("cputhread");
+    Var block("block");
+    Var thread("thread");
+    //    fife_o.update(0).split(rout.z, cputhreado, cputhreadi).atomic(true).parallel(cputhreado).unroll(rout.y);
+      //    fife_o.update(0).atomic(true).parallel(rout.z);
+      //    fife_o.update(0).unroll(rout.y);
+    
+
+    energyForce.compute_root();
+    energyForce.split(oatom, oatom, thread, 64, TailStrategy::Predicate);//.parallel(oatom);
+    etemp.compute_at(energyForce, oatom);
+    fijAtom.compute_at(energyForce, oatom);
+    cu4.compute_at(energyForce, oatom);
+    cU.compute_at(energyForce, oatom);
+    sumU.compute_at(energyForce, oatom);
+    d33.compute_at(energyForce, oatom);
+    d23.compute_at(energyForce, oatom);
     d3.compute_at(fijAtom, oatom);
-    d3.compute_at(fife_o, rout.z);
-    dd3.compute_at(fife_o, rout.z);
-    dd2.compute_at(fife_o, rout.z);
-    d2.compute_at(fife_o, rout.z);
-    d4.compute_at(fife_o, rout.z);
-    d34.compute_at(fife_o, rout.z);
-    dd4.compute_at(fife_o, rout.z);
-    d44.compute_at(fife_o, rout.z);
+    d3.compute_at(energyForce, oatom);
+    dd3.compute_at(energyForce, oatom);
+    dd2.compute_at(energyForce, oatom);
+    d2.compute_at(energyForce, oatom);
+    d4.compute_at(energyForce, oatom);
+    d34.compute_at(energyForce, oatom);
+    dd4.compute_at(energyForce, oatom);
+    d44.compute_at(energyForce, oatom);
      
-    //    UW.compute_at(fife_o, rout.z);
-    //U.compute_at(fife_o, rout.z);
+    //    UW.compute_at(energyForce, oatom);
+    //U.compute_at(energyForce, oatom);
     ///    U.in(fijAtom).compute_at(, oatom);
 
-    abf4.compute_at(fife_o, rout.z);
-    tm.compute_at(fife_o, rout.z);
-    rbf.compute_at(fife_o, rout.z);
-    rbft.compute_at(fife_o, rout.z);
+    abf4.compute_at(energyForce, oatom);
+    tm.compute_at(energyForce, oatom);
+    rbf.compute_at(energyForce, oatom).gpu_tile(oatom, oatom, thread, 16);
+    rbft.compute_at(energyForce, oatom);
 
     fij_o.dim(0).set_bounds(0, natoms).set_stride(3);
     fij_o.dim(1).set_bounds(0, 3).set_stride(1);
