@@ -30,18 +30,18 @@
         double* dPddesc;
 
     public:
-        EnvClustering(int nAtoms, int Mdesc, int numComponents, int nClusters) {
+        EnvClustering(int nAtoms, int Mdesc, int nComponents, int nClusters) {
             desc = (double*)malloc(nAtoms * Mdesc * sizeof(double));
-            P = (double*)malloc(Mdesc * numComponents * sizeof(double));
+            P = (double*)malloc(Mdesc * nComponents * sizeof(double));
             Lambda = (double*)malloc(Mdesc * sizeof(double));
             Phi = (double*)malloc(Mdesc * Mdesc * sizeof(double));
-            PD = (double*)malloc(nAtoms * numComponents * sizeof(double));
-            centroids = (double*)malloc(nClusters * numComponents * sizeof(double));
+            PD = (double*)malloc(nAtoms * nComponents * sizeof(double));
+            centroids = (double*)malloc(nClusters * nComponents * sizeof(double));
             clusters = (int*)malloc(nAtoms * sizeof(int));
             invSqDist = (double*)malloc(nAtoms * nClusters * sizeof(double));
             clusterProba = (double*)malloc(nAtoms * nClusters * sizeof(double));
             dPdD = (double*)malloc(nAtoms * nClusters * sizeof(double));
-            dDdPD = (double*)malloc(nAtoms * nClusters * numComponents * sizeof(double));
+            dDdPD = (double*)malloc(nAtoms * nClusters * nComponents * sizeof(double));
             dPddesc = (double*)malloc(nAtoms * nClusters * Mdesc * sizeof(double));
         }
 
@@ -128,7 +128,7 @@
             free(A); free(b); // free(Q);
         }
 
-        void PCA(double* desc, double* P, double* Lambda, double* Phi, int nAtoms, int Mdesc, int numComponents) {
+        void PCA(double* desc, double* P, double* Lambda, double* Phi, int nAtoms, int Mdesc, int nComponents) {
             eigenDecomposition(desc, Lambda, Phi, nAtoms, Mdesc);
 
             // Calculate full projection matrix
@@ -139,44 +139,44 @@
                 }
             }
             
-            // Keep the first numComponents number of dimensions
+            // Keep the first nComponents number of dimensions
             for (int i = 0; i < Mdesc; i++) {
-                for (int j = 0; j < numComponents; j++) {
-                    P[i * numComponents + j] = Pfull[i * Mdesc + j];
+                for (int j = 0; j < nComponents; j++) {
+                    P[i * nComponents + j] = Pfull[i * Mdesc + j];
                 }
             }
             free(Pfull);
         }
 
-        void saveProjMatToFile(double* P, int numComponents, int Mdesc, const char* filename) {
+        void saveProjMatToFile(double* P, int nComponents, int Mdesc, const char* filename) {
             FILE* file = fopen(filename, "w");
             if (file == NULL) {
                 printf("Error opening file for writing.\n");
                 return;
             }
             fprintf(file, "Mdesc: %d\n", Mdesc);
-            fprintf(file, "numComponents: %d\n", numComponents);
+            fprintf(file, "nComponents: %d\n", nComponents);
             for (int i = 0; i < Mdesc; i++) {
-                for (int j = 0; j < numComponents; j++) {
-                    fprintf(file, "%f ", P[i * numComponents + j]);
+                for (int j = 0; j < nComponents; j++) {
+                    fprintf(file, "%f ", P[i * nComponents + j]);
                 }
                 fprintf(file, "\n");
             }
             fclose(file);
         }
 
-        void saveCentroidsToFile(const double* centroids, int nClusters, int numComponents, const char* filename) {
+        void saveCentroidsToFile(const double* centroids, int nClusters, int nComponents, const char* filename) {
             FILE* file = fopen(filename, "w");
             if (file == NULL) {
                 printf("Error opening centroids file for writing.\n");
                 return;
             }
             fprintf(file, "nClusters: %d\n", nClusters);
-            fprintf(file, "dimensions: %d\n", numComponents);
+            fprintf(file, "dimensions: %d\n", nComponents);
 
             for (int i = 0; i < nClusters; ++i) {
-                for (int j = 0; j < numComponents; ++j) {
-                    fprintf(file, "%f ", centroids[i * numComponents + j]);
+                for (int j = 0; j < nComponents; ++j) {
+                    fprintf(file, "%f ", centroids[i * nComponents + j]);
                 }
                 fprintf(file, "\n");
             }
@@ -205,43 +205,43 @@
             }
         }
 
-        void getProba(const double* inverseSquareDistances, int nAtoms, int numClusters, double* probabilities) {
+        void getProba(const double* inverseSquareDistances, int nAtoms, int nClusters, double* probabilities) {
             for (int i = 0; i < nAtoms; i++) {
                 double sumInverseSquareDistances = 0.0;
-                for (int j = 0; j < numClusters; j++) {
-                    sumInverseSquareDistances += inverseSquareDistances[i * numClusters + j];
+                for (int j = 0; j < nClusters; j++) {
+                    sumInverseSquareDistances += inverseSquareDistances[i * nClusters + j];
                 }
-                for (int j = 0; j < numClusters; j++) {
-                    probabilities[i * numClusters + j] = inverseSquareDistances[i * numClusters + j] / sumInverseSquareDistances;
+                for (int j = 0; j < nClusters; j++) {
+                    probabilities[i * nClusters + j] = inverseSquareDistances[i * nClusters + j] / sumInverseSquareDistances;
                 }
             }
         }
 
-        // dPdD = (S-D)/S^2
+        // dPdD = (S-D)/S^2 = (1-Prob)/S
         // dPdD shape: (nAtoms, nClusters)
-        void getdPdD(const double* inverseSquareDistances, int nAtoms, int numClusters, double* derivatives) {
+        void getdPdD(const double* inverseSquareDistances, int nAtoms, int nClusters, double* dPdD) {
             for (int i = 0; i < nAtoms; i++) {
                 double sumInverseSquareDistances = 0.0;
-                for (int j = 0; j < numClusters; j++) {
-                    sumInverseSquareDistances += inverseSquareDistances[i * numClusters + j];
+                for (int j = 0; j < nClusters; j++) {
+                    sumInverseSquareDistances += inverseSquareDistances[i * nClusters + j];
                 }
-                for (int j = 0; j < numClusters; j++) {
-                    double D_ij = inverseSquareDistances[i * numClusters + j];
-                    derivatives[i * numClusters + j] = (sumInverseSquareDistances - D_ij) / (sumInverseSquareDistances * sumInverseSquareDistances);
+                for (int j = 0; j < nClusters; j++) {
+                    double D_ij = inverseSquareDistances[i * nClusters + j];
+                    dPdD[i * nClusters + j] = (sumInverseSquareDistances - D_ij) / (sumInverseSquareDistances * sumInverseSquareDistances);
                 }
             }
         }
 
         // dDdb = -2D^2(b-c), where b = desc * P = PD, c=centroids
-        // dDdb shape: (nAtoms, nClusters, numComponents)
-        void getdDdPD(const double* PD, const double* centroids, const double* inverseSquareDistances, int nAtoms, int numClusters, int numComponents, double* derivatives) {
+        // dDdb shape: (nAtoms, nClusters, nComponents)
+        void getdDdPD(const double* PD, const double* centroids, const double* inverseSquareDistances, int nAtoms, int nClusters, int nComponents, double* dDdPD) {
             for (int i = 0; i < nAtoms; i++) {
-                for (int k = 0; k < numComponents; k++) {
-                    double PD_ik = PD[i * numComponents + k];
-                    for (int j = 0; j < numClusters; j++) {
-                        double C_jk = centroids[j * numComponents + k];
-                        double D_ij = inverseSquareDistances[i * numClusters + j];
-                        derivatives[(i * numClusters + j) * numComponents + k] = -2 * D_ij * D_ij * (PD_ik - C_jk);
+                for (int k = 0; k < nComponents; k++) {
+                    double PD_ik = PD[i * nComponents + k];
+                    for (int j = 0; j < nClusters; j++) {
+                        double C_jk = centroids[j * nComponents + k];
+                        double D_ij = inverseSquareDistances[i * nClusters + j];
+                        dDdPD[(i * nClusters + j) * nComponents + k] = -2 * D_ij * D_ij * (PD_ik - C_jk);
                     }
                 }
             }
@@ -249,15 +249,15 @@
 
         // dPddesc = dPdD * dDdb * P
         // dPddesc shape: (nAtoms, nClusters, Mdesc)
-        void getdPddesc(const double* dPdD, const double* dDdPD, const double* P, int nAtoms, int numClusters, int numComponents, int Mdesc, double* finalDerivatives) {
+        void getdPddesc(const double* dPdD, const double* dDdPD, const double* P, int nAtoms, int nClusters, int nComponents, int Mdesc, double* dPddesc) {
             for (int i = 0; i < nAtoms; i++) {
-                for (int j = 0; j < numClusters; j++) {
+                for (int j = 0; j < nClusters; j++) {
                     for (int m = 0; m < Mdesc; m++) {
-                        double dPdD_ij = dPdD[i * numClusters + j];
-                        for (int k = 0; k < numComponents; k++) {
-                            double dDdDP_ik = dDdPD[(i * numClusters + j) * numComponents + k];
-                            double dPDik_ddesc = P[m * numComponents + k];
-                            finalDerivatives[(i * numClusters + j) * Mdesc + m] += dPdD_ij * dDdDP_ik * dPDik_ddesc;
+                        double dPdD_ij = dPdD[i * nClusters + j];
+                        for (int k = 0; k < nComponents; k++) {
+                            double dDdDP_ik = dDdPD[(i * nClusters + j) * nComponents + k];
+                            double dPDik_ddesc = P[m * nComponents + k];
+                            dPddesc[(i * nClusters + j) * Mdesc + m] += dPdD_ij * dDdDP_ik * dPDik_ddesc;
                         }
                     }
                 }
@@ -347,10 +347,10 @@
         srand(123);
         int nAtoms = 100;
         int Mdesc = 20;
-        int numComponents = 2;
+        int nComponents = 2;
         int nClusters = 4;
 
-        EnvClustering envClustering(nAtoms, Mdesc, numComponents, nClusters);
+        EnvClustering envClustering(nAtoms, Mdesc, nComponents, nClusters);
 
         for (int i = 0; i < nAtoms; i++) {
             for (int j = 0; j < Mdesc; j++) {
@@ -358,15 +358,15 @@
             }
         }
 
-        envClustering.PCA(envClustering.desc, envClustering.P, envClustering.Lambda, envClustering.Phi, nAtoms, Mdesc, numComponents);
+        envClustering.PCA(envClustering.desc, envClustering.P, envClustering.Lambda, envClustering.Phi, nAtoms, Mdesc, nComponents);
 
         const char* projMatFileName = "ProjMat.txt";
-        envClustering.saveProjMatToFile(envClustering.P, numComponents, Mdesc, projMatFileName);
+        envClustering.saveProjMatToFile(envClustering.P, nComponents, Mdesc, projMatFileName);
         
         char transA = 'N';
         char transB = 'N';
         int m = nAtoms;
-        int n = numComponents;
+        int n = nComponents;
         int k = Mdesc;
         double alpha = 1.0;
         double beta = 0.0;
@@ -376,17 +376,17 @@
 
         DGEMM(&transA, &transB, &m, &n, &k, &alpha, envClustering.desc, &lda, envClustering.P, &ldb, &beta, envClustering.PD, &ldc);
         
-        envClustering.kMeans(envClustering.PD, envClustering.centroids, envClustering.clusters, nAtoms, nClusters, numComponents);
+        envClustering.kMeans(envClustering.PD, envClustering.centroids, envClustering.clusters, nAtoms, nClusters, nComponents);
 
         const char* centroidFileName = "centroids.txt";
-        envClustering.saveCentroidsToFile(envClustering.centroids, nClusters, numComponents, centroidFileName);
+        envClustering.saveCentroidsToFile(envClustering.centroids, nClusters, nComponents, centroidFileName);
 
         printf("Final Centroids:\n");
         for (int i = 0; i < nClusters; ++i) {
-            printf("Cluster %d: (%f, %f)\n", i, envClustering.centroids[i * numComponents], envClustering.centroids[i * numComponents + 1]);
+            printf("Cluster %d: (%f, %f)\n", i, envClustering.centroids[i * nComponents], envClustering.centroids[i * nComponents + 1]);
         }
         // auto start = std::chrono::high_resolution_clock::now();
-        envClustering.getSqInvDist(envClustering.PD, nAtoms, numComponents, envClustering.centroids, nClusters, envClustering.invSqDist);
+        envClustering.getSqInvDist(envClustering.PD, nAtoms, nComponents, envClustering.centroids, nClusters, envClustering.invSqDist);
         envClustering.getProba(envClustering.invSqDist, nAtoms, nClusters, envClustering.clusterProba);
 
         // printf("Cluster Probabilities:\n");
@@ -399,8 +399,8 @@
         //}
 
         envClustering.getdPdD(envClustering.invSqDist, nAtoms, nClusters, envClustering.dPdD);
-        envClustering.getdDdPD(envClustering.clusterProba, envClustering.centroids, envClustering.invSqDist, nAtoms, nClusters, numComponents, envClustering.dDdPD);
-        envClustering.getdPddesc(envClustering.dPdD, envClustering.dDdPD, envClustering.P, nAtoms, nClusters, numComponents, Mdesc, envClustering.dPddesc);
+        envClustering.getdDdPD(envClustering.PD, envClustering.centroids, envClustering.invSqDist, nAtoms, nClusters, nComponents, envClustering.dDdPD);
+        envClustering.getdPddesc(envClustering.dPdD, envClustering.dDdPD, envClustering.P, nAtoms, nClusters, nComponents, Mdesc, envClustering.dPddesc);
         
         // Generate random ddesc/dR, with shape (nAtoms, MDesc, 3*nNeighbors)
         int nNeighbors = 20;
