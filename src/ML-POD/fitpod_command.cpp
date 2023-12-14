@@ -85,7 +85,19 @@ void FitPOD::command(int narg, char **arg)
   }
 
   if (desc.method == 1) {
-    fastpodptr = new FASTPOD(lmp, pod_file, coeff_file);
+    fastpodptr = new FASTPOD(lmp, pod_file, coeff_file);    
+
+    desc.nd = fastpodptr->nd;
+    desc.nld = fastpodptr->nl;
+    desc.nClusters = fastpodptr->nClusters;
+    desc.npc = fastpodptr->npc;
+    if (desc.nClusters > 1) {
+      memory->create(desc.clusterSizes, desc.nClusters, "fitpod:clusterSizes");
+      memory->create(desc.centroids, desc.nClusters*desc.npc, "fitpod:centroids");
+      memory->create(desc.P, desc.nld*desc.npc, "fitpod:P");
+      memory->create(desc.Lambda, desc.nld, "fitpod:Lmabda");
+    }
+
     read_data_files(data_file, fastpodptr->species);
 
 //     if ((int) traindata.data_path.size() > 1)
@@ -101,10 +113,13 @@ void FitPOD::command(int narg, char **arg)
     allocate_memory_descriptorstruct(fastpodptr->nd);
 
     if (coeff_file != "") podArrayCopy(desc.c, fastpodptr->coeff, fastpodptr->nd);
-    desc.nd = fastpodptr->nd;
   }
 
   if (compute_descriptors==0) {
+
+    if (((int) envdata.data_path.size() > 1) && (desc.nClusters > 1) && (desc.method == 1))
+      enviroment_cluster_calculation(envdata);
+
     // compute POD coefficients using least-squares method
 
     least_squares_fit(traindata);
@@ -184,8 +199,13 @@ void FitPOD::command(int narg, char **arg)
   memory->destroy(desc.A);
   memory->destroy(desc.b);
   memory->destroy(desc.c);
+  memory->destroy(desc.ld);
   memory->destroy(desc.gd);
   memory->destroy(desc.gdd);
+  memory->destroy(desc.P);
+  memory->destroy(desc.Lambda);
+  memory->destroy(desc.centroids);
+  memory->destroy(desc.tmpint);
 
   if (desc.method == 0) memory->destroy(desc.tmpint);
 
@@ -265,7 +285,7 @@ int FitPOD::query_pod(std::string pod_file)
 }
 
 int FitPOD::read_data_file(double *fitting_weights, std::string &file_format,
-                             std::string &file_extension, std::string &test_path,
+                             std::string &file_extension, std::string &env_path, std::string &test_path,
                              std::string &training_path, std::string &filenametag,
                              const std::string &data_file, std::string &group_weight_type,
                              std::unordered_map<std::string, double> &we_map,
@@ -339,6 +359,7 @@ int FitPOD::read_data_file(double *fitting_weights, std::string &file_format,
     if (keywd == "file_extension") file_extension = words[1];
     if (keywd == "path_to_training_data_set") training_path = words[1];
     if (keywd == "path_to_test_data_set") test_path = words[1];
+    if (keywd == "path_to_enviroment_configuration_set") env_path = words[1];
     if (keywd == "basename_for_output_files") filenametag = words[1];
 
     // group weight table
@@ -404,6 +425,7 @@ int FitPOD::read_data_file(double *fitting_weights, std::string &file_format,
     utils::logmesg(lmp, "file extension: {}\n", file_extension);
     utils::logmesg(lmp, "path to training data set: {}\n", training_path);
     utils::logmesg(lmp, "path to test data set: {}\n", test_path);
+    utils::logmesg(lmp, "path to enviroment configuration set: {}\n", env_path);
     utils::logmesg(lmp, "basename for output files: {}\n", filenametag);
     utils::logmesg(lmp, "training fraction: {}\n", fitting_weights[7]);
     utils::logmesg(lmp, "test fraction: {}\n", fitting_weights[8]);
@@ -954,7 +976,7 @@ void FitPOD::read_data_files(const std::string& data_file, const std::vector<std
 
   // read data input file to datastruct
 
-  data.precision = read_data_file(data.fitting_weights, data.file_format, data.file_extension,
+  data.precision = read_data_file(data.fitting_weights, data.file_format, data.file_extension, envdata.data_path,
                       testdata.data_path, data.data_path, data.filenametag, data_file, data.group_weight_type, data.we_map, data.wf_map);
 
   data.training_analysis = (int) data.fitting_weights[3];
@@ -1002,6 +1024,18 @@ void FitPOD::read_data_files(const std::string& data_file, const std::vector<std
   testdata.fraction = traindata.fitting_weights[8];
   testdata.test_analysis = traindata.test_analysis;
   testdata.filenametag =  traindata.filenametag;
+
+  if (((int) envdata.data_path.size() > 1) && (desc.nClusters > 1) && (desc.method == 1)) {
+    envdata.filenametag =  traindata.filenametag;
+    envdata.file_format = traindata.file_format;
+    envdata.file_extension = traindata.file_extension;
+    int tmp = compute_descriptors;
+    compute_descriptors = 1;
+    utils::logmesg(lmp, "**************** Begin of Enviroment Configuration Set ****************\n");
+    get_data(envdata, species);    
+    utils::logmesg(lmp, "**************** End of Enviroment Configuration Set ****************\n");
+    compute_descriptors = tmp;
+  }
 
   if ((testdata.data_path == traindata.data_path) && (testdata.fraction == 1.0) && (traindata.fraction == 1.0)) {
     testdata.data_path = traindata.data_path;
@@ -1248,6 +1282,7 @@ void FitPOD::allocate_memory_descriptorstruct(int nd)
   podArraySetValue(desc.c, 0.0, nd);
 
   if (comm->me == 0) {
+    utils::logmesg(lmp, "**************** Begin of Memory Allocation ****************\n");
     utils::logmesg(lmp, "maximum number of atoms in periodic domain: {}\n", nb.natom_max);
     utils::logmesg(lmp, "maximum number of atoms in extended domain: {}\n", nb.sza);
     utils::logmesg(lmp, "maximum number of neighbors in extended domain: {}\n", nb.szp);
@@ -1769,6 +1804,125 @@ void FitPOD::descriptors_calculation(const datastruct &data)
 
   if (comm->me == 0)
     utils::logmesg(lmp, "**************** End Calculating Descriptors ****************\n");
+}
+
+void FitPOD::enviroment_cluster_calculation(const datastruct &data)
+{
+  
+  if (comm->me == 0)
+    utils::logmesg(lmp, "**************** Begin Calculating Enviroment Descriptor Matrix ****************\n");
+    
+  printf("number of configurations = %d\n", (int) data.num_atom.size());  
+
+  int nDims = desc.npc;  
+  int nAtoms = 0;
+  int Mdesc = desc.nld;
+  for (int ci=0; ci < (int) data.num_atom.size(); ci++) {
+    if ((ci % comm->nprocs) == comm->me) nAtoms += data.num_atom[ci];    
+  }
+
+  double *localdescmatrix = (double *) malloc(nAtoms*Mdesc*sizeof(double));
+  double *pca = (double *) malloc(nAtoms*desc.npc*sizeof(double));
+  double *A = (double *) malloc(Mdesc*Mdesc*sizeof(double));
+  double *b = (double *) malloc(Mdesc*sizeof(double));
+  int *assignments = (int *) malloc(nAtoms*sizeof(int));
+
+// loop over each configuration in the data set
+  int k = 0;
+  for (int ci=0; ci < (int) data.num_atom.size(); ci++) {
+
+    if ((ci % 100)==0) {
+      if (comm->me == 0)
+        utils::logmesg(lmp, "Configuration: # {}\n", ci+1);
+    }
+
+    if ((ci % comm->nprocs) == comm->me) {
+
+      // compute linear POD descriptors
+
+      if (desc.method==0) {
+        linear_descriptors(data, ci);
+
+        // compute quadratic POD descriptors
+
+        quadratic_descriptors(data, ci);
+
+        // compute cubic POD descriptors
+
+        cubic_descriptors(data, ci);
+      }
+      else if (desc.method==1)
+        local_descriptors_fastpod(data, ci);
+
+      // localdescmatrix is a Mdesc x nAtoms matrix
+      int natom =  data.num_atom[ci];      
+      for (int n=0; n<natom; n++)
+        for (int m=0; m<Mdesc; m++)        
+          localdescmatrix[m + Mdesc*(k+n)] = desc.ld[n + natom*m];      
+      k = k + natom;  
+    }
+  }
+  
+  char chn = 'N';
+  char cht = 'T';
+  char chv = 'V';
+  char chu = 'U';
+  double alpha = 1.0, beta = 0.0;
+
+  //printf("SIZES: %d  %d  %d  %d\n", Mdesc, nAtoms, nDims, desc.nClusters);  
+
+  // Calculate covariance matrix A = localdescmatrix*localdescmatrix'. A is a Mdesc x Mdesc matrix
+  DGEMM(&chn, &cht, &Mdesc, &Mdesc, &nAtoms, &alpha, localdescmatrix, &Mdesc, localdescmatrix, &Mdesc, &beta, A, &Mdesc);
+
+  MPI_Allreduce(MPI_IN_PLACE, A, Mdesc*Mdesc, MPI_DOUBLE, MPI_SUM, world);  
+
+  if (comm->me == 0) 
+    savematrix2binfile(data.filenametag + "_covariance_matrix"  + ".bin", A, Mdesc, Mdesc);
+
+  // Calculate eigenvalues and eigenvectors of A
+  int lwork = Mdesc * Mdesc;  // the length of the array work, lwork >= max(1,3*N-1)
+  int info = 1;     // = 0:  successful exit
+  double work[lwork];
+
+  DSYEV(&chv, &chu, &Mdesc, A, &Mdesc, b, work, &lwork, &info);
+
+  if (comm->me == 0)
+    savematrix2binfile(data.filenametag + "_eigenvector_matrix"  + ".bin", A, Mdesc, Mdesc);
+
+  // order eigenvalues and eigenvectors from largest to smallest
+  for (int i=0; i<Mdesc; i++)
+    desc.Lambda[(Mdesc-i-1)] = b[i];
+
+  if (comm->me == 0)
+    savematrix2binfile(data.filenametag + "_eigenvalues"  + ".bin", desc.Lambda, Mdesc, 1);
+
+  // desc.P is a Mdesc x nDims matrix
+  for (int j=0; j<nDims; j++)
+    for (int i=0; i<Mdesc; i++)
+      desc.P[i + Mdesc*j] = A[i + Mdesc*(Mdesc-j-1)]*sqrt(fabs(b[(Mdesc-j-1)]/desc.Lambda[0]));
+
+  // Calculate principal compoment analysis matrix pca = P'*localdescmatrix. pca is a nDims x nAtoms matrix
+  DGEMM(&cht, &chn, &nDims, &nAtoms, &Mdesc, &alpha, desc.P, &Mdesc, localdescmatrix, &Mdesc, &beta, pca, &nDims);
+
+  // Calculate centroids using k-means clustering
+  int max_iter = 100;
+  KmeansClustering(pca, desc.centroids, assignments, desc.clusterSizes, nAtoms, desc.nClusters, nDims, max_iter);
+
+  savedata2textfile(data.filenametag + "_projection_matrix"  + ".pod", "projection_matrix: {}\n", desc.P, Mdesc*nDims, 1);
+  savedata2textfile(data.filenametag + "_centroids"  + ".pod", "centroids: {}\n", desc.centroids, nDims*desc.nClusters, 1);
+    
+  savematrix2binfile(data.filenametag + "_desc_matrix_proc" + std::to_string(comm->me+1) + ".bin", localdescmatrix, Mdesc, nAtoms);  
+  savematrix2binfile(data.filenametag + "_pca_matrix_proc" + std::to_string(comm->me+1) + ".bin", pca, nDims, nAtoms);
+  saveintmatrix2binfile(data.filenametag + "_cluster_assignments_proc" + std::to_string(comm->me+1) + ".bin", assignments, nAtoms, 1);
+  
+  free(localdescmatrix);
+  free(pca);
+  free(A);
+  free(b);
+  free(assignments);
+
+  if (comm->me == 0)
+    utils::logmesg(lmp, "**************** End Calculating Enviroment Descriptor Matrix ****************\n");
 }
 
 void FitPOD::least_squares_matrix(const datastruct &data, int ci)
@@ -2491,3 +2645,150 @@ void FitPOD::triclinic_lattice_conversion(double *a, double *b, double *c, doubl
   b[0] = bx; b[1] = by;  b[2] = 0.0;
   c[0] = cx; c[1] = cy;  c[2] = cz;
 }
+
+// Function to calculate Euclidean distance between two points in N-dimensional space
+double FitPOD::squareDistance(const double *a, const double *b, int DIMENSIONS) {
+  double sum = 0.0;
+  for (int i = 0; i < DIMENSIONS; i++) {
+    sum += (a[i] - b[i]) * (a[i] - b[i]);
+  }
+  return sum;
+}
+
+// Function to assign points to the nearest cluster
+void FitPOD::assignPointsToClusters(double *points, double *centroids, int *assignments, int *clusterSizes, int NUM_POINTS, int NUM_CLUSTERS, int DIMENSIONS) {
+  // Initialize clusterSizes to zero
+  for (int i = 0; i < NUM_CLUSTERS; i++) {
+    clusterSizes[i] = 0;
+  }
+
+  for (int i = 0; i < NUM_POINTS; i++) {
+    double minDist = squareDistance(&points[i * DIMENSIONS], &centroids[0], DIMENSIONS);
+    int closestCluster = 0;
+    for (int j = 1; j < NUM_CLUSTERS; j++) {
+      double dist = squareDistance(&points[i * DIMENSIONS], &centroids[j * DIMENSIONS], DIMENSIONS);
+      if (dist < minDist) {
+        minDist = dist;
+        closestCluster = j;
+      }
+    }
+    assignments[i] = closestCluster;
+    clusterSizes[closestCluster]++;
+  }
+}
+
+// Function to update centroids based on point assignments
+void FitPOD::updateCentroids(double *points, double *centroids, int *assignments, int *clusterSizes, int NUM_POINTS, int NUM_CLUSTERS, int DIMENSIONS) {
+  // Reset centroids for recalculation
+  for (int i = 0; i < NUM_CLUSTERS * DIMENSIONS; i++) {
+    centroids[i] = 0.0;
+  }
+
+  // Accumulate sum of points in each cluster
+  for (int i = 0; i < NUM_POINTS; i++) {
+    int cluster = assignments[i];
+    for (int j = 0; j < DIMENSIONS; j++) {
+      centroids[cluster * DIMENSIONS + j] += points[i * DIMENSIONS + j];
+    }
+  }
+
+  // Use MPI_Allreduce to sum up the local sums and cluster sizes across all processes
+  MPI_Allreduce(MPI_IN_PLACE, centroids, NUM_CLUSTERS * DIMENSIONS, MPI_DOUBLE, MPI_SUM, world);
+  MPI_Allreduce(MPI_IN_PLACE, clusterSizes, NUM_CLUSTERS, MPI_INT, MPI_SUM, world);
+
+  // Divide by number of points to get the mean (centroid)
+  for (int i = 0; i < NUM_CLUSTERS; i++) {
+    if (clusterSizes[i] != 0) {
+      for (int j = 0; j < DIMENSIONS; j++) {
+        centroids[i * DIMENSIONS + j] /= clusterSizes[i];
+      }
+    }
+  }
+}
+
+// Function for K-means clustering
+void FitPOD::KmeansClustering(double *points, double *centroids, int *assignments, int *clusterSizes, int NUM_POINTS, int NUM_CLUSTERS, int DIMENSIONS, int MAX_ITER) {
+  for (int iter = 0; iter < MAX_ITER; iter++) {
+    assignPointsToClusters(points, centroids, assignments, clusterSizes, NUM_POINTS, NUM_CLUSTERS, DIMENSIONS);
+    updateCentroids(points, centroids, assignments, clusterSizes, NUM_POINTS, NUM_CLUSTERS, DIMENSIONS);
+  }
+}
+
+void FitPOD::savematrix2binfile(std::string filename, double *A, int nrows, int ncols)
+{
+  FILE *fp = fopen(filename.c_str(), "wb");
+  double sz[2];
+  sz[0] = (double) nrows;
+  sz[1] = (double) ncols;
+  fwrite( reinterpret_cast<char*>( sz ), sizeof(double) * (2), 1, fp);
+  fwrite( reinterpret_cast<char*>( A ), sizeof(double) * (nrows*ncols), 1, fp);
+  fclose(fp);
+}
+
+void FitPOD::saveintmatrix2binfile(std::string filename, int *A, int nrows, int ncols)
+{
+  FILE *fp = fopen(filename.c_str(), "wb");
+  int sz[2];
+  sz[0] = nrows;
+  sz[1] = ncols;
+  fwrite( reinterpret_cast<char*>( sz ), sizeof(int) * (2), 1, fp);
+  fwrite( reinterpret_cast<char*>( A ), sizeof(int) * (nrows*ncols), 1, fp);
+  fclose(fp);
+}
+
+void FitPOD::savedata2textfile(std::string filename, std::string text, double *A, int n, int dim)
+{
+  if (comm->me == 0) {     
+    int precision = 15;
+    FILE *fp = fopen(filename.c_str(), "w");
+    fmt::print(fp, text, n);
+    if (dim==1) {
+      for (int i = 0; i < n; i++)
+        fmt::print(fp, "{:<10.{}f} \n",  A[i], precision);      
+    }
+    else if (dim==2) {
+      for (int j = 0; j < n; j++) {
+        for (int i = 0; i < n; i++)
+          fmt::print(fp, "{:<10.{}f}     ",  A[i + j*n], precision);
+        fmt::print(fp, "   \n");
+      }
+    }
+    fclose(fp);
+  }
+}
+
+// // Function to update centroids based on point assignments - Parallelized
+// void updateCentroids(double *points, double *centroids, double *local_sum, int *local_clusterSizes,
+//                      int *assignments, int *clusterSizes, int NUM_CLUSTERS, int DIMENSIONS, 
+//                      int num_local_points, int world_size, int world_rank) {
+//     //double local_sum[NUM_CLUSTERS * DIMENSIONS] = {0.0};
+//     //int local_clusterSizes[NUM_CLUSTERS] = {0};
+
+//     // Calculate local sum of points and local cluster sizes
+//     for (int i = 0; i < num_local_points; i++) {
+//         int cluster = assignments[i];
+//         for (int j = 0; j < DIMENSIONS; j++) {
+//             local_sum[cluster * DIMENSIONS + j] += points[i * DIMENSIONS + j];
+//         }
+//         local_clusterSizes[cluster]++;
+//     }
+
+//     // Reset centroids for recalculation
+//     for (int i = 0; i < NUM_CLUSTERS * DIMENSIONS; i++) {
+//         centroids[i] = 0.0;
+//     }
+
+//     // Use MPI_Allreduce to sum up the local sums and cluster sizes across all processes
+//     MPI_Allreduce(local_sum, centroids, NUM_CLUSTERS * DIMENSIONS, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+//     MPI_Allreduce(local_clusterSizes, clusterSizes, NUM_CLUSTERS, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+
+//     // Each process updates centroids
+//     for (int i = 0; i < NUM_CLUSTERS; i++) {
+//         if (clusterSizes[i] != 0) {
+//             for (int j = 0; j < DIMENSIONS; j++) {
+//                 centroids[i * DIMENSIONS + j] /= clusterSizes[i];
+//             }
+//         }
+//     }
+// }
+

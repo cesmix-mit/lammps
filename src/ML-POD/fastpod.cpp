@@ -46,6 +46,8 @@ FASTPOD::FASTPOD(LAMMPS *_lmp, const std::string &pod_file, const std::string &c
 {
   rin = 0.5;
   rcut = 5.0;
+  nClusters = 1;
+  npc = 1;
   nelements = 1;
   onebody = 1;
   besseldegree = 4;
@@ -183,6 +185,10 @@ void FASTPOD::read_pod_file(std::string pod_file)
 
       if (keywd == "rin") rin = utils::numeric(FLERR,words[1],false,lmp);
       if (keywd == "rcut") rcut = utils::numeric(FLERR,words[1],false,lmp);
+      if (keywd == "number_of_enviroment_clusters")
+        nClusters = utils::inumeric(FLERR,words[1],false,lmp);
+      if (keywd == "number_of_principal_components")
+        npc = utils::inumeric(FLERR,words[1],false,lmp);
       if (keywd == "bessel_polynomial_degree")
         besseldegree = utils::inumeric(FLERR,words[1],false,lmp);
       if (keywd == "inverse_polynomial_degree")
@@ -363,6 +369,7 @@ void FASTPOD::read_pod_file(std::string pod_file)
     memory->create(ind33l, nld33, "ind33l");
     memory->create(ind33r, nld33, "ind33r");
     crossindices(ind33l, ind33r, dabf3, nabf3, nrbf3, nebf3, dabf3, nabf3, nrbf3, nebf3, P33, nrbf33);
+    printf("nld33 %d\n", nld33);
   }
   if (nrbf34>0) {
     nld34 = crossindices(dabf3, nabf3, nrbf3, nebf3, dabf4, nabf4, nrbf4, nebf4, P34, nrbf34);
@@ -400,6 +407,8 @@ void FASTPOD::read_pod_file(std::string pod_file)
       utils::logmesg(lmp, "{} ", species[i]);
     utils::logmesg(lmp, "\n");
     utils::logmesg(lmp, "periodic boundary conditions: {} {} {}\n", pbc[0], pbc[1], pbc[2]);
+    utils::logmesg(lmp, "number of enviroment clusters: {}\n", nClusters);
+    utils::logmesg(lmp, "number of principal compoments: {}\n", npc);
     utils::logmesg(lmp, "inner cut-off radius: {}\n", rin);
     utils::logmesg(lmp, "outer cut-off radius: {}\n", rcut);
     utils::logmesg(lmp, "bessel polynomial degree: {}\n", besseldegree);
@@ -1696,22 +1705,37 @@ double FASTPOD::threebodycoeff(double *cU, double *coeff3, double *sumU, int N)
   return e;
 }
 
+
+/**
+ * @brief Calculates the two-body descriptor derivatives for a given set of atoms.
+ *
+ * @param d2   Pointer to the array of two-body descriptors.
+ * @param dd2  Pointer to the array of two-body descriptor derivatives.
+ * @param rbf  Pointer to the array of radial basis functions.
+ * @param rbfx Pointer to the array of radial basis function derivatives with respect to x.
+ * @param rbfy Pointer to the array of radial basis function derivatives with respect to y.
+ * @param rbfz Pointer to the array of radial basis function derivatives with respect to z.
+ * @param tj   Pointer to the array of atom types of neighboring atoms.
+ * @param N    Number of neighboring atoms.
+ */
 void FASTPOD::twobodydescderiv(double *d2, double *dd2, double *rbf, double *rbfx,
         double *rbfy, double *rbfz, int *tj, int N)
 {
+  // Initialize the two-body descriptors and their derivatives to zero
   for (int m=0; m<nl2; m++)
     d2[m] = 0.0;
   for (int m=0; m<3*N*nl2; m++)
     dd2[m] = 0.0;
 
+  // Calculate the two-body descriptors and their derivatives
   for (int m=0; m<nrbf2; m++) {
     for (int n=0; n<N; n++) {
-      int i2 = n + N*m;
-      int i1 = n + N*m + N*nrbf2*(tj[n]-1);
-      d2[m + nrbf2*(tj[n]-1)] += rbf[i2];
-      dd2[0 + 3*i1] += rbfx[i2];
-      dd2[1 + 3*i1] += rbfy[i2];
-      dd2[2 + 3*i1] += rbfz[i2];
+      int i2 = n + N*m; // Index of the radial basis function for atom n and RBF m
+      int i1 = n + N*m + N*nrbf2*(tj[n]-1); // Index of the descriptor for atom n, RBF m, and atom type tj[n]
+      d2[m + nrbf2*(tj[n]-1)] += rbf[i2]; // Add the radial basis function to the corresponding descriptor
+      dd2[0 + 3*i1] += rbfx[i2]; // Add the derivative with respect to x to the corresponding descriptor derivative
+      dd2[1 + 3*i1] += rbfy[i2]; // Add the derivative with respect to y to the corresponding descriptor derivative
+      dd2[2 + 3*i1] += rbfz[i2]; // Add the derivative with respect to z to the corresponding descriptor derivative
     }
   }
 }
@@ -1742,8 +1766,8 @@ void FASTPOD::twobodydescriptors(double *d2, double *dd2, double *rij, double *t
  *
  * @param gd2    Pointer to the array of global two-body descriptors.
  * @param gdd2   Pointer to the array of global two-body descriptor derivatives.
- * @param d2     Pointer to the array of two-body descriptors.
- * @param dd2    Pointer to the array of two-body descriptor derivatives.
+ * @param d2     Pointer to the array of two-body local descriptors.
+ * @param dd2    Pointer to the array of two-body local descriptor derivatives.
  * @param rij    Pointer to the array of interatomic distances.
  * @param temp   Pointer to the temporary array used for calculations.
  * @param ai     Pointer to the array of atom indices.

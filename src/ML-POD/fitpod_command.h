@@ -124,17 +124,25 @@ private:
     double *A=nullptr;  // least-square matrix for all descriptors
     double *b=nullptr;  // least-square vector for all descriptors
     double *c=nullptr;  // coefficents of descriptors
+    double *P=nullptr;  // projection matrix
+    double *Lambda=nullptr;  // eigenvalues
+    double *centroids=nullptr;  // centroids of the environment clusters
+    int *clusterSizes=nullptr; // number of points in each environment cluster
     int *tmpint=nullptr;
     int szd = 0;
     int szi = 0;
-    int nd = 0;
+    int nd = 0; // number of global descriptors
+    int nld = 0; // number of local descriptors
+    int nClusters = 0; // number of environment clusters 
+    int npc = 0; // number of principal components
     int method;
   };
 
   int save_descriptors = 0;
-  int compute_descriptors = 0;
+  int compute_descriptors = 0;  
   datastruct traindata;
   datastruct testdata;
+  datastruct envdata;
   descriptorstruct desc;
   neighborstruct nb;
   class MLPOD *podptr;
@@ -163,10 +171,19 @@ private:
   void matrix33_multiplication(double *xrot, double *Rmat, double *x, int natom);
   void matrix33_inverse(double *invA, double *A1, double *A2, double *A3);
 
+  double squareDistance(const double *a, const double *b, int DIMENSIONS);  
+  void assignPointsToClusters(double *points, double *centroids, int *assignments, int *clusterSizes, int NUM_POINTS, int NUM_CLUSTERS, int DIMENSION);
+  void updateCentroids(double *points, double *centroids, int *assignments, int *clusterSizes, int NUM_POINTS, int NUM_CLUSTERS, int DIMENSIONS);
+  void KmeansClustering(double *points, double *centroids, int *assignments, int *clusterSizes, int NUM_POINTS, int NUM_CLUSTERS, int DIMENSIONS, int MAX_ITER);
+
+  void savedata2textfile(std::string filename, std::string text, double *A, int n, int dim);
+  void savematrix2binfile(std::string filename, double *A, int nrows, int ncols);
+  void saveintmatrix2binfile(std::string filename, int *A, int nrows, int ncols);
+
   // functions for reading input files and fitting
 
   int query_pod(std::string pod_file);
-  int read_data_file(double *fitting_weights, std::string &file_format, std::string &file_extension,
+  int read_data_file(double *fitting_weights, std::string &file_format, std::string &file_extension, std::string &env_path,
     std::string &test_path, std::string &training_path, std::string &filenametag, const std::string &data_file, std::string &group_weight_type,
     std::unordered_map<std::string, double> &we_map, std::unordered_map<std::string, double> &wf_map);
   void get_exyz_files(std::vector<std::string> &, std::vector<std::string> &, const std::string &, const std::string &);
@@ -201,6 +218,7 @@ private:
   void least_squares_matrix(const datastruct &data, int ci);
   void least_squares_fit(const datastruct &data);
   void descriptors_calculation(const datastruct &data);
+  void enviroment_cluster_calculation(const datastruct &data);
   void print_analysis(const datastruct &data, double *outarray, double *errors);
   void error_analysis(const datastruct &data, double *coeff);
   double energyforce_calculation(double *force, double *coeff, const datastruct &data, int ci);
