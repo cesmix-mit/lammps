@@ -1816,7 +1816,7 @@ void FitPOD::enviroment_cluster_calculation(const datastruct &data)
 
   int nDims = desc.npc;  
   int nAtoms = 0;
-  int Mdesc = desc.nld;
+  int Mdesc = desc.nld - 1; // offset 1 to remove the first column (one-body descriptor) of the local descriptor matrix
   for (int ci=0; ci < (int) data.num_atom.size(); ci++) {
     if ((ci % comm->nprocs) == comm->me) nAtoms += data.num_atom[ci];    
   }
@@ -1858,7 +1858,7 @@ void FitPOD::enviroment_cluster_calculation(const datastruct &data)
       int natom =  data.num_atom[ci];      
       for (int n=0; n<natom; n++)
         for (int m=0; m<Mdesc; m++)        
-          localdescmatrix[m + Mdesc*(k+n)] = desc.ld[n + natom*m];      
+          localdescmatrix[m + Mdesc*(k+n)] = desc.ld[n + natom*(m+1)];      
       k = k + natom;  
     }
   }
@@ -1869,7 +1869,7 @@ void FitPOD::enviroment_cluster_calculation(const datastruct &data)
   char chu = 'U';
   double alpha = 1.0, beta = 0.0;
 
-  //printf("SIZES: %d  %d  %d  %d\n", Mdesc, nAtoms, nDims, desc.nClusters);  
+  printf("SIZES: %d  %d  %d  %d  %d\n", desc.nld, Mdesc, nAtoms, nDims, desc.nClusters);  
 
   // Calculate covariance matrix A = localdescmatrix*localdescmatrix'. A is a Mdesc x Mdesc matrix
   DGEMM(&chn, &cht, &Mdesc, &Mdesc, &nAtoms, &alpha, localdescmatrix, &Mdesc, localdescmatrix, &Mdesc, &beta, A, &Mdesc);
