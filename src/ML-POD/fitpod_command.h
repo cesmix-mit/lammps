@@ -176,7 +176,7 @@ private:
   void updateCentroids(double *points, double *centroids, int *assignments, int *clusterSizes, int NUM_POINTS, int NUM_CLUSTERS, int DIMENSIONS);
   void KmeansClustering(double *points, double *centroids, int *assignments, int *clusterSizes, int NUM_POINTS, int NUM_CLUSTERS, int DIMENSIONS, int MAX_ITER);
 
-  void savedata2textfile(std::string filename, std::string text, double *A, int n, int dim);
+  void savedata2textfile(std::string filename, std::string text, double *A, int n, int m, int dim);
   void savematrix2binfile(std::string filename, double *A, int nrows, int ncols);
   void saveintmatrix2binfile(std::string filename, int *A, int nrows, int ncols);
 

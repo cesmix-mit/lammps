@@ -1816,9 +1816,11 @@ void FitPOD::enviroment_cluster_calculation(const datastruct &data)
 
   int nDims = desc.npc;  
   int nAtoms = 0;
+  int nTotalAtoms = 0;
   int Mdesc = desc.nld - 1; // offset 1 to remove the first column (one-body descriptor) of the local descriptor matrix
   for (int ci=0; ci < (int) data.num_atom.size(); ci++) {
     if ((ci % comm->nprocs) == comm->me) nAtoms += data.num_atom[ci];    
+    nTotalAtoms += data.num_atom[ci];    
   }
 
   double *localdescmatrix = (double *) malloc(nAtoms*Mdesc*sizeof(double));
@@ -1904,12 +1906,24 @@ void FitPOD::enviroment_cluster_calculation(const datastruct &data)
   // Calculate principal compoment analysis matrix pca = P'*localdescmatrix. pca is a nDims x nAtoms matrix
   DGEMM(&cht, &chn, &nDims, &nAtoms, &Mdesc, &alpha, desc.P, &Mdesc, localdescmatrix, &Mdesc, &beta, pca, &nDims);
 
+  // initialize centroids 
+  for (int i = 0; i < desc.nClusters * nDims; i++) desc.centroids[i] = 0.0;  
+  for (int i=0; i < nAtoms; i++) {    
+    int m = (i*desc.nClusters)/nAtoms;
+    for (int j=0; j < nDims; j++)
+      desc.centroids[j + nDims*m] += pca[j + nDims*i];
+  }
+  MPI_Allreduce(MPI_IN_PLACE, desc.centroids, desc.nClusters * nDims, MPI_DOUBLE, MPI_SUM, world);  
+  double fac = ((double) desc.nClusters)/((double) nTotalAtoms);
+  for (int i = 0; i < desc.nClusters * nDims; i++) desc.centroids[i] = desc.centroids[i]*fac;
+  //for (int i = 0; i < desc.nClusters * nDims; i++) printf("centroids[%d] = %f\n", i, desc.centroids[i]);
+
   // Calculate centroids using k-means clustering
   int max_iter = 100;
   KmeansClustering(pca, desc.centroids, assignments, desc.clusterSizes, nAtoms, desc.nClusters, nDims, max_iter);
 
-  savedata2textfile(data.filenametag + "_projection_matrix"  + ".pod", "projection_matrix: {}\n", desc.P, Mdesc*nDims, 1);
-  savedata2textfile(data.filenametag + "_centroids"  + ".pod", "centroids: {}\n", desc.centroids, nDims*desc.nClusters, 1);
+  savedata2textfile(data.filenametag + "_projection_matrix"  + ".pod", "projection_matrix: {} ", desc.P, Mdesc, nDims, 2);
+  savedata2textfile(data.filenametag + "_centroids"  + ".pod", "centroids: {} ", desc.centroids, nDims, desc.nClusters, 2);
     
   savematrix2binfile(data.filenametag + "_desc_matrix_proc" + std::to_string(comm->me+1) + ".bin", localdescmatrix, Mdesc, nAtoms);  
   savematrix2binfile(data.filenametag + "_pca_matrix_proc" + std::to_string(comm->me+1) + ".bin", pca, nDims, nAtoms);
@@ -2736,20 +2750,22 @@ void FitPOD::saveintmatrix2binfile(std::string filename, int *A, int nrows, int 
   fclose(fp);
 }
 
-void FitPOD::savedata2textfile(std::string filename, std::string text, double *A, int n, int dim)
+void FitPOD::savedata2textfile(std::string filename, std::string text, double *A, int n, int m, int dim)
 {
   if (comm->me == 0) {     
     int precision = 15;
-    FILE *fp = fopen(filename.c_str(), "w");
-    fmt::print(fp, text, n);
+    FILE *fp = fopen(filename.c_str(), "w");    
     if (dim==1) {
+      fmt::print(fp, text, n);
       for (int i = 0; i < n; i++)
         fmt::print(fp, "{:<10.{}f} \n",  A[i], precision);      
     }
     else if (dim==2) {
+      fmt::print(fp, text, n);
+      fmt::print(fp, "{} \n", m);
       for (int j = 0; j < n; j++) {
-        for (int i = 0; i < n; i++)
-          fmt::print(fp, "{:<10.{}f}     ",  A[i + j*n], precision);
+        for (int i = 0; i < m; i++)
+          fmt::print(fp, "{:<10.{}f}     ",  A[j + i*n], precision);
         fmt::print(fp, "   \n");
       }
     }
