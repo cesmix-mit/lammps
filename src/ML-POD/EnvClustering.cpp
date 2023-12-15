@@ -402,6 +402,12 @@
         envClustering.getdDdPD(envClustering.PD, envClustering.centroids, envClustering.invSqDist, nAtoms, nClusters, nComponents, envClustering.dDdPD);
         envClustering.getdPddesc(envClustering.dPdD, envClustering.dDdPD, envClustering.P, nAtoms, nClusters, nComponents, Mdesc, envClustering.dPddesc);
         
+        // 1. compute probabilities: p_k
+        // 2. compute new descriptors: q_km = p_k * d_m
+        // 3. compute probabilities derivatives with respect to d: d p_k/d d_m
+        // 4. compute probabilities derivatives: d p_k/d R = \sum_{m=1}^M d p_k/d d_m * d d_m / d R
+        // 5. compute new descriptors derivatives: d q_km / d R = (d p_k/d R) * d_m + p_k * (d d_m / d R)
+
         // Generate random ddesc/dR, with shape (nAtoms, MDesc, 3*nNeighbors)
         int nNeighbors = 20;
         double* ddesc = (double*)malloc(nAtoms * Mdesc * 3*nNeighbors * sizeof(double));
