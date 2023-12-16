@@ -47,7 +47,7 @@ EAPOD::EAPOD(LAMMPS *_lmp, const std::string &pod_file, const std::string &coeff
     rin = 0.5;
     rcut = 5.0;
     nClusters = 1;
-    npc = 1;
+    nComponents = 1;
     nelements = 1;
     onebody = 1;
     besseldegree = 4;
@@ -188,7 +188,7 @@ void EAPOD::read_pod_file(std::string pod_file)
       if (keywd == "number_of_enviroment_clusters")
         nClusters = utils::inumeric(FLERR,words[1],false,lmp);
       if (keywd == "number_of_principal_components")
-        npc = utils::inumeric(FLERR,words[1],false,lmp);
+        nComponents = utils::inumeric(FLERR,words[1],false,lmp);
       if (keywd == "bessel_polynomial_degree")
         besseldegree = utils::inumeric(FLERR,words[1],false,lmp);
       if (keywd == "inverse_polynomial_degree")
@@ -408,7 +408,7 @@ void EAPOD::read_pod_file(std::string pod_file)
     utils::logmesg(lmp, "\n");
     utils::logmesg(lmp, "periodic boundary conditions: {} {} {}\n", pbc[0], pbc[1], pbc[2]);
     utils::logmesg(lmp, "number of enviroment clusters: {}\n", nClusters);
-    utils::logmesg(lmp, "number of principal compoments: {}\n", npc);
+    utils::logmesg(lmp, "number of principal compoments: {}\n", nComponents);
     utils::logmesg(lmp, "inner cut-off radius: {}\n", rin);
     utils::logmesg(lmp, "outer cut-off radius: {}\n", rcut);
     utils::logmesg(lmp, "bessel polynomial degree: {}\n", besseldegree);
@@ -3270,6 +3270,140 @@ void EAPOD::MatMul(double *c, double *a, double *b, int r1, int c1, int c2)
     for(i = 0; i < r1; i++)
       for(k = 0; k < c1; k++)
         c[i + r1*j] += a[i + r1*k] * b[k + c1*j];
+}
+
+void EAPOD::getInvDist(double* pca, int nAtoms, int nComponents, double* centroids, int nClusters, double* inverseDistances) {
+    for (int i = 0; i < nAtoms; i++) {
+        for (int j = 0; j < nClusters; j++) {
+            double dist = L2norm(&pca[i * nComponents], &centroids[i * nComponents], nComponents);
+            inverseDistances[i * nClusters + j] = 1.0 / dist;
+        }
+    }
+}
+
+void EAPOD::getSqInvDist(double* pca, int nAtoms, int nComponents, double* centroids, int nClusters, double* inverseDistances) {
+    for (int i = 0; i < nAtoms; i++) {
+        for (int j = 0; j < nClusters; j++) {
+            double distance = 0.0;
+            for (int k = 0; k < nComponents; k++) {
+                double diff = pca[i * nComponents + k] - centroids[j * nComponents + k];
+                distance += diff * diff;
+            }
+            inverseDistances[i * nClusters + j] = 1.0 / distance;
+        }
+    }
+}
+
+void EAPOD::getProba(const double* inverseSquareDistances, int nAtoms, int nClusters, double* probabilities) {
+    for (int i = 0; i < nAtoms; i++) {
+        double sumInverseSquareDistances = 0.0;
+        for (int j = 0; j < nClusters; j++) {
+            sumInverseSquareDistances += inverseSquareDistances[i * nClusters + j];
+        }
+        for (int j = 0; j < nClusters; j++) {
+            probabilities[i * nClusters + j] = inverseSquareDistances[i * nClusters + j] / sumInverseSquareDistances;
+        }
+    }
+}
+
+// dPdD = (S-D)/S^2 = (1-Prob)/S
+// dPdD shape: (nAtoms, nClusters)
+void EAPOD::getdPdD(const double* inverseSquareDistances, int nAtoms, int nClusters, double* dPdD) {
+    for (int i = 0; i < nAtoms; i++) {
+        double sumInverseSquareDistances = 0.0;
+        for (int j = 0; j < nClusters; j++) {
+            sumInverseSquareDistances += inverseSquareDistances[i * nClusters + j];
+        }
+        for (int j = 0; j < nClusters; j++) {
+            double D_ij = inverseSquareDistances[i * nClusters + j];
+            dPdD[i * nClusters + j] = (sumInverseSquareDistances - D_ij) / (sumInverseSquareDistances * sumInverseSquareDistances);
+        }
+    }
+}
+
+// dDdPCA = -2*D^2*(PCA-c), where PCA = desc * P = b, c=centroids
+// dDdPCA shape: (nAtoms, nClusters, nComponents)
+void EAPOD::getdDdpca(const double* pca, const double* centroids, const double* inverseSquareDistances, int nAtoms, int nClusters, int nComponents, double* dDdpca) {
+    for (int i = 0; i < nAtoms; i++) {
+        for (int k = 0; k < nComponents; k++) {
+            double pca_ik = pca[i * nComponents + k];
+            for (int j = 0; j < nClusters; j++) {
+                double C_jk = centroids[j * nComponents + k];
+                double D_ij = inverseSquareDistances[i * nClusters + j];
+                dDdpca[(i * nClusters + j) * nComponents + k] = -2 * D_ij * D_ij * (pca_ik - C_jk);
+            }
+        }
+    }
+}
+// dPdd = dPdD * dDdPCA * P
+// dPdd shape: (nAtoms, nClusters, Mdesc)
+void EAPOD::getdPdd(const double* dPdD, const double* dDdpca, const double* P, int nAtoms, int nClusters, int nComponents, int Mdesc, double* dPdd) {
+    for (int i = 0; i < nAtoms; i++) {
+        for (int j = 0; j < nClusters; j++) {
+            for (int m = 0; m < Mdesc; m++) {
+                double dPdD_ij = dPdD[i * nClusters + j];
+                for (int k = 0; k < nComponents; k++) {
+                    double dDdpca_ik = dDdpca[(i * nClusters + j) * nComponents + k];
+                    double dPCAik_dd = P[m * nComponents + k];
+                    dPdd[(i * nClusters + j) * Mdesc + m] += dPdD_ij * dDdpca_ik * dPCAik_dd;
+                }
+            }
+        }
+    }
+}
+
+// 1. compute probabilities: p_k
+void EAPOD::calcproba(double* pca, int nAtoms, int nComponents, double* centroids, int nClusters, double* inverseDistances, const double* inverseSquareDistances, double* probabilities) {
+    getSqInvDist(pca, nAtoms, nComponents, centroids, nClusters, inverseDistances);
+    getProba(inverseSquareDistances, nAtoms, nClusters, probabilities);
+}
+
+// 2. compute new descriptors: Q_mk = p_k * d_m
+void EAPOD::calcQ(double* probabilities, double* localdescmatrix, int nAtoms, int nClusters, int Mdesc, double* Q) {
+    for (int i = 0; i < nAtoms; i++) {
+        for (int m = 0; m < Mdesc; m++) {
+            for (int j = 0; j < nClusters; j++) {
+                Q[i * Mdesc + m] += probabilities[i * nClusters + j] * localdescmatrix[(i * nClusters + j) * Mdesc + m];
+            }
+        }
+    }
+}
+
+// 3. compute probabilities derivatives with respect to d: d p_k/d d_m
+void EAPOD::calcdpdd(double* pca, int nAtoms, int nComponents, double* centroids, int nClusters, int Mdesc, const double* inverseSquareDistances, double* probabilities, double* P, double* dPdD, double* dDdpca, double* dPdd) {
+    getdPdD(inverseSquareDistances, nAtoms, nClusters, dPdD);
+    getdDdpca(pca, centroids, inverseSquareDistances, nAtoms, nClusters, nComponents, dDdpca);
+    getdPdd(dPdD, dDdpca, P, nAtoms, nClusters, nComponents, Mdesc, dPdd);
+}
+
+// 4. compute probabilities derivatives: d p_k/d R = \sum_{m=1}^M d p_k/d d_m * d d_m / d R
+void EAPOD::calcdpdR(double* probabilities, double* dPdd, double* dlocaldesc, int nAtoms, int nClusters, int Mdesc, double* dpdR) {
+    for (int i = 0; i < nAtoms; i++) {
+        for (int j = 0; j < nClusters; j++) {
+            for (int m = 0; m < Mdesc; m++) {
+                dpdR[i * nClusters + j] += dPdd[(i * nClusters + j) * Mdesc + m] * dlocaldesc[(i * nClusters + j) * Mdesc + m];
+            }
+        }
+    }
+}
+
+// 5. compute new descriptors derivatives: d Q_km / d R = (d p_k/d R) * d_m + p_k * (d d_m / d R)
+void EAPOD::calcdQdR(double* probabilities, double* localdescmatrix, double* dPdR, double* dlocaldesc, int nAtoms, int nClusters, int Mdesc, double* dQdR) {
+    for (int i = 0; i < nAtoms; i++) {
+        for (int m = 0; m < Mdesc; m++) {
+            for (int j = 0; j < nClusters; j++) {
+                dQdR[i * Mdesc + m] += dPdR[i * nClusters + j] * localdescmatrix[(i * nClusters + j) * Mdesc + m] + probabilities[i * nClusters + j] * dlocaldesc[(i * nClusters + j) * Mdesc + m];
+            }
+        }
+    }
+}
+
+double EAPOD::L2norm(const double* a, const double* b, int dimensions) {
+    double sum = 0.0;
+    for (int i = 0; i < dimensions; ++i) {
+        sum += pow(a[i] - b[i], 2);
+    }
+    return sqrt(sum);
 }
 
 void EAPOD::init3bodyarray(int *np, int *pq, int *pc, int Pa)

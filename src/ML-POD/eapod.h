@@ -110,14 +110,15 @@ private:
 
   void mvproduct(double *fij, double *c, double *dd, int N, int ndesc);
 
+  double L2norm(const double* a, const double* b, int dimensions);
+
 public:
   std::vector<std::string> species;
 
   double rin;
   double rcut;
   int true4BodyDesc;
-  int nClusters; // number of environment clusters
-  int npc; // number of principal components
+  
 
   int nelements;
   int pbc[3];
@@ -136,6 +137,20 @@ public:
   double *coeff;  // coefficients
   double *newcoeff ;  // coefficients
   double *tmpmem;
+
+  // environmental variables
+  int nClusters; // number of environment clusters
+  int nComponents; // number of principal components
+  int nAtoms;
+  int Mdesc; // total number of local descriptors
+
+  double *centroids; // centroids of the clusters
+  double *pca; // principal components
+  double *inverseDistances; // inverse distances between the atoms and the centroids
+  double *probabilities; // probabilities of the atoms to belong to the clusters
+  double *dPdD; // derivative of the probabilities with respect to the inverse distances
+  double *dDdpca; // derivative of the inverse distances with respect to the principal components
+  double *dPdd; // derivative of the probabilities with respect to the local descriptors
 
   int Njmax;
   int ncoeff;  // number of coefficients in the input file
@@ -271,6 +286,29 @@ public:
   void crossdescriptors(double *gd12, double *gdd12, double *d12, double *dd12,
         double* d1, double *d2, double* dd1, double *dd2, int *ind1, int *ind2,
         int *ai, int *aj, int *ti, int *tj, int n12, int Nj, int natom);
+
+  void getInvDist(double* pca, int nAtoms, int nComponents, double* centroids, int nClusters, double* inverseDistances);
+
+  void getSqInvDist(double* pca, int nAtoms, int nComponents, double* centroids, int nClusters, double* inverseDistances);
+
+  void getProba(const double* inverseSquareDistances, int nAtoms, int nClusters, double* probabilities);
+
+  void getdPdD(const double* inverseSquareDistances, int nAtoms, int nClusters, double* dPdD);
+
+  void getdDdPCA(const double* pca, const double* centroids, const double* inverseSquareDistances, int nAtoms, int nClusters, int nComponents, double* dDdpca);
+
+  void getdPdd(const double* dPdD, const double* dDdpca, const double* P, int nAtoms, int nClusters, int nComponents, int Mdesc, double* dPdd);
+
+  void calcproba(double* pca, int nAtoms, int nComponents, double* centroids, int nClusters, double* inverseDistances, const double* inverseSquareDistances, double* probabilities);
+
+  void calcQ(double* probabilities, double* localdescmatrix, int nAtoms, int nClusters, int Mdesc, double* Q);
+
+  void calcdpdd(double* pca, int nAtoms, int nComponents, double* centroids, int nClusters, int Mdesc, const double* inverseSquareDistances, double* probabilities, double* P, double* dPdD, double* dDdpca, double* dPdd);
+
+  void calcdpdR(double* probabilities, double* dPdd, double* dlocaldesc, int nAtoms, int nClusters, int Mdesc, double* dpdR);
+
+  void calcdQdR(double* probabilities, double* localdescmatrix, double* dPdR, double* dlocaldesc, int nAtoms, int nClusters, int Mdesc, double* dQdR);
+
 };
 
 }    // namespace LAMMPS_NS
