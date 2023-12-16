@@ -295,7 +295,7 @@ public:
 
   void getdPdD(const double* inverseSquareDistances, int nAtoms, int nClusters, double* dPdD);
 
-  void getdDdPCA(const double* pca, const double* centroids, const double* inverseSquareDistances, int nAtoms, int nClusters, int nComponents, double* dDdpca);
+  void getdDdpca(const double* pca, const double* centroids, const double* inverseSquareDistances, int nAtoms, int nClusters, int nComponents, double* dDdpca);
 
   void getdPdd(const double* dPdD, const double* dDdpca, const double* P, int nAtoms, int nClusters, int nComponents, int Mdesc, double* dPdd);
 
