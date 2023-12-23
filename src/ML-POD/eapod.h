@@ -141,16 +141,25 @@ public:
   // environmental variables
   int nClusters; // number of environment clusters
   int nComponents; // number of principal components
-  int nAtoms;
+  int nNeighbors; // numbe of neighbors
   int Mdesc; // total number of local descriptors
-
+  
+  double *Proj; // PCA Projection matrix
   double *centroids; // centroids of the clusters
-  double *pca; // principal components
-  double *inverseDistances; // inverse distances between the atoms and the centroids
+  double *pca; // projected data
+  double *inverseSquareDistances; // inverse square distances between the atoms and the centroids
   double *probabilities; // probabilities of the atoms to belong to the clusters
   double *dPdD; // derivative of the probabilities with respect to the inverse distances
   double *dDdpca; // derivative of the inverse distances with respect to the principal components
-  double *dPdd; // derivative of the probabilities with respect to the local descriptors
+  double *dPdld; // derivative of the probabilities with respect to the local descriptors
+  double *dlddR; // derivative of the local descriptors with respect to the atomic positions
+  double *Q; // Q matrix
+  double *dpdR; // derivative of the probabilities with respect to the atomic positions
+  double *dQdR; // derivative of the Q matrix with respect to the atomic positions
+
+
+  int nproj; // number of elements in projection matrix (Mdesc * nComponents)
+  int ncentroids; // number of centroids (nComponents * nClusters)
 
   int Njmax;
   int ncoeff;  // number of coefficients in the input file
@@ -162,7 +171,7 @@ public:
   int P3, P4;                                  // angular polynomial degrees
   int K3, K4, Q4;                              // number of monomials
   int *pn3, *pq3, *pc3;          // arrays to compute 3-body angular basis functions
-  int *pq4, *pa4, *pb4, *pc4;// arrays to compute 3-body angular basis functions
+  int *pq4, *pa4, *pb4, *pc4; // arrays to compute 3-body angular basis functions
   int *tmpint;
   int nintmem; // number of integers in tmpint array
   int ndblmem; // number of doubles in tmpmem array
@@ -182,7 +191,7 @@ public:
   int nld33, nld34, nld44, ngd33, ngd34, ngd44;
   int *ind33l, *ind33r, *ind34l, *ind34r, *ind44l, *ind44r;
 
-  EAPOD(LAMMPS *, const std::string &pod_file, const std::string &coeff_file);
+  EAPOD(LAMMPS *, const std::string &pod_file, const std::string &coeff_file, const std::string &proj_file, const std::string &centroids_file);
 
   EAPOD(LAMMPS *lmp) : Pointers(lmp){};
   ~EAPOD() override;
@@ -192,6 +201,8 @@ public:
 
   void read_pod_file(std::string pod_file);
   int read_coeff_file(std::string coeff_file);
+  int read_projection_matrix(std::string proj_file);
+  int read_centroids(std::string centroids_file);
 
   int estimate_memory(int Nj);
 
@@ -287,27 +298,27 @@ public:
         double* d1, double *d2, double* dd1, double *dd2, int *ind1, int *ind2,
         int *ai, int *aj, int *ti, int *tj, int n12, int Nj, int natom);
 
-  void getInvDist(double* pca, int nAtoms, int nComponents, double* centroids, int nClusters, double* inverseDistances);
+  void getInvDist(double* pca, int nComponents, double* centroids, int nClusters, double* inverseDistances);
 
-  void getSqInvDist(double* pca, int nAtoms, int nComponents, double* centroids, int nClusters, double* inverseDistances);
+  void getInvSqDist(double* pca, int nComponents, double* centroids, int nClusters, double* inverseSquareDistances);
 
-  void getProba(const double* inverseSquareDistances, int nAtoms, int nClusters, double* probabilities);
+  void getProba(const double* inverseSquareDistances, int nClusters, double* probabilities);
 
-  void getdPdD(const double* inverseSquareDistances, int nAtoms, int nClusters, double* dPdD);
+  void getdPdD(const double* inverseSquareDistances, int nClusters, double* dPdD);
 
-  void getdDdpca(const double* pca, const double* centroids, const double* inverseSquareDistances, int nAtoms, int nClusters, int nComponents, double* dDdpca);
+  void getdDdpca(const double* pca, const double* centroids, const double* inverseSquareDistances, int nClusters, int nComponents, double* dDdpca);
 
-  void getdPdd(const double* dPdD, const double* dDdpca, const double* P, int nAtoms, int nClusters, int nComponents, int Mdesc, double* dPdd);
+  void getdPdld(const double* dPdD, const double* dDdpca, const double* Proj, int nClusters, int nComponents, int Mdesc, double* dPdld);
 
-  void calcproba(double* pca, int nAtoms, int nComponents, double* centroids, int nClusters, double* inverseDistances, const double* inverseSquareDistances, double* probabilities);
+  void calcproba(double* pca, int nComponents, double* centroids, int nClusters, double* inverseSquareDistances, double* probabilities);
 
-  void calcQ(double* probabilities, double* localdescmatrix, int nAtoms, int nClusters, int Mdesc, double* Q);
+  void calcQ(double* probabilities, double* ld, int nAtoms, int nClusters, int Mdesc, double* Q);
 
-  void calcdpdd(double* pca, int nAtoms, int nComponents, double* centroids, int nClusters, int Mdesc, const double* inverseSquareDistances, double* probabilities, double* P, double* dPdD, double* dDdpca, double* dPdd);
+  void calcdpdld(double* pca, int nComponents, double* centroids, int nClusters, int Mdesc, const double* inverseSquareDistances, double* probabilities, double* Proj, double* dPdD, double* dDdpca, double* dPdld);
 
-  void calcdpdR(double* probabilities, double* dPdd, double* dlocaldesc, int nAtoms, int nClusters, int Mdesc, double* dpdR);
+  void calcdpdR(double* dPdld, double* dlddR, int nClusters, int Mdesc, int nNeighbors, double* dpdR);
 
-  void calcdQdR(double* probabilities, double* localdescmatrix, double* dPdR, double* dlocaldesc, int nAtoms, int nClusters, int Mdesc, double* dQdR);
+  void calcdQdR(double* dpdR, double* dlddR, double* ld, double* probabilities, int nClusters, int Mdesc, int nNeighbors, double* dQdR);
 
 };
 
