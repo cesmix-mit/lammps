@@ -90,11 +90,11 @@ void FitPOD::command(int narg, char **arg)
     desc.nd = fastpodptr->nd;
     desc.nld = fastpodptr->nl;
     desc.nClusters = fastpodptr->nClusters;
-    desc.npc = fastpodptr->npc;
+    desc.nComponents = fastpodptr->nComponents;
     if (desc.nClusters > 1) {
       memory->create(desc.clusterSizes, desc.nClusters, "fitpod:clusterSizes");
-      memory->create(desc.centroids, desc.nClusters*desc.npc, "fitpod:centroids");
-      memory->create(desc.P, desc.nld*desc.npc, "fitpod:P");
+      memory->create(desc.centroids, desc.nClusters*desc.nComponents, "fitpod:centroids");
+      memory->create(desc.P, desc.nld*desc.nComponents, "fitpod:P");
       memory->create(desc.Lambda, desc.nld, "fitpod:Lmabda");
     }
 
@@ -1808,13 +1808,12 @@ void FitPOD::descriptors_calculation(const datastruct &data)
 
 void FitPOD::enviroment_cluster_calculation(const datastruct &data)
 {
-  
   if (comm->me == 0)
     utils::logmesg(lmp, "**************** Begin Calculating Enviroment Descriptor Matrix ****************\n");
     
   printf("number of configurations = %d\n", (int) data.num_atom.size());  
 
-  int nDims = desc.npc;  
+  int nComponents = desc.nComponents;  
   int nAtoms = 0;
   int nTotalAtoms = 0;
   int Mdesc = desc.nld - 1; // offset 1 to remove the first column (one-body descriptor) of the local descriptor matrix
@@ -1824,7 +1823,7 @@ void FitPOD::enviroment_cluster_calculation(const datastruct &data)
   }
 
   double *localdescmatrix = (double *) malloc(nAtoms*Mdesc*sizeof(double));
-  double *pca = (double *) malloc(nAtoms*desc.npc*sizeof(double));
+  double *pca = (double *) malloc(nAtoms*desc.nComponents*sizeof(double));
   double *A = (double *) malloc(Mdesc*Mdesc*sizeof(double));
   double *b = (double *) malloc(Mdesc*sizeof(double));
   int *assignments = (int *) malloc(nAtoms*sizeof(int));
@@ -1871,7 +1870,7 @@ void FitPOD::enviroment_cluster_calculation(const datastruct &data)
   char chu = 'U';
   double alpha = 1.0, beta = 0.0;
 
-  printf("SIZES: %d  %d  %d  %d  %d\n", desc.nld, Mdesc, nAtoms, nDims, desc.nClusters);  
+  printf("SIZES: %d  %d  %d  %d  %d\n", desc.nld, Mdesc, nAtoms, nComponents, desc.nClusters);  
 
   // Calculate covariance matrix A = localdescmatrix*localdescmatrix'. A is a Mdesc x Mdesc matrix
   DGEMM(&chn, &cht, &Mdesc, &Mdesc, &nAtoms, &alpha, localdescmatrix, &Mdesc, localdescmatrix, &Mdesc, &beta, A, &Mdesc);
@@ -1898,35 +1897,35 @@ void FitPOD::enviroment_cluster_calculation(const datastruct &data)
   if (comm->me == 0)
     savematrix2binfile(data.filenametag + "_eigenvalues"  + ".bin", desc.Lambda, Mdesc, 1);
 
-  // desc.P is a Mdesc x nDims matrix
-  for (int j=0; j<nDims; j++)
+  // desc.P is a Mdesc x nComponents matrix
+  for (int j=0; j<nComponents; j++)
     for (int i=0; i<Mdesc; i++)
       desc.P[i + Mdesc*j] = A[i + Mdesc*(Mdesc-j-1)]*sqrt(fabs(b[(Mdesc-j-1)]/desc.Lambda[0]));
 
-  // Calculate principal compoment analysis matrix pca = P'*localdescmatrix. pca is a nDims x nAtoms matrix
-  DGEMM(&cht, &chn, &nDims, &nAtoms, &Mdesc, &alpha, desc.P, &Mdesc, localdescmatrix, &Mdesc, &beta, pca, &nDims);
+  // Calculate principal compoment analysis matrix pca = P'*localdescmatrix. pca is a nComponents x nAtoms matrix
+  DGEMM(&cht, &chn, &nComponents, &nAtoms, &Mdesc, &alpha, desc.P, &Mdesc, localdescmatrix, &Mdesc, &beta, pca, &nComponents);
 
   // initialize centroids 
-  for (int i = 0; i < desc.nClusters * nDims; i++) desc.centroids[i] = 0.0;  
+  for (int i = 0; i < desc.nClusters * nComponents; i++) desc.centroids[i] = 0.0;  
   for (int i=0; i < nAtoms; i++) {    
     int m = (i*desc.nClusters)/nAtoms;
-    for (int j=0; j < nDims; j++)
-      desc.centroids[j + nDims*m] += pca[j + nDims*i];
+    for (int j=0; j < nComponents; j++)
+      desc.centroids[j + nComponents*m] += pca[j + nComponents*i];
   }
-  MPI_Allreduce(MPI_IN_PLACE, desc.centroids, desc.nClusters * nDims, MPI_DOUBLE, MPI_SUM, world);  
+  MPI_Allreduce(MPI_IN_PLACE, desc.centroids, desc.nClusters * nComponents, MPI_DOUBLE, MPI_SUM, world);  
   double fac = ((double) desc.nClusters)/((double) nTotalAtoms);
-  for (int i = 0; i < desc.nClusters * nDims; i++) desc.centroids[i] = desc.centroids[i]*fac;
-  //for (int i = 0; i < desc.nClusters * nDims; i++) printf("centroids[%d] = %f\n", i, desc.centroids[i]);
+  for (int i = 0; i < desc.nClusters * nComponents; i++) desc.centroids[i] = desc.centroids[i]*fac;
+  //for (int i = 0; i < desc.nClusters * nComponents; i++) printf("centroids[%d] = %f\n", i, desc.centroids[i]);
 
   // Calculate centroids using k-means clustering
   int max_iter = 100;
-  KmeansClustering(pca, desc.centroids, assignments, desc.clusterSizes, nAtoms, desc.nClusters, nDims, max_iter);
+  KmeansClustering(pca, desc.centroids, assignments, desc.clusterSizes, nAtoms, desc.nClusters, nComponents, max_iter);
 
-  savedata2textfile(data.filenametag + "_projection_matrix"  + ".pod", "projection_matrix: {} ", desc.P, Mdesc, nDims, 2);
-  savedata2textfile(data.filenametag + "_centroids"  + ".pod", "centroids: {} ", desc.centroids, nDims, desc.nClusters, 2);
+  savedata2textfile(data.filenametag + "_projection_matrix"  + ".pod", "projection_matrix: {} ", desc.P, Mdesc, nComponents, 2);
+  savedata2textfile(data.filenametag + "_centroids"  + ".pod", "centroids: {} ", desc.centroids, nComponents, desc.nClusters, 2);
     
   savematrix2binfile(data.filenametag + "_desc_matrix_proc" + std::to_string(comm->me+1) + ".bin", localdescmatrix, Mdesc, nAtoms);  
-  savematrix2binfile(data.filenametag + "_pca_matrix_proc" + std::to_string(comm->me+1) + ".bin", pca, nDims, nAtoms);
+  savematrix2binfile(data.filenametag + "_pca_matrix_proc" + std::to_string(comm->me+1) + ".bin", pca, nComponents, nAtoms);
   saveintmatrix2binfile(data.filenametag + "_cluster_assignments_proc" + std::to_string(comm->me+1) + ".bin", assignments, nAtoms, 1);
   
   free(localdescmatrix);

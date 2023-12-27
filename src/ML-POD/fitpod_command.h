@@ -134,7 +134,7 @@ private:
     int nd = 0; // number of global descriptors
     int nld = 0; // number of local descriptors
     int nClusters = 0; // number of environment clusters 
-    int npc = 0; // number of principal components
+    int nComponents = 0; // number of principal components
     int method;
   };
 

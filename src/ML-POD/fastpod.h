@@ -117,7 +117,7 @@ public:
   double rcut;
   int true4BodyDesc;
   int nClusters; // number of environment clusters
-  int npc; // number of principal components
+  int nComponents; // number of principal components
 
   int nelements;
   int pbc[3];

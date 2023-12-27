@@ -47,7 +47,7 @@ FASTPOD::FASTPOD(LAMMPS *_lmp, const std::string &pod_file, const std::string &c
   rin = 0.5;
   rcut = 5.0;
   nClusters = 1;
-  npc = 1;
+  nComponents = 1;
   nelements = 1;
   onebody = 1;
   besseldegree = 4;
@@ -188,7 +188,7 @@ void FASTPOD::read_pod_file(std::string pod_file)
       if (keywd == "number_of_enviroment_clusters")
         nClusters = utils::inumeric(FLERR,words[1],false,lmp);
       if (keywd == "number_of_principal_components")
-        npc = utils::inumeric(FLERR,words[1],false,lmp);
+        nComponents = utils::inumeric(FLERR,words[1],false,lmp);
       if (keywd == "bessel_polynomial_degree")
         besseldegree = utils::inumeric(FLERR,words[1],false,lmp);
       if (keywd == "inverse_polynomial_degree")
@@ -408,7 +408,7 @@ void FASTPOD::read_pod_file(std::string pod_file)
     utils::logmesg(lmp, "\n");
     utils::logmesg(lmp, "periodic boundary conditions: {} {} {}\n", pbc[0], pbc[1], pbc[2]);
     utils::logmesg(lmp, "number of enviroment clusters: {}\n", nClusters);
-    utils::logmesg(lmp, "number of principal compoments: {}\n", npc);
+    utils::logmesg(lmp, "number of principal compoments: {}\n", nComponents);
     utils::logmesg(lmp, "inner cut-off radius: {}\n", rin);
     utils::logmesg(lmp, "outer cut-off radius: {}\n", rcut);
     utils::logmesg(lmp, "bessel polynomial degree: {}\n", besseldegree);
