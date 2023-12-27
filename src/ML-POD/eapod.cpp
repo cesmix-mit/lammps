@@ -3483,18 +3483,21 @@ void EAPOD::getpca(double* pca,  const double* Proj,  const double* ld, int Mdes
 }
 
 // centroids shape: (nComponents, nClusters), pca shape: (nComponents), inverseDistances shape: (nClusters)
+// distance2_j = sum_k (PCA_k - c_jk)^2
+// D_j = 1/distance2_j, j = 1, ..., nClusters. D_j are inverseDistances  
 void EAPOD::getInvSqDist(double* pca, int nComponents, double* centroids, int nClusters, double* inverseSquareDistances) {
   for (int j = 0; j < nClusters; j++) {
-    double distance = 0.0;
+    double distance2 = 0.0;
     for (int k = 0; k < nComponents; k++) {
       double diff = pca[k] - centroids[j * nComponents + k];
-      distance += diff * diff;
+      distance2 += diff * diff;
     }
-    inverseSquareDistances[j] = 1.0 / distance;
+    inverseSquareDistances[j] = 1.0 / distance2;
   }
 }
 
 // probabilities shape: (nClusters)
+// P_j = D_j/S, where S = sum_k D_k, where D_k are inverseDistances  
 void EAPOD::getProba(const double* inverseSquareDistances, int nClusters, double* probabilities) {
   double sumInverseSquareDistances = 0.0;
   for (int j = 0; j < nClusters; j++) {
@@ -3505,16 +3508,20 @@ void EAPOD::getProba(const double* inverseSquareDistances, int nClusters, double
   }
 }
 
-// dPdD = (S-D)/S^2 = (1-Prob)/S
-// dPdD shape: (nClusters)
+// dPdD shape: (nClusters, nClusters)
+// dP_j/dD_k = (delta_jk * S - D_j) / S^2, where S = sum_k D_k, where D_k are inverseDistances
 void EAPOD::getdPdD(const double* inverseSquareDistances, int nClusters, double* dPdD) {
     double sumInverseSquareDistances = 0.0;
     for (int j = 0; j < nClusters; j++) {
       sumInverseSquareDistances += inverseSquareDistances[j];
     }
+    double S2 = sumInverseSquareDistances * sumInverseSquareDistances;
     for (int j = 0; j < nClusters; j++) {
-      double D_ij = inverseSquareDistances[j];
-      dPdD[j] = (sumInverseSquareDistances - D_ij) / (sumInverseSquareDistances * sumInverseSquareDistances);
+      double D_j = inverseSquareDistances[j];    
+      for (int k = 0; k < nClusters; k++) {
+        double delta_jk = (j == k) ? 1.0 : 0.0;
+        dPdD[j * nClusters + k] = (delta_jk * sumInverseSquareDistances - D_j) / S2;
+      }
     }
 }
 
@@ -3555,9 +3562,9 @@ void EAPOD::calcproba(double* pca, int nComponents, double* centroids, int nClus
 // p_k shape: (nClusters), ld shape: (Mdesc)
 // Q shape: (Mdesc, nClusters)
 void EAPOD::calcQ(double* probabilities, double* ld, int nClusters, int Mdesc, double* Q) {
-  for (int m = 0; m < Mdesc; m++) {
-    for (int j = 0; j < nClusters; j++) {
-      Q[m * nClusters + j] = probabilities[j] * ld[m];
+  for (int j = 0; j < nClusters; j++) {
+     for (int m = 0; m < Mdesc; m++) {
+      Q[j * Mdesc + m] = probabilities[j] * ld[m];
     }
   }
 }
