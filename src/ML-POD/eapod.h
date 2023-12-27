@@ -300,6 +300,8 @@ public:
 
   void getInvDist(double* pca, int nComponents, double* centroids, int nClusters, double* inverseDistances);
 
+  void getpca(double* pca,  const double* Proj,  const double* ld, int Mdesc, int nComponents);
+
   void getInvSqDist(double* pca, int nComponents, double* centroids, int nClusters, double* inverseSquareDistances);
 
   void getProba(const double* inverseSquareDistances, int nClusters, double* probabilities);
@@ -312,7 +314,7 @@ public:
 
   void calcproba(double* pca, int nComponents, double* centroids, int nClusters, double* inverseSquareDistances, double* probabilities);
 
-  void calcQ(double* probabilities, double* ld, int nAtoms, int nClusters, int Mdesc, double* Q);
+  void calcQ(double* probabilities, double* ld, int nClusters, int Mdesc, double* Q);
 
   void calcdpdld(double* pca, int nComponents, double* centroids, int nClusters, int Mdesc, const double* inverseSquareDistances, double* probabilities, double* Proj, double* dPdD, double* dDdpca, double* dPdld);
 
