@@ -3477,7 +3477,7 @@ void EAPOD::getpca(double* pca,  const double* Proj,  const double* ld, int Mdes
   for (int k = 0; k < nComponents; k++) {
     pca[k] = 0.0;
     for (int m = 0; m < Mdesc; m++) {
-      pca[k] += Proj[m * nComponents + k] * ld[m];
+      pca[k] += Proj[k *Mdesc  + m] * ld[m];
     }
   }
 }
@@ -3525,6 +3525,9 @@ void EAPOD::getdPdD(const double* inverseSquareDistances, int nClusters, double*
     }
 }
 
+// distance2_j = sum_k (PCA_k - c_kj)^2
+// D_j = 1/distance2_j, j = 1, ..., nClusters. D_j are inverseDistances  
+// dD_j/dpca_k = -2*D_j^2*(PCA_k - c_jk)
 // dDdpca = -2*D^2*(PCA-c), where pca = ld * P = b, c=centroids
 // dDdpca shape: (nClusters, nComponents)
 void EAPOD::getdDdpca(const double* pca, const double* centroids, const double* inverseSquareDistances, int nClusters, int nComponents, double* dDdpca) {
