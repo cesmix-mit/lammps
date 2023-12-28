@@ -141,7 +141,7 @@ public:
   // environmental variables
   int nClusters; // number of environment clusters
   int nComponents; // number of principal components
-  int nNeighbors; // numbe of neighbors
+  //int nNeighbors; // numbe of neighbors
   int Mdesc; // total number of local descriptors
   
   double *Proj; // PCA Projection matrix
@@ -298,6 +298,13 @@ public:
         double* d1, double *d2, double* dd1, double *dd2, int *ind1, int *ind2,
         int *ai, int *aj, int *ti, int *tj, int n12, int Nj, int natom);
 
+  void calcProbabilities(double *P, const double *Proj, const double *centroids, const double *ld,  
+                        double *pca, double *D, int Mdesc, int nComponents, int nClusters);
+
+  void calcProbabilitiesDerivatives(double *P, double *dP_dld, const double *Proj, const double *centroids, 
+                const double *ld,  double *pca, double *D, double *dD_dpca, double *dD_dld, double *dP_dD, 
+                int Mdesc, int nComponents, int nClusters, int nNeighbors);
+
   void getInvDist(double* pca, int nComponents, double* centroids, int nClusters, double* inverseDistances);
 
   void getpca(double* pca,  const double* Proj,  const double* ld, int Mdesc, int nComponents);
@@ -320,7 +327,8 @@ public:
 
   void calcdpdR(double* dPdld, double* dlddR, int nClusters, int Mdesc, int nNeighbors, double* dpdR);
 
-  void calcdQdR(double* dpdR, double* dlddR, double* ld, double* probabilities, int nClusters, int Mdesc, int nNeighbors, double* dQdR);
+  void calcdQdR(double* dQ_dR, double* dP_dR, const double* ld, const double* dld_dR, const double* P, 
+                    const double* dP_dld, int nClusters, int Mdesc, int nNeighbors);
 
 };
 
