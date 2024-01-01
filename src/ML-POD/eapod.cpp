@@ -90,19 +90,25 @@ EAPOD::EAPOD(LAMMPS *_lmp, const std::string &pod_file, const std::string &coeff
 
     // read pod coefficient file to podstruct
     if (coeff_file != "") {
-        ncoeff = read_coeff_file(coeff_file);
-        if (ncoeff != nCoeffAll)
-            error->all(FLERR,"number of coefficients in the input file is not correct");
-        mknewcoeff();
+      ncoeff = read_coeff_file(coeff_file);
+      if (ncoeff != nCoeffAll)
+        error->all(FLERR,"number of coefficients in the coefficient file is not correct");
+      mknewcoeff();
     }
-    // read projection matrix file to podstruct 
-    // if (proj_file != "") {
-    //     nproj = read_projection_matrix(proj_file);
-    // }
-    // // read centroids file to podstruct
-    // if (centroids_file != "") {
-    //     ncentroids = read_centroids(centroids_file);
-    // }
+    if (nClusters > 1) {
+      // read projection matrix file to podstruct 
+      if (proj_file != "") {
+        nproj = read_projection_matrix(proj_file);
+        if (nproj != nComponents*Mdesc*nelements)
+          error->all(FLERR,"number of coefficients in the projection file is not correct");
+      }
+      // read centroids file to podstruct
+      if (centroids_file != "") {
+        ncentroids = read_centroids(centroids_file);
+        if (ncentroids != nComponents*nClusters*nelements)
+          error->all(FLERR,"number of coefficients in the projection file is not correct");
+      }
+    }
 }
 
 // destructor
@@ -861,8 +867,6 @@ double EAPOD::peratomenergyforce(double *fij, double *rij, double *temp,
     // calculate multi-environment descriptors and their derivatives with respect to atom coordinates
     peratomenvironment_descriptors(pd, pdd, bd, bdd, temp, ti[0] - 1,  Nj);
     // print_matrix("coeff", 1, nCoeffPerElement, coeff1, 1);      
-    // print_matrix("pd", 1, nClusters, pd, 1);
-    // print_matrix("bd", 1, Mdesc, bd, 1);
     // error->all(FLERR,"Check bugs");
 
     for (int j = 0; j<nClusters; j++)
@@ -2042,6 +2046,9 @@ int EAPOD::estimate_temp_memory(int Nj)
   // Determine the total amount of memory needed for all double memory
   ndblmem = (nmax1 + nmax8);
 
+  int nmax9 = 6*Nj + nComponents + nClusters + nClusters*nComponents + 2*nClusters*Mdesc + nClusters*nClusters;
+  int ndblmem = (ndblmem > nmax9) ? ndblmem : nmax9;
+
   // Determine the total amount of memory needed for all integer memory
   nintmem = 4*Nj;
 
@@ -2293,14 +2300,18 @@ void EAPOD::peratomenvironment_descriptors(double *P, double *dP_dR, double *B, 
 
   // calculate dD_dB
   //double *dD_dB = new double[nClusters * Mdesc];
-  for (int m = 0; m < Mdesc; m++) {
-    for (int j = 0; j < nClusters; j++) {
-      dD_dB[j + m * nClusters] = 0.0;
-      for (int n = 0; n < nComponents; n++) {
-        dD_dB[j + m * nClusters] += dD_dpca[j + n * nClusters] * Proj[m + n * Mdesc];
-      }
-    }
-  }
+  // for (int m = 0; m < Mdesc; m++) {
+  //   for (int j = 0; j < nClusters; j++) {
+  //     dD_dB[j + m * nClusters] = 0.0;
+  //     for (int n = 0; n < nComponents; n++) {
+  //       dD_dB[j + m * nClusters] += dD_dpca[j + n * nClusters] * ProjMat[n + m * nComponents];
+  //     }
+  //   }
+  // }
+  char chn = 'N';
+  char cht = 'T';
+  double alpha = 1.0, beta = 0.0;
+  DGEMM(&chn, &chn, &nClusters, &Mdesc, &nComponents, &alpha, dD_dpca, &nClusters, ProjMat, &nComponents, &beta, dD_dB, &nClusters);
 
   // calculate dP_dD
   //double *dP_dD = new double[nClusters * nClusters];
@@ -2317,109 +2328,29 @@ void EAPOD::peratomenvironment_descriptors(double *P, double *dP_dR, double *B, 
 
   // calculate dP_dB = dP_dD * dD_dB, which are derivatives of probabilities with respect to local descriptors 
   //double *dP_dB = new double[nClusters * Mdesc];
-  for (int m = 0; m < Mdesc; m++) {
-    for (int j = 0; j < nClusters; j++) {
-      dP_dB[j + m * nClusters] = 0.0;
-      for (int k = 0; k < nClusters; k++) {
-        dP_dB[j + m * nClusters] += dP_dD[j + k * nClusters] * dD_dB[k + m * nClusters];
-      }
-    }
-  }
+  // for (int m = 0; m < Mdesc; m++) {
+  //   for (int j = 0; j < nClusters; j++) {
+  //     dP_dB[j + m * nClusters] = 0.0;
+  //     for (int k = 0; k < nClusters; k++) {
+  //       dP_dB[j + m * nClusters] += dP_dD[j + k * nClusters] * dD_dB[k + m * nClusters];
+  //     }
+  //   }
+  // }
+  DGEMM(&chn, &chn, &nClusters, &Mdesc, &nClusters, &alpha, dP_dD, &nClusters, dD_dB, &nClusters, &beta, dP_dB, &nClusters);
 
-  // calculate dP_dR = dP_dB * dB_dR, which are derivatives of probabilities with respect to atomic coordinates  
-  for (int j = 0; j < nClusters; j++) {
-    for (int k = 0; k < 3 * nNeighbors; k++) {
-      dP_dR[k + j*(3 * nNeighbors)] = 0.0;
-      for (int m = 0; m < Mdesc; m++) {
-        dP_dR[k + j*(3 * nNeighbors)] += dP_dB[j + m * nClusters] * dB_dR[k + m * (3 * nNeighbors)];
-      }
-    }
-  }  
+  // calculate dP_dR = dB_dR * dP_dB , which are derivatives of probabilities with respect to atomic coordinates  
+  //dP_dR = : 3 nNeighbors * nClusters = (3 * nNeighbors * Mdesc) x (Mdesc * nClusters)
+  // for (int j = 0; j < nClusters; j++) {
+  //   for (int k = 0; k < 3 * nNeighbors; k++) {
+  //     dP_dR[k + j*(3 * nNeighbors)] = 0.0;
+  //     for (int m = 0; m < Mdesc; m++) {
+  //       dP_dR[k + j*(3 * nNeighbors)] += dP_dB[j + m * nClusters] * dB_dR[k + m * (3 * nNeighbors)];
+  //     }
+  //   }
+  // }  
+  int N = 3*nNeighbors;
+  DGEMM(&chn, &cht, &N, &nClusters, &Mdesc, &alpha, dB_dR, &N, dP_dB, &nClusters, &beta, dP_dR, &N);
 }
-
-// void EAPOD::calcProbabilities(double *P, const double *ProjMat, const double *centroids, const double *ld,  
-//                              double *pca, double *D) {
-//   //double *pca = (double *) malloc(nComponents*sizeof(double));
-//   //double *D = (double *) malloc(nClusters*sizeof(double));
-  
-//   // calculate principal components
-//   for (int k = 0; k < nComponents; k++) {
-//     pca[k] = 0.0;
-//     for (int m = 0; m < Mdesc; m++) {
-//       pca[k] += ProjMat[k + nComponents*m] * ld[m];
-//     }
-//   }
-
-//   // calculate inverse square distances
-//   double sumD = 0.0;
-//   for (int j = 0; j < nClusters; j++) {
-//     D[j] = 0.0;
-//     for (int k = 0; k < nComponents; k++) {
-//       D[j] += (pca[k] - centroids[k + j * nComponents]) * (pca[k] - centroids[k + j * nComponents]);
-//     }
-//     D[j] = 1.0 / D[j];
-//     sumD += D[j];
-//   }
-
-//   // calculate probabilities
-//   for (int j = 0; j < nClusters; j++) {
-//     P[j] = D[j] / sumD;
-//   }
-// }
-
-// void EAPOD::calcdPdR(double* dP_dR, const double* dP_dld, const double* dld_dR, int nNeighbors) 
-// {
-//   // calculate dP_dR = dP_dld * dld_dR, which are derivatives of probabilities with respect to atomic coordinates  
-//   for (int j = 0; j < nClusters; j++) {
-//     for (int k = 0; k < 3 * nNeighbors; k++) {
-//       dP_dR[k + j*(3 * nNeighbors)] = 0.0;
-//       for (int m = 0; m < Mdesc; m++) {
-//         dP_dR[k + j*(3 * nNeighbors)] += dP_dld[j + m * nClusters] * dld_dR[k + m * (3 * nNeighbors)];
-//       }
-//     }
-//   }
-// }
-
-// // compute new descriptors: Q_km = p_k * ld
-// // P shape: (nClusters) 
-// // ld shape: (Mdesc)
-// // Q shape: (Mdesc, nClusters)
-// void EAPOD::calcQ(double* P, double* ld, double* Q) {
-//   for (int j = 0; j < nClusters; j++) {
-//      for (int m = 0; m < Mdesc; m++) {
-//       Q[m + j * Mdesc] = P[j] * ld[m];
-//     }
-//   }
-// }
-
-// // compute new descriptors derivatives: d Q_jm / d R = (d P_j/d R) * ld_m + P_j * (d ld_m / d R)
-// // dQ_dR shape: (3*nNeighbors, Mdesc, nClusters)
-// // ld shape: (Mdesc)
-// // dld_dR shape: (3*nNeighbots, Mdesc)
-// // P shape: (nClusters)
-// // dP_dR shape: (3*nNeighbors, nClusters)
-// void EAPOD::calcdQdR(double* dQ_dR, double* dP_dR, const double* ld, const double* dld_dR, const double* P, 
-//                     const double* dP_dld, int nNeighbors) {
-
-//   // calculate dP_dR = dP_dld * dld_dR, which are derivatives of probabilities with respect to atomic coordinates  
-//   for (int j = 0; j < nClusters; j++) {
-//     for (int k = 0; k < 3 * nNeighbors; k++) {
-//       dP_dR[k + j*(3 * nNeighbors)] = 0.0;
-//       for (int m = 0; m < Mdesc; m++) {
-//         dP_dR[k + j*(3 * nNeighbors)] += dP_dld[j + m * nClusters] * dld_dR[k + m * (3 * nNeighbors)];
-//       }
-//     }
-//   }
-
-//   // calculate dQ_dR, which are derivatives of new descriptors with respect to atomic coordinates     
-//   for (int j = 0; j < nClusters; j++) { 
-//     for (int m = 0; m < Mdesc; m++) {
-//        for (int k = 0; k < 3 * nNeighbors; k++) {
-//         dQ_dR[k + m*(3 * nNeighbors) + j*Mdesc*(3 * nNeighbors)] = dP_dR[k + j*(3 * nNeighbors)] * ld[m] + P[j] * dld_dR[k + m*(3 * nNeighbors)];
-//       }
-//     }
-//   }
-// }
 
 void EAPOD::init3bodyarray(int *np, int *pq, int *pc, int Pa)
 {
