@@ -118,24 +118,16 @@ private:
   };
 
   struct descriptorstruct {
-    double *ld=nullptr;  // local descriptors
+    double *bd=nullptr;  // base descriptors
+    double *pd=nullptr;  // multi-environment descriptors (probabilities)
     double *gd=nullptr;  // global descriptors
     double *gdd=nullptr; // derivatives of global descriptors and peratom descriptors
     double *A=nullptr;  // least-square matrix for all descriptors
     double *b=nullptr;  // least-square vector for all descriptors
-    double *c=nullptr;  // coefficents of descriptors
-    double *P=nullptr;  // projection matrix
-    double *Lambda=nullptr;  // eigenvalues
-    double *centroids=nullptr;  // centroids of the environment clusters
-    int *clusterSizes=nullptr; // number of points in each environment cluster
-    int *tmpint=nullptr;
-    int szd = 0;
-    int szi = 0;
-    int nd = 0; // number of global descriptors
-    int nld = 0; // number of local descriptors
+    double *c=nullptr;  // coefficents of descriptors    
+    int szd = 0;    
+    int nCoeffAll = 0; // number of global descriptors
     int nClusters = 0; // number of environment clusters 
-    int nComponents = 0; // number of principal components
-    int method;
   };
 
   int save_descriptors = 0;
@@ -145,8 +137,7 @@ private:
   datastruct envdata;
   descriptorstruct desc;
   neighborstruct nb;
-  class MLPOD *podptr;
-  class FASTPOD *fastpodptr;
+  class EAPOD *fastpodptr;
 
   // functions for collecting/collating arrays
 
@@ -182,7 +173,6 @@ private:
 
   // functions for reading input files and fitting
 
-  int query_pod(std::string pod_file);
   int read_data_file(double *fitting_weights, std::string &file_format, std::string &file_extension, std::string &env_path,
     std::string &test_path, std::string &training_path, std::string &filenametag, const std::string &data_file, std::string &group_weight_type,
     std::unordered_map<std::string, double> &we_map, std::unordered_map<std::string, double> &wf_map);
@@ -205,23 +195,16 @@ private:
     double *x, double *a1, double *a2, double *a3, double rcut, int *pbc, int nx);
   void estimate_memory_neighborstruct(const datastruct &data, int *pbc, double rcut, int nelements);
   void allocate_memory_neighborstruct();
-  void estimate_memory_descriptorstruct(const datastruct &data);
   void allocate_memory_descriptorstruct(int nd);
-  void estimate_memory_fastpod(const datastruct &data);
-  void allocate_memory(const datastruct &data);
-  void allocate_memory_fastpod(const datastruct &data);
-  void linear_descriptors(const datastruct &data, int ci);
-  void linear_descriptors_fastpod(const datastruct &data, int ci);
+  void estimate_memory_fastpod(const datastruct &data);  
   void local_descriptors_fastpod(const datastruct &data, int ci);
-  void quadratic_descriptors(const datastruct &data, int ci);
-  void cubic_descriptors(const datastruct &data, int ci);
+  void base_descriptors_fastpod(const datastruct &data, int ci);
   void least_squares_matrix(const datastruct &data, int ci);
   void least_squares_fit(const datastruct &data);
   void descriptors_calculation(const datastruct &data);
   void enviroment_cluster_calculation(const datastruct &data);
   void print_analysis(const datastruct &data, double *outarray, double *errors);
-  void error_analysis(const datastruct &data, double *coeff);
-  double energyforce_calculation(double *force, double *coeff, const datastruct &data, int ci);
+  void error_analysis(const datastruct &data, double *coeff);  
   double energyforce_calculation_fastpod(double *force, const datastruct &data, int ci);
   void energyforce_calculation(const datastruct &data, double *coeff);
 };

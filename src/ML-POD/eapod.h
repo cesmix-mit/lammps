@@ -16,13 +16,24 @@
 
 #include "pointers.h"
 
+#define DDOT ddot_
+#define DGEMV dgemv_
 #define DGEMM dgemm_
+#define DGETRF dgetrf_
+#define DGETRI dgetri_
 #define DSYEV dsyev_
+#define DPOSV dposv_
 
 extern "C" {
+double DDOT(int *, double *, int *, double *, int *);
+void DGEMV(char *, int *, int *, double *, double *, int *, double *, int *, double *, double *,
+           int *);
 void DGEMM(char *, char *, int *, int *, int *, double *, double *, int *, double *, int *,
            double *, double *, int *);
+void DGETRF(int *, int *, double *, int *, int *, int *);
+void DGETRI(int *, double *, int *, int *, double *, int *, int *);
 void DSYEV(char *, char *, int *, double *, int *, double *, double *, int *, int *);
+void DPOSV(char *, int *, int *, double *, int *, double *, int *, int *);
 }
 
 namespace LAMMPS_NS {
@@ -52,55 +63,14 @@ private:
   void myneighbors(double *rij, double *x, int *ai, int *aj, int *ti, int *tj,
         int *jlist, int *pairnumsum, int *atomtype, int *alist, int i);
 
-  void twobodycoeff(double *newcoeff2, double *coeff2);
-
-  double threebodycoeff(double *cU, double *coeff3, double *sumU, int N);
-
-  double fourbodycoeff(double *cU, double *sumU, double *coeff4, int N);
-
-  void radialfunctions(double *rbf, double *rij, double *besselparams, double rin,
-        double rmax, int besseldegree, int inversedegree, int nbesselpars, int N);
-
   void radialbasis(double *rbf, double *rbfx, double *rbfy, double *rbfz, double *rij, double *besselparams, double rin,
         double rmax, int besseldegree, int inversedegree, int nbesselpars, int N);
 
-  void orthogonalradialbasis(double *orthorbf, double *rij, double *Phi, double *besselparams,
-        double rin, double rmax, int besseldegree, int inversedegree, int nbesselpars, int nrbf2, int N);
-
-  void angularfunctions(double *abf, double *rij, double *tm, int *pq, int N, int K);
-
   void angularbasis(double *abf, double *abfx, double *abfy, double *abfz, double *rij, double *tm, int *pq, int N, int K);
-
-  void radialangularfunctions(double *U, double *rbf, double *abf, int N, int K, int M);
-
-  void radialangularbasis(double *U, double *Ux, double *Uy, double *Uz,
-        double *rbf, double *rbfx, double *rbfy, double *rbfz, double *abf,
-        double *abfx, double *abfy, double *abfz, int N, int K, int M);
 
   void radialangularbasis(double *sumU, double *U, double *Ux, double *Uy, double *Uz,
         double *rbf, double *rbfx, double *rbfy, double *rbfz, double *abf,
         double *abfx, double *abfy, double *abfz, double *tm, int *atomtype, int N, int K, int M, int Ne);
-
-  void sumradialangularfunctions(double *sumU, double *U, int *atomtype, int N, int K, int M, int Ne);
-
-  void unifiedbasis(double *U, double *Ux, double *Uy, double *Uz, double *sumU, double *rij,
-        double *Phi, double *besselparams, double *tmpmem, double rin, double rcut, int *pdegree,
-        int *tj, int *pq, int nbesselpars, int nrbf, int K, int nelements, int Nj);
-
-  void tallytwobodyglobdesc(double *gd, double *d, int *elemindex, int nrbf, int nelements, int ti);
-
-  void tallytwobodyglobdescderiv(double *gdd, double *dd, int *ai, int *aj, int *ti, int *tj,
-        int *elemindex, int nrbf, int nelements, int natom, int N);
-
-  void tallyglobdesc(double *gd, double *d, int ndesc, int ti);
-
-  void tallyglobdescderiv(double *gdd, double *dd,  int *ai, int *aj, int natom, int N, int ndesc, int ti);
-
-  double tallytwobodylocalforce(double *fij, double *coeff2,  double *rbf, double *rbfx,
-        double *rbfy, double *rbfz, int *tj, int nbf, int N);
-
-  void tallylocalforce(double *fij, double *cU, double *Ux, double *Uy, double *Uz,
-        int *atomtype, int N, int K, int M, int Ne);
 
   void MatMul(double *c, double *a, double *b, int r1, int c1, int c2);
 
@@ -110,8 +80,6 @@ private:
 
   void mvproduct(double *fij, double *c, double *dd, int N, int ndesc);
 
-  double L2norm(const double* a, const double* b, int dimensions);
-
 public:
   std::vector<std::string> species;
 
@@ -120,7 +88,7 @@ public:
   int true4BodyDesc;
   
 
-  int nelements;
+  int nelements; // number of elements
   int pbc[3];
   int *elemindex ;
 
@@ -142,27 +110,22 @@ public:
   int nClusters; // number of environment clusters
   int nComponents; // number of principal components
   //int nNeighbors; // numbe of neighbors
-  int Mdesc; // total number of local descriptors
+  int Mdesc; // number of base descriptors 
   
   double *Proj; // PCA Projection matrix
-  double *centroids; // centroids of the clusters
-  double *pca; // projected data
-  double *inverseSquareDistances; // inverse square distances between the atoms and the centroids
-  double *probabilities; // probabilities of the atoms to belong to the clusters
-  double *dPdD; // derivative of the probabilities with respect to the inverse distances
-  double *dDdpca; // derivative of the inverse distances with respect to the principal components
-  double *dPdld; // derivative of the probabilities with respect to the local descriptors
-  double *dlddR; // derivative of the local descriptors with respect to the atomic positions
-  double *Q; // Q matrix
-  double *dpdR; // derivative of the probabilities with respect to the atomic positions
-  double *dQdR; // derivative of the Q matrix with respect to the atomic positions
+  double *Centroids; // centroids of the clusters
+  double *bd; // base descriptors
+  double *bdd; // derivatives of the base descriptors with respect to the atomic positions
+  double *pd; //  multi-environment descriptors
+  double *pdd; // derivative of the multi-environment descriptors with respect to the atomic positions
 
-
-  int nproj; // number of elements in projection matrix (Mdesc * nComponents)
-  int ncentroids; // number of centroids (nComponents * nClusters)
+  int nproj; // number of elements in projection matrix (nComponents * Mdesc * nelements)
+  int ncentroids; // number of centroids (nComponents * nClusters * nelements)
 
   int Njmax;
-  int ncoeff;  // number of coefficients in the input file
+  int nCoeffPerElement; // number of coefficients per element = (nl1 + Mdesc*nClusters)
+  int nCoeffAll; // number of coefficients for all elements = (nl1 + Mdesc*nClusters)*nelements
+  int ncoeff;  // number of coefficients in the input file 
   int ns;      // number of snapshots for radial basis functions
   int nd1, nd2, nd3, nd4, nd5, nd6, nd7, nd;   // number of global descriptors
   int nl1, nl2, nl3, nl4, nl5, nl6, nl7, nl;   // number of local descriptors
@@ -204,132 +167,64 @@ public:
   int read_projection_matrix(std::string proj_file);
   int read_centroids(std::string centroids_file);
 
-  int estimate_memory(int Nj);
+  int estimate_temp_memory(int Nj);    
+  void free_temp_memory();  
+  void allocate_temp_memory(int Nj);
 
   void mknewcoeff();
 
-  void mknewcoeff(double *c);
-
-  void onebodydescriptors(double *gd1, double *gdd1, int *ti, int natom, int i);
-
-  double onebodyenergy(double *coeff1, int *ti);
+  void mknewcoeff(double *c, int nc);
 
   void twobodydescderiv(double *d2, double *dd2, double *rbf, double *rbfx,
         double *rbfy, double *rbfz, int *tj, int N);
-
-  void twobodydescriptors(double *d2, double *dd2, double *rij, double *tempmem, int *tj, int Nj);
-
-  void twobodydescriptors(double *gd2, double *gdd2, double *d2, double *dd2, double *rij,
-        double *tempmem, int *ai, int *aj, int *ti, int *tj, int Nj, int natom);
-
-  double twobodyenergyforce(double *fij, double *rij, double *coeff2, double *tempmem, int *tj, int Nj);
 
   void threebodydesc(double *d3, double *sumU, int N);
 
   void threebodydescderiv(double *dd3, double *sumU, double *Ux, double *Uy, double *Uz,
         int *atomtype, int N);
 
-  void threebodydescriptors(double *d3, double *dd3, double *rij, double *tempmem, int *tj, int Nj);
-
-  void threebodydescriptors(double *gd3, double *gdd3, double *d3, double *dd3, double *rij,
-        double *tempmem, int *ai, int *aj, int *ti, int *tj, int Nj, int natom);
-
-  double threebodyenergyforce(double *fij, double *rij, double *coeff3, double *tempmem, int *tj, int Nj);
-
   void fourbodydescderiv(double *d4, double *dd4, double *sumU, double *Ux, double *Uy, double *Uz,
       int *atomtype, int N);
 
-  void fourbodydescriptors(double *d4, double *dd4, double *rij, double *tempmem, int *tj, int Nj);
-
-  void fourbodydescriptors(double *gd4, double *gdd4, double *d4, double *dd4, double *rij,
-        double *tempmem, int *ai, int *aj, int *ti, int *tj, int Nj, int natom);
-
-  double fourbodyenergyforce(double *fij, double *rij, double *coeff4, double *tempmem,
-         int *tj, int Nj);
-
-  void descriptors(double *gd, double *gdd, double *x, int *atomtype, int *alist,
+  void descriptors(double *gd, double *gdd, double *basedesc, double *probdesc, double *x, int *atomtype, int *alist,
           int *jlist, int *pairnumsum, int natom);
 
-  void descriptors(double *gd, double *gdd, double *peratomdesc, double *x, int *atomtype, int *alist,
+  void descriptors(double *gd, double *gdd, double *basedesc, double *x, int *atomtype, int *alist,
           int *jlist, int *pairnumsum, int natom);
 
-  double localenergyforce(double *fij, double *rij, double *tempmem, int *ti, int *tj, int Nj);
+  void peratombase_descriptors(double *bd, double *bdd, double *rij, double *temp,
+        int *ti, int *tj, int Nj);
 
-  double atomicenergyforce(double *fij, double *rij, double *tempmem, int *ti, int *tj, int Nj);
+  void peratomenvironment_descriptors(double *P, double *dP_dR, double *B, double *dB_dR, double *tmp, int elem, int nNeighbors);
 
-  double peratomenergyforce(double *fij, double *rij, double *tempmem, int *ti, int *tj, int Nj);
+  void base_descriptors(double *basedesc, double *x, int *atomtype, int *alist,
+          int *jlist, int *pairnumsum, int natom);
+                          
+  double peratomenergyforce(double *fij, double *rij, double *temp, int *ti, int *tj, int Nj);
 
   double energyforce(double *force, double *x, int *atomtype, int *alist,
           int *jlist, int *pairnumsum, int natom);
 
   void tallyforce(double *force, double *fij,  int *ai, int *aj, int N);
-  void tallyforce(double **force, double *fij,  int *ai, int *aj, int N);
+  //void tallyforce(double **force, double *fij,  int *ai, int *aj, int N);
 
   void fourbodydesc23(double* d23, double* d2, double *d3);
   void fourbodydescderiv23(double* dd23, double* d2, double *d3, double* dd2, double *dd3, int N);
-  void fivebodydesc33(double* d33, double *d3);
-  void fivebodydescderiv33(double* dd33, double *d3, double *dd3, int N);
-  void sixbodydesc34(double* d34, double* d3, double *d4);
-  void sixbodydescderiv34(double* dd34, double* d3, double *d4, double* dd3, double *dd4, int N);
-  void sevenbodydesc44(double* d44, double *d4);
-  void sevenbodydescderiv44(double* dd44, double *d4, double *dd4, int N);
-  void fourbodyfij23(double *fij, double *cf, double *coeff23, double *d2, double *d3, double *dd2, double *dd3, int N);
-  void fivebodyfij33(double *fij, double *cf, double *coeff33, double *d3, double *dd3, int N);
-  void sixbodyfij34(double *fij, double *cf, double *coeff34, double *d3, double *d4, double *dd3, double *dd4, int N);
-  void sevenbodyfij44(double *fij, double *cf, double *coeff44, double *d4, double *dd4, int N);
-
-  void fourbodydescriptors23(double *gd23, double *gdd23, double *d23, double *dd23,
-        double* d2, double *d3, double* dd2, double *dd3, int *ai, int *aj, int *ti, int *tj,
-        int Nj, int natom);
-  void fivebodydescriptors33(double *gd33, double *gdd33, double *d33, double *dd33,
-        double *d3, double *dd3, int *ai, int *aj, int *ti, int *tj, int Nj, int natom);
-  void sixbodydescriptors34(double *gd34, double *gdd34, double *d34, double *dd34,
-        double* d3, double *d4, double* dd3, double *dd4, int *ai, int *aj, int *ti, int *tj,
-        int Nj, int natom);
-  void sevenbodydescriptors44(double *gd44, double *gdd44, double *d44, double *dd44,
-        double *d4, double *dd4, int *ai, int *aj, int *ti, int *tj, int Nj, int natom);
 
   void crossdesc(double *d12, double *d1, double *d2, int *ind1, int *ind2, int n12);
   void crossdescderiv(double *dd12, double *d1, double *d2, double *dd1, double *dd2,
         int *ind1, int *ind2, int n12, int N);
-  void crossdescfij(double *fij, double *coeff12, double *d1, double *d2,
-        double *dd1, double *dd2, int *ind1, int *ind2, int n12, int N);
-  void crossdescriptors(double *gd12, double *gdd12, double *d12, double *dd12,
-        double* d1, double *d2, double* dd1, double *dd2, int *ind1, int *ind2,
-        int *ai, int *aj, int *ti, int *tj, int n12, int Nj, int natom);
+  
 
-  void calcProbabilities(double *P, const double *Proj, const double *centroids, const double *ld,  
-                        double *pca, double *D, int Mdesc, int nComponents, int nClusters);
+//   void calcProbabilities(double *P, const double *Proj, const double *centroids, const double *ld,  
+//                         double *pca, double *D);
 
-  void calcProbabilitiesDerivatives(double *P, double *dP_dld, const double *Proj, const double *centroids, 
-                const double *ld,  double *pca, double *D, double *dD_dpca, double *dD_dld, double *dP_dD, 
-                int Mdesc, int nComponents, int nClusters, int nNeighbors);
+//   void calcdPdR(double* dP_dR, const double* dP_dld, const double* dld_dR, int nNeighbors); 
 
-  void getInvDist(double* pca, int nComponents, double* centroids, int nClusters, double* inverseDistances);
+//   void calcQ(double* probabilities, double* ld, double* Q);
 
-  void getpca(double* pca,  const double* Proj,  const double* ld, int Mdesc, int nComponents);
-
-  void getInvSqDist(double* pca, int nComponents, double* centroids, int nClusters, double* inverseSquareDistances);
-
-  void getProba(const double* inverseSquareDistances, int nClusters, double* probabilities);
-
-  void getdPdD(const double* inverseSquareDistances, int nClusters, double* dPdD);
-
-  void getdDdpca(const double* pca, const double* centroids, const double* inverseSquareDistances, int nClusters, int nComponents, double* dDdpca);
-
-  void getdPdld(const double* dPdD, const double* dDdpca, const double* Proj, int nClusters, int nComponents, int Mdesc, double* dPdld);
-
-  void calcproba(double* pca, int nComponents, double* centroids, int nClusters, double* inverseSquareDistances, double* probabilities);
-
-  void calcQ(double* probabilities, double* ld, int nClusters, int Mdesc, double* Q);
-
-  void calcdpdld(double* pca, int nComponents, double* centroids, int nClusters, int Mdesc, const double* inverseSquareDistances, double* probabilities, double* Proj, double* dPdD, double* dDdpca, double* dPdld);
-
-  void calcdpdR(double* dPdld, double* dlddR, int nClusters, int Mdesc, int nNeighbors, double* dpdR);
-
-  void calcdQdR(double* dQ_dR, double* dP_dR, const double* ld, const double* dld_dR, const double* P, 
-                    const double* dP_dld, int nClusters, int Mdesc, int nNeighbors);
-
+//   void calcdQdR(double* dQ_dR, double* dP_dR, const double* ld, const double* dld_dR, const double* P, 
+//                     const double* dP_dld, int nNeighbors);
 };
 
 }    // namespace LAMMPS_NS

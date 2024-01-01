@@ -36,46 +36,27 @@ class PairPOD : public Pair {
   double init_one(int, int) override;
   double memory_usage() override;
 
-  int dim;    // typically 3
-  int descriptormethod;   // method used to generate descriptors
-
-  double *gd;             // global linear descriptors
-  double *gdall;          // global linear descriptors summed over all MPI ranks
-  double *podcoeff;       // POD coefficients
-  double *newpodcoeff;    // normalized POD coefficients
-  double *energycoeff;    // energy coefficients
-  double *forcecoeff;     // force coefficients
-
-  void estimate_tempmemory();
-  void free_tempmemory();
-  void allocate_tempmemory();
-
-  void free_tempmemory_fastpod();
-  void allocate_tempmemory_fastpod(int nmem);
-
-  int query_pod(std::string pod_file);
-  void lammpsNeighPairs(double **x, int **firstneigh, int *atomtype, int *map, int *numneigh,
-                        double rcutsq, int i);
   void lammpsNeighborList(double **x, int **firstneigh, int *atomtype, int *map, int *numneigh,
                         double rcutsq, int i);
   void tallyforce(double **force, double *fij,  int *ai, int *aj, int N);
  protected:
+  int dim;    // typically 3
   int nablockmax;    // maximum number of atoms per computation block
   int nij;           //  number of atom pairs
   int nijmax;        // maximum number of atom pairs
   int szd;           // size of tmpmem
 
-  class MLPOD *podptr;
-  class FASTPOD *fastpodptr;
+  //class MLPOD *podptr;
+  class EAPOD *fastpodptr;
 
   // temporary arrays for computation blocks
 
   double *tmpmem;      // temporary memory
-  int *typeai;         // types of atoms I only
-  int *numneighsum;    // cumulative sum for an array of numbers of neighbors
+  //int *typeai;         // types of atoms I only
+  //int *numneighsum;    // cumulative sum for an array of numbers of neighbors
   double *rij;         // (xj - xi) for all pairs (I, J)
   double *fij;         // force for all pairs (I, J)
-  int *idxi;           // storing linear indices for all pairs (I, J)
+  //int *idxi;           // storing linear indices for all pairs (I, J)
   int *ai;             // IDs of atoms I for all pairs (I, J)
   int *aj;             // IDs of atoms J for all pairs (I, J)
   int *ti;             // types of atoms I for all pairs (I, J)
