@@ -40,7 +40,7 @@ using MathSpecial::powint;
 // constructor
 EAPOD::EAPOD(LAMMPS *_lmp, const std::string &pod_file, const std::string &coeff_file, const std::string &proj_file, const std::string &centroids_file) :
         Pointers(_lmp), elemindex(nullptr), Phi(nullptr), Lambda(nullptr), Proj(nullptr),
-        Centroids(nullptr), coeff(nullptr), newcoeff(nullptr), tmpmem(nullptr), tmpint(nullptr),
+        Centroids(nullptr), coeff(nullptr), tmpmem(nullptr), tmpint(nullptr),
         pn3(nullptr), pq3(nullptr), pc3(nullptr), pq4(nullptr), pa4(nullptr), pb4(nullptr), pc4(nullptr),
         ind23(nullptr), ind32(nullptr), ind33(nullptr), ind34(nullptr), ind43(nullptr), ind44(nullptr)
 {
@@ -93,7 +93,6 @@ EAPOD::EAPOD(LAMMPS *_lmp, const std::string &pod_file, const std::string &coeff
       ncoeff = read_coeff_file(coeff_file);
       if (ncoeff != nCoeffAll)
         error->all(FLERR,"number of coefficients in the coefficient file is not correct");
-      mknewcoeff();
     }
     if (nClusters > 1) {
       // read projection matrix file to podstruct 
@@ -123,8 +122,7 @@ EAPOD::~EAPOD()
   // memory->destroy(bdd);
   // memory->destroy(pd);
   // memory->destroy(pdd);
-  // memory->destroy(coeff);
-  // memory->destroy(newcoeff);
+  // memory->destroy(coeff);   
   // memory->destroy(tmpmem);
   // memory->destroy(tmpint);
   // memory->destroy(pn3);
@@ -859,7 +857,7 @@ double EAPOD::peratomenergyforce(double *fij, double *rij, double *temp,
 {
   for (int n=0; n<3*Nj; n++) fij[n] = 0.0;
 
-  double *coeff1 = &newcoeff[nCoeffPerElement*(ti[0]-1)];
+  double *coeff1 = &coeff[nCoeffPerElement*(ti[0]-1)];
   double e = coeff1[0];
 
   // calculate base descriptors and their derivatives with respect to atom coordinates
@@ -902,7 +900,7 @@ double EAPOD::energyforce(double *force, double *x, int *atomtype, int *alist,
     int Nj = pairnumsum[i+1] - pairnumsum[i]; // # neighbors around atom i
 
     if (Nj==0) {
-      etot += newcoeff[atomtype[i]-1];
+      etot += coeff[atomtype[i]-1];
     }
     else
     {
@@ -1744,15 +1742,15 @@ void EAPOD::tallyforce(double *force, double *fij,  int *ai, int *aj, int N)
  *
  * @param None
  */
-void EAPOD::mknewcoeff()
-{
-  // Allocate memory for the new coefficients
-  memory->create(newcoeff, nCoeffAll, "newcoeff");
+// void EAPOD::mknewcoeff()
+// {
+//   // Allocate memory for the new coefficients
+//   memory->create(newcoeff, nCoeffAll, "newcoeff");
 
-  // Copy the  coefficients
-  for (int n=0; n<nCoeffAll; n++)
-    newcoeff[n] = coeff[n];
-}
+//   // Copy the  coefficients
+//   for (int n=0; n<nCoeffAll; n++)
+//     newcoeff[n] = coeff[n];
+// }
 
 /**
  * @brief Create new coefficients for the local descriptors.
@@ -1762,11 +1760,11 @@ void EAPOD::mknewcoeff()
 void EAPOD::mknewcoeff(double *c, int nc)
 {
   // Allocate memory for the new coefficients
-  memory->create(newcoeff, nc, "newcoeff");
+  memory->create(coeff, nc, "coeff");
 
   // Copy the  coefficients
   for (int n=0; n<nc; n++)
-    newcoeff[n] = c[n];
+    coeff[n] = c[n];
 }
 
 /**

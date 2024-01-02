@@ -103,7 +103,7 @@ public:
   double *Phi ;    // eigenvectors
   double *Lambda ; // eigenvalues
   double *coeff;  // coefficients
-  double *newcoeff ;  // coefficients
+  //double *newcoeff ;  // coefficients
   double *tmpmem;
 
   // environmental variables
@@ -171,7 +171,7 @@ public:
   void free_temp_memory();  
   void allocate_temp_memory(int Nj);
 
-  void mknewcoeff();
+  //void mknewcoeff();
 
   void mknewcoeff(double *c, int nc);
 
