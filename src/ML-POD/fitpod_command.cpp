@@ -76,9 +76,14 @@ void FitPOD::command(int narg, char **arg)
 
     if (((int) envdata.data_path.size() > 1) && (desc.nClusters > 1)) {
       enviroment_cluster_calculation(envdata);
-      memory->destroy(envdata.lattice);
-      memory->destroy(envdata.position);
-      memory->destroy(envdata.atomtype);
+        // memory->destroy(envdata.lattice);
+        // memory->destroy(envdata.energy);
+        // memory->destroy(envdata.stress);
+        // memory->destroy(envdata.position);
+        // memory->destroy(envdata.force);
+        // memory->destroy(envdata.atomtype);
+        // memory->destroy(envdata.we);
+        // memory->destroy(envdata.wf);
     }
 
     // compute POD coefficients using least-squares method
