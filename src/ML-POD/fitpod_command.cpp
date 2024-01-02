@@ -1481,7 +1481,8 @@ void FitPOD::enviroment_cluster_calculation(const datastruct &data)
   char chu = 'U';
   double alpha = 1.0, beta = 0.0;
 
-  //printf("SIZES: %d  %d  %d  %d\n", Mdesc, nAtoms, nComponents, nClusters);  
+  if (comm->me == 0)
+    printf("SIZES: %d  %d  %d  %d  %d\n", 1, Mdesc, nAtoms, nComponents, nClusters);  
 
   // Calculate covariance matrix A = localdescmatrix*localdescmatrix'. A is a Mdesc x Mdesc matrix
   DGEMM(&chn, &cht, &Mdesc, &Mdesc, &nAtoms, &alpha, localdescmatrix, &Mdesc, localdescmatrix, &Mdesc, &beta, A, &Mdesc);
@@ -1490,6 +1491,9 @@ void FitPOD::enviroment_cluster_calculation(const datastruct &data)
 
   if (comm->me == 0) 
     savematrix2binfile(data.filenametag + "_covariance_matrix"  + ".bin", A, Mdesc, Mdesc);
+
+  if (comm->me == 0)
+    printf("SIZES: %d  %d  %d  %d  %d\n", 2, Mdesc, nAtoms, nComponents, nClusters);  
 
   // Calculate eigenvalues and eigenvectors of A
   int lwork = Mdesc * Mdesc;  // the length of the array work, lwork >= max(1,3*N-1)
@@ -1500,6 +1504,9 @@ void FitPOD::enviroment_cluster_calculation(const datastruct &data)
 
   if (comm->me == 0)
     savematrix2binfile(data.filenametag + "_eigenvector_matrix"  + ".bin", A, Mdesc, Mdesc);
+
+  if (comm->me == 0)
+    printf("SIZES: %d  %d  %d  %d  %d\n", 3, Mdesc, nAtoms, nComponents, nClusters);  
 
   // order eigenvalues and eigenvectors from largest to smallest
   for (int i=0; i<Mdesc; i++)
@@ -1517,10 +1524,16 @@ void FitPOD::enviroment_cluster_calculation(const datastruct &data)
     for (int i=0; i<Mdesc; i++)
       Proj[j + nComponents*i] = A[i + Mdesc*(Mdesc-j-1)]*sqrt(fabs(b[(Mdesc-j-1)]/Lambda[0]));
 
+  if (comm->me == 0)
+    printf("SIZES: %d  %d  %d  %d  %d\n", 4, Mdesc, nAtoms, nComponents, nClusters);  
+
   // // Calculate principal compoment analysis matrix pca = P'*localdescmatrix. pca is a nComponents x nAtoms matrix
   // DGEMM(&cht, &chn, &nComponents, &nAtoms, &Mdesc, &alpha, Proj, &Mdesc, localdescmatrix, &Mdesc, &beta, pca, &nComponents);
   // Calculate principal compoment analysis matrix pca = P*descmatrix. pca is a nComponents x nAtoms matrix
   DGEMM(&chn, &chn, &nComponents, &nAtoms, &Mdesc, &alpha, Proj, &nComponents, localdescmatrix, &Mdesc, &beta, pca, &nComponents);
+
+  if (comm->me == 0)
+    printf("SIZES: %d  %d  %d  %d  %d\n", 5, Mdesc, nAtoms, nComponents, nClusters);  
 
   // initialize centroids 
   for (int i = 0; i < nClusters * nComponents; i++) centroids[i] = 0.0;  
@@ -1534,9 +1547,15 @@ void FitPOD::enviroment_cluster_calculation(const datastruct &data)
   for (int i = 0; i < nClusters * nComponents; i++) centroids[i] = centroids[i]*fac;
   //for (int i = 0; i < nClusters * nComponents; i++) printf("centroids[%d] = %f\n", i, centroids[i]);
 
+  if (comm->me == 0)
+    printf("SIZES: %d  %d  %d  %d  %d\n", 6, Mdesc, nAtoms, nComponents, nClusters);  
+
   // Calculate centroids using k-means clustering
   int max_iter = 100;
   KmeansClustering(pca, centroids, assignments, clusterSizes, nAtoms, nClusters, nComponents, max_iter);
+
+  if (comm->me == 0)
+    printf("SIZES: %d  %d  %d  %d  %d\n", 7, Mdesc, nAtoms, nComponents, nClusters);  
 
   savedata2textfile(data.filenametag + "_projection_matrix"  + ".pod", "projection_matrix: {} \n", Proj, Mdesc*nComponents, 1, 1);
   savedata2textfile(data.filenametag + "_centroids"  + ".pod", "centroids: {} \n", centroids, nComponents*nClusters, 1, 1);
@@ -1544,7 +1563,9 @@ void FitPOD::enviroment_cluster_calculation(const datastruct &data)
   // savematrix2binfile(data.filenametag + "_desc_matrix_proc" + std::to_string(comm->me+1) + ".bin", localdescmatrix, Mdesc, nAtoms);  
   // savematrix2binfile(data.filenametag + "_pca_matrix_proc" + std::to_string(comm->me+1) + ".bin", pca, nComponents, nAtoms);
   // saveintmatrix2binfile(data.filenametag + "_cluster_assignments_proc" + std::to_string(comm->me+1) + ".bin", assignments, nAtoms, 1);
-  
+  if (comm->me == 0)
+    printf("SIZES: %d  %d  %d  %d  %d\n", 8, Mdesc, nAtoms, nComponents, nClusters);  
+
   free(localdescmatrix);
   free(pca);
   free(A);
