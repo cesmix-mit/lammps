@@ -113,31 +113,31 @@ EAPOD::EAPOD(LAMMPS *_lmp, const std::string &pod_file, const std::string &coeff
 // destructor
 EAPOD::~EAPOD()
 {
-  // memory->destroy(elemindex);
-  // memory->destroy(Phi);
-  // memory->destroy(Lambda);
-  // memory->destroy(Proj);
-  // memory->destroy(Centroids);
-  // memory->destroy(bd);
-  // memory->destroy(bdd);
-  // memory->destroy(pd);
-  // memory->destroy(pdd);
-  // memory->destroy(coeff);   
-  // memory->destroy(tmpmem);
-  // memory->destroy(tmpint);
-  // memory->destroy(pn3);
-  // memory->destroy(pq3);
-  // memory->destroy(pc3);
-  // memory->destroy(pa4);
-  // memory->destroy(pb4);
-  // memory->destroy(pc4);
-  // memory->destroy(pq4);
-  // memory->destroy(ind23);
-  // memory->destroy(ind32);
-  // memory->destroy(ind33);
-  // memory->destroy(ind34);
-  // memory->destroy(ind43);
-  // memory->destroy(ind44);
+  memory->destroy(elemindex);
+  memory->destroy(Phi);
+  memory->destroy(Lambda);
+  memory->destroy(Proj);
+  memory->destroy(Centroids);
+  memory->destroy(bd);
+  memory->destroy(bdd);
+  memory->destroy(pd);
+  memory->destroy(pdd);
+  memory->destroy(coeff);   
+  memory->destroy(tmpmem);
+  memory->destroy(tmpint);
+  memory->destroy(pn3);
+  memory->destroy(pq3);
+  memory->destroy(pc3);
+  memory->destroy(pa4);
+  memory->destroy(pb4);
+  memory->destroy(pc4);
+  memory->destroy(pq4);
+  memory->destroy(ind23);
+  memory->destroy(ind32);
+  memory->destroy(ind33);
+  memory->destroy(ind34);
+  memory->destroy(ind43);
+  memory->destroy(ind44);
 }
 
 void EAPOD::read_pod_file(std::string pod_file)
