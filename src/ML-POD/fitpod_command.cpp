@@ -918,9 +918,11 @@ void FitPOD::read_data_files(const std::string& data_file, const std::vector<std
     envdata.file_extension = traindata.file_extension;
     int tmp = compute_descriptors;
     compute_descriptors = 1;
-    utils::logmesg(lmp, "**************** Begin of Enviroment Configuration Set ****************\n");
+    if (comm->me == 0)
+      utils::logmesg(lmp, "**************** Begin of Enviroment Configuration Set ****************\n");
     get_data(envdata, species);    
-    utils::logmesg(lmp, "**************** End of Enviroment Configuration Set ****************\n");
+    if (comm->me == 0)
+      utils::logmesg(lmp, "**************** End of Enviroment Configuration Set ****************\n");
     compute_descriptors = tmp;
   }
 
@@ -1259,7 +1261,7 @@ void FitPOD::enviroment_cluster_calculation(const datastruct &data)
   if (comm->me == 0)
     utils::logmesg(lmp, "**************** Begin Calculating Enviroment Descriptor Matrix ****************\n");
     
-  printf("number of configurations = %d\n", (int) data.num_atom.size());  
+  //printf("number of configurations = %d\n", (int) data.num_atom.size());  
 
   int nComponents = fastpodptr->nComponents;
   int Mdesc = fastpodptr->Mdesc;
