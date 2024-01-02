@@ -76,7 +76,7 @@ void FitPOD::command(int narg, char **arg)
 
     if (((int) envdata.data_path.size() > 1) && (desc.nClusters > 1)) {
       enviroment_cluster_calculation(envdata);
-      error->all(FLERR, "stop after enviroment_cluster_calculation");
+      //error->all(FLERR, "stop after enviroment_cluster_calculation");
         // memory->destroy(envdata.lattice);
         // memory->destroy(envdata.energy);
         // memory->destroy(envdata.stress);
