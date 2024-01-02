@@ -121,6 +121,8 @@ EAPOD::~EAPOD()
   memory->destroy(Centroids);
   memory->destroy(bd);
   memory->destroy(bdd);
+  memory->destroy(pd);
+  memory->destroy(pdd);
   memory->destroy(coeff);
   memory->destroy(newcoeff);
   memory->destroy(tmpmem);
