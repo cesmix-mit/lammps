@@ -1487,6 +1487,9 @@ void FitPOD::enviroment_cluster_calculation(const datastruct &data)
   // Calculate covariance matrix A = localdescmatrix*localdescmatrix'. A is a Mdesc x Mdesc matrix
   DGEMM(&chn, &cht, &Mdesc, &Mdesc, &nAtoms, &alpha, localdescmatrix, &Mdesc, localdescmatrix, &Mdesc, &beta, A, &Mdesc);
 
+  if (comm->me == 0)
+    printf("SIZES: %d  %d  %d  %d  %d\n", 1, Mdesc, nAtoms, nComponents, nClusters);  
+
   MPI_Allreduce(MPI_IN_PLACE, A, Mdesc*Mdesc, MPI_DOUBLE, MPI_SUM, world);  
 
   if (comm->me == 0) 
