@@ -113,31 +113,31 @@ EAPOD::EAPOD(LAMMPS *_lmp, const std::string &pod_file, const std::string &coeff
 // destructor
 EAPOD::~EAPOD()
 {
-  // memory->destroy(elemindex);
-  // memory->destroy(Phi);
-  // memory->destroy(Lambda);
-  // memory->destroy(Proj);
-  // memory->destroy(Centroids);
-  // memory->destroy(bd);
-  // memory->destroy(bdd);
-  // memory->destroy(pd);
-  // memory->destroy(pdd);
-  // memory->destroy(coeff);   
-  // memory->destroy(tmpmem);
-  // memory->destroy(tmpint);
-  // memory->destroy(pn3);
-  // memory->destroy(pq3);
-  // memory->destroy(pc3);
-  // memory->destroy(pa4);
-  // memory->destroy(pb4);
-  // memory->destroy(pc4);
-  // memory->destroy(pq4);
-  // memory->destroy(ind23);
-  // memory->destroy(ind32);
-  // memory->destroy(ind33);
-  // memory->destroy(ind34);
-  // memory->destroy(ind43);
-  // memory->destroy(ind44);
+  memory->destroy(elemindex);
+  memory->destroy(Phi);
+  memory->destroy(Lambda);
+  memory->destroy(Proj);
+  memory->destroy(Centroids);
+  memory->destroy(bd);
+  memory->destroy(bdd);
+  memory->destroy(pd);
+  memory->destroy(pdd);
+  memory->destroy(coeff);   
+  memory->destroy(tmpmem);
+  memory->destroy(tmpint);
+  memory->destroy(pn3);
+  memory->destroy(pq3);
+  memory->destroy(pc3);
+  memory->destroy(pa4);
+  memory->destroy(pb4);
+  memory->destroy(pc4);
+  memory->destroy(pq4);
+  memory->destroy(ind23);
+  memory->destroy(ind32);
+  memory->destroy(ind33);
+  memory->destroy(ind34);
+  memory->destroy(ind43);
+  memory->destroy(ind44);
 }
 
 void EAPOD::read_pod_file(std::string pod_file)
@@ -2047,7 +2047,7 @@ int EAPOD::estimate_temp_memory(int Nj)
   ndblmem = (nmax1 + nmax8);
 
   int nmax9 = 6*Nj + nComponents + nClusters + nClusters*nComponents + 2*nClusters*Mdesc + nClusters*nClusters;
-  int ndblmem = (ndblmem > nmax9) ? ndblmem : nmax9;
+  if (ndblmem < nmax9) ndblmem = nmax9;
 
   // Determine the total amount of memory needed for all integer memory
   nintmem = 4*Nj;
@@ -2059,7 +2059,7 @@ int EAPOD::estimate_temp_memory(int Nj)
 void EAPOD::allocate_temp_memory(int Nj)
 {
   estimate_temp_memory(Nj);
-  memory->create(tmpmem, ndblmem, "tmpmem");
+  memory->create(tmpmem, 2*ndblmem, "tmpmem");
   memory->create(tmpint, nintmem, "tmpint");
   memory->create(bd, Mdesc, "bdd");
   memory->create(bdd, 3*Nj*Mdesc, "bdd");
