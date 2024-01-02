@@ -977,7 +977,7 @@ void EAPOD::descriptors(double *gd, double *gdd, double *basedesc, double *x,
 
     // one-body descriptor
     if (nd1>0) {
-      gd[nl*(atomtype[i]-1)] += 1.0;
+      gd[nCoeffPerElement*(atomtype[i]-1)] += 1.0;
     }
 
     if (Nj>0) {
@@ -1002,7 +1002,7 @@ void EAPOD::descriptors(double *gd, double *gdd, double *basedesc, double *x,
 
       for (int m=0; m<Mdesc; m++) {
         basedesc[i + natom*(m)] = bd[m];
-        int k = nl*(ti[0]-1) + nl1 + m; // increment by nl1 because of the one-body descriptor
+        int k = nCoeffPerElement*(ti[0]-1) + nl1 + m; // increment by nl1 because of the one-body descriptor
         gd[k] += bd[m];
         for (int n=0; n<Nj; n++) {
           int im = 3*ai[n] + 3*natom*k;
