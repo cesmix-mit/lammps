@@ -154,32 +154,32 @@ void FitPOD::command(int narg, char **arg)
   // deallocate training data
 
   if ((int) traindata.data_path.size() > 1){
-    memory->destroy(traindata.lattice);
-    memory->destroy(traindata.energy);
-    memory->destroy(traindata.stress);
-    memory->destroy(traindata.position);
-    memory->destroy(traindata.force);
-    memory->destroy(traindata.atomtype);
-    memory->destroy(traindata.we);
-    memory->destroy(traindata.wf);
+    // memory->destroy(traindata.lattice);
+    // memory->destroy(traindata.energy);
+    // memory->destroy(traindata.stress);
+    // memory->destroy(traindata.position);
+    // memory->destroy(traindata.force);
+    // memory->destroy(traindata.atomtype);
+    // memory->destroy(traindata.we);
+    // memory->destroy(traindata.wf);
   }
 
   // deallocate descriptors
 
-  memory->destroy(desc.A);
-  memory->destroy(desc.b);
-  memory->destroy(desc.c);
-  memory->destroy(desc.bd);
-  memory->destroy(desc.pd);
-  memory->destroy(desc.gd);
-  memory->destroy(desc.gdd);
+  // memory->destroy(desc.A);
+  // memory->destroy(desc.b);
+  // memory->destroy(desc.c);
+  // memory->destroy(desc.bd);
+  // memory->destroy(desc.pd);
+  // memory->destroy(desc.gd);
+  // memory->destroy(desc.gdd);
 
-  // // deallocate neighbor data
-  memory->destroy(nb.alist);
-  memory->destroy(nb.pairnum);
-  memory->destroy(nb.pairnum_cumsum);
-  memory->destroy(nb.pairlist);
-  memory->destroy(nb.y);
+  // // // deallocate neighbor data
+  // memory->destroy(nb.alist);
+  // memory->destroy(nb.pairnum);
+  // memory->destroy(nb.pairnum_cumsum);
+  // memory->destroy(nb.pairlist);
+  // memory->destroy(nb.y);
 
   delete fastpodptr;
 }
