@@ -932,7 +932,7 @@ double EAPOD::energyforce(double *force, double *x, int *atomtype, int *alist,
 void EAPOD::base_descriptors(double *basedesc, double *x,
         int *atomtype, int *alist, int *jlist, int *pairnumsum, int natom)
 {
-  for (int i=0; i<natom*nl; i++) basedesc[i] = 0.0;
+  for (int i=0; i<natom*Mdesc; i++) basedesc[i] = 0.0;
 
   for (int i=0; i<natom; i++) {
     int Nj = pairnumsum[i+1] - pairnumsum[i]; // # neighbors around atom i
@@ -1805,7 +1805,7 @@ void EAPOD::snapshots(double *rbf, double *xij, int N)
 
       // Loop over all Bessel degrees
       for (int i=0; i<besseldegree; i++) {
-        double a = (i+1)*M_PI;
+        double a = (i+1)*MY_PI;
         double b = (sqrt(2.0/(rmax))/(i+1));
         int nij = n + N*i + N*besseldegree*j;
 
@@ -1818,7 +1818,8 @@ void EAPOD::snapshots(double *rbf, double *xij, int N)
     for (int i=0; i<inversedegree; i++) {
       int p = besseldegree*nbesselpars + i;
       int nij = n + N*p;
-      double a = pow(dij, (double) (i+1.0));
+      //double a = pow(dij, (double) (i+1.0));
+      double a = powint(dij, i+1);
 
       // Compute the RBF
       rbf[nij] = fcut/a;
