@@ -1362,8 +1362,8 @@ void FitPOD::enviroment_cluster_calculation(const datastruct &data)
 
     MPI_Allreduce(MPI_IN_PLACE, A, Mdesc*Mdesc, MPI_DOUBLE, MPI_SUM, world);  
 
-    if (comm->me == 0) 
-      savematrix2binfile(data.filenametag + "_covariance_matrix_elem" + std::to_string(elem+1) + ".bin", A, Mdesc, Mdesc);
+    // if (comm->me == 0) 
+    //   savematrix2binfile(data.filenametag + "_covariance_matrix_elem" + std::to_string(elem+1) + ".bin", A, Mdesc, Mdesc);
 
     // Calculate eigenvalues and eigenvectors of A
     int lwork = Mdesc * Mdesc;  // the length of the array work, lwork >= max(1,3*N-1)
@@ -1400,13 +1400,13 @@ void FitPOD::enviroment_cluster_calculation(const datastruct &data)
     int max_iter = 100;
     KmeansClustering(pca, centroids, assignments, clusterSizes, nAtoms, nClusters, nComponents, max_iter);
 
-    if (comm->me == 0) {
-      savematrix2binfile(data.filenametag + "_eigenvector_matrix_elem" + std::to_string(elem+1) + ".bin", A, Mdesc, Mdesc);
-      savematrix2binfile(data.filenametag + "_eigenvalues_elem" + std::to_string(elem+1) + ".bin", b, Mdesc, 1);
-    }
-    savematrix2binfile(data.filenametag + "_desc_matrix_elem" + std::to_string(elem+1) + "_proc" + std::to_string(comm->me+1) + ".bin", descmatrix, Mdesc, nAtoms);  
-    savematrix2binfile(data.filenametag + "_pca_matrix_elem" + std::to_string(elem+1) + "_proc" + std::to_string(comm->me+1) + ".bin", pca, nComponents, nAtoms);
-    saveintmatrix2binfile(data.filenametag + "_cluster_assignments_elem" + std::to_string(elem+1) + "_proc" + std::to_string(comm->me+1) + ".bin", assignments, nAtoms, 1);
+    // if (comm->me == 0) {
+    //   savematrix2binfile(data.filenametag + "_eigenvector_matrix_elem" + std::to_string(elem+1) + ".bin", A, Mdesc, Mdesc);
+    //   savematrix2binfile(data.filenametag + "_eigenvalues_elem" + std::to_string(elem+1) + ".bin", b, Mdesc, 1);
+    // }
+    // savematrix2binfile(data.filenametag + "_desc_matrix_elem" + std::to_string(elem+1) + "_proc" + std::to_string(comm->me+1) + ".bin", descmatrix, Mdesc, nAtoms);  
+    // savematrix2binfile(data.filenametag + "_pca_matrix_elem" + std::to_string(elem+1) + "_proc" + std::to_string(comm->me+1) + ".bin", pca, nComponents, nAtoms);
+    // saveintmatrix2binfile(data.filenametag + "_cluster_assignments_elem" + std::to_string(elem+1) + "_proc" + std::to_string(comm->me+1) + ".bin", assignments, nAtoms, 1);
   }
 
   savedata2textfile(data.filenametag + "_projection_matrix"  + ".pod", "projection_matrix: {}\n ", fastpodptr->Proj, nComponents*Mdesc*nelements, 1, 1);
