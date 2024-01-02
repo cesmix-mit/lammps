@@ -76,6 +76,7 @@ void FitPOD::command(int narg, char **arg)
 
     if (((int) envdata.data_path.size() > 1) && (desc.nClusters > 1)) {
       enviroment_cluster_calculation(envdata);
+      error->all(FLERR, "stop after enviroment_cluster_calculation");
         // memory->destroy(envdata.lattice);
         // memory->destroy(envdata.energy);
         // memory->destroy(envdata.stress);
@@ -89,11 +90,14 @@ void FitPOD::command(int narg, char **arg)
     // compute POD coefficients using least-squares method
 
     least_squares_fit(traindata);
+    error->all(FLERR, "stop after least_squares_fit");
 
     // calculate errors for the training data set
 
     if ((traindata.training_analysis) && ((int) traindata.data_path.size() > 1) )
       error_analysis(traindata, desc.c);
+
+    error->all(FLERR, "stop after error_analysis");
 
     // calculate energy and force for the training data set
 
