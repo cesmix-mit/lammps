@@ -181,7 +181,7 @@ void FitPOD::command(int narg, char **arg)
   memory->destroy(nb.pairlist);
   memory->destroy(nb.y);
 
-  //delete fastpodptr;
+  delete fastpodptr;
 }
 
 int FitPOD::read_data_file(double *fitting_weights, std::string &file_format,
