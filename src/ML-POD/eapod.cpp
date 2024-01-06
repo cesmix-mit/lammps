@@ -855,7 +855,8 @@ void EAPOD::peratombase_descriptors(double *bd1, double *bdd1, double *rij, doub
 double EAPOD::peratomenergyforce(double *fij, double *rij, double *temp,
         int *ti, int *tj, int Nj)
 {
-  for (int n=0; n<3*Nj; n++) fij[n] = 0.0;
+  int N = 3*Nj;
+  for (int n=0; n<N; n++) fij[n] = 0.0;
 
   double *coeff1 = &coeff[nCoeffPerElement*(ti[0]-1)];
   double e = coeff1[0];
@@ -873,18 +874,36 @@ double EAPOD::peratomenergyforce(double *fij, double *rij, double *temp,
       for (int m=0; m<Mdesc; m++) 
         e += coeff1[1 + m + j*Mdesc]*bd[m]*pd[j];
       
+    // for (int j = 0; j<nClusters; j++)  
+    //   for (int m=0; m<Mdesc; m++) 
+    //     for (int n=0; n<3*Nj; n++) 
+    //       fij[n] += coeff1[1 + m + j*Mdesc]*(bdd[n + 3*Nj*m]*pd[j] + bd[m]*pdd[n + 3*Nj*j]);    
+    double *cb = &temp[0];
+    double *cp = &temp[Mdesc];
+    for (int m = 0; m<Mdesc; m++) cb[m] = 0.0;    
+    for (int j = 0; j<nClusters; j++) cp[j] = 0.0;
     for (int j = 0; j<nClusters; j++)  
-      for (int m=0; m<Mdesc; m++) 
-        for (int n=0; n<3*Nj; n++) 
-          fij[n] += coeff1[1 + m + j*Mdesc]*(bdd[n + 3*Nj*m]*pd[j] + bd[m]*pdd[n + 3*Nj*j]);    
+      for (int m = 0; m<Mdesc; m++)  {   
+        cb[m] += coeff1[1 + m + j*Mdesc]*pd[j];
+        cp[j] += coeff1[1 + m + j*Mdesc]*bd[m];
+      }
+    char chn = 'N';    
+    double alpha = 1.0, beta = 0.0;
+    int inc1 = 1;
+    DGEMV(&chn, &N, &Mdesc, &alpha, bdd, &N, cb, &inc1, &beta, fij, &inc1);    
+    DGEMV(&chn, &N, &nClusters, &alpha, pdd, &N, cp, &inc1, &alpha, fij, &inc1);    
   }
   else { // single-environment descriptors
     for (int m=0; m<Mdesc; m++) 
       e += coeff1[1+m]*bd[m];
       
-    for (int m=0; m<Mdesc; m++) 
-      for (int n=0; n<3*Nj; n++) 
-        fij[n] += coeff1[1+m]*bdd[n + 3*Nj*m];
+    // for (int m=0; m<Mdesc; m++) 
+    //   for (int n=0; n<N; n++) 
+    //     fij[n] += coeff1[1+m]*bdd[n + 3*Nj*m];
+    char chn = 'N';    
+    double alpha = 1.0, beta = 0.0;
+    int inc1 = 1;
+    DGEMV(&chn, &N, &Mdesc, &alpha, bdd, &N, &coeff1[1], &inc1, &beta, fij, &inc1);    
   }
 
   return e;
