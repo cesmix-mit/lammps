@@ -199,7 +199,10 @@ public:
 
   void base_descriptors(double *basedesc, double *x, int *atomtype, int *alist,
           int *jlist, int *pairnumsum, int natom);
-                          
+
+  void descriptors(double *basedesc, double *probdesc, double *x, int *atomtype, int *alist,
+          int *jlist, int *pairnumsum, int natom);
+  
   double peratomenergyforce(double *fij, double *rij, double *temp, int *ti, int *tj, int Nj);
 
   double energyforce(double *force, double *x, int *atomtype, int *alist,
