@@ -864,7 +864,7 @@ void CommKokkos::exchange_device()
         if (nrecv) {
 
           if (atom->nextra_grow) {
-            if (k_indices.extent(0) < nrecv/data_size)
+            if ((int) k_indices.extent(0) < nrecv/data_size)
               MemoryKokkos::realloc_kokkos(k_indices,"comm:indices",nrecv/data_size);
           } else if (k_indices.h_view.data())
            k_indices = DAT::tdual_int_1d();
@@ -980,9 +980,12 @@ void CommKokkos::borders()
   } else {
     atomKK->sync(Host,ALL_MASK);
     k_sendlist.sync<LMPHostType>();
-    k_sendlist.modify<LMPHostType>();
-    atomKK->modified(Host,ALL_MASK); // needed here for atom map
+    int prev_auto_sync = lmp->kokkos->auto_sync;
+    lmp->kokkos->auto_sync = 1;
     CommBrick::borders();
+    lmp->kokkos->auto_sync = prev_auto_sync;
+    k_sendlist.modify<LMPHostType>();
+    atomKK->modified(Host,ALL_MASK);
   }
 
   if (comm->nprocs == 1 && !ghost_velocity && !forward_comm_classic)
