@@ -230,7 +230,7 @@ int FitPOD::read_data_file(double *fitting_weights, std::string &file_format,
 
     if (words.size() == 0) continue;
 
-    const auto &keywd = words[0];
+    auto keywd = words[0];
 
     if (words.size() != 2)
       error->one(FLERR,"Improper POD file.", utils::getsyserror());
