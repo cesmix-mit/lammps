@@ -13,41 +13,42 @@
 
 #ifdef COMPUTE_CLASS
 // clang-format off
-ComputeStyle(pod,ComputePOD);
+ComputeStyle(pod/gdd,ComputePODGlobal);
 // clang-format on
 #else
 
-#ifndef LMP_COMPUTE_POD_H
-#define LMP_COMPUTE_POD_H
+#ifndef LMP_COMPUTE_POD_GLOBAL_H
+#define LMP_COMPUTE_POD_GLOBAL_H
 
 #include "compute.h"
 
 namespace LAMMPS_NS {
 
-class ComputePOD : public Compute {
+class ComputePODGlobal : public Compute {
  public:
-  ComputePOD(class LAMMPS *, int, char **);
-  ~ComputePOD() override;
+  ComputePODGlobal(class LAMMPS *, int, char **);
+  ~ComputePODGlobal() override;
   void init() override;
   void init_list(int, class NeighList *) override;
   void compute_array() override;
   double memory_usage() override;
   void lammpsNeighborList(double **x, int **firstneigh, int *atomid, int *atomtype, int *numneigh,
                         double rcutsq, int i);
+  void map_element2type(int narg, char **arg, int nelements);
+  
  private:
   class NeighList *list;
   class EAPOD *podptr;
   double **pod;
-  //double **pod_peratom;
   double cutmax;
-  int nmax;
   int nij;
   int nijmax;
-  //int size_peratom;
-  
+     
   double *tmpmem;      // temporary memory
   double *rij;         // (xj - xi) for all pairs (I, J)
   double *fij;         // force for all pairs (I, J)
+  char **elements;
+  int *map;
   int *ai;             // IDs of atoms I for all pairs (I, J)
   int *aj;             // IDs of atoms J for all pairs (I, J)
   int *ti;             // types of atoms I for all pairs (I, J)

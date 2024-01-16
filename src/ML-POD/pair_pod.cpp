@@ -174,23 +174,29 @@ void PairPOD::coeff(int narg, char **arg)
   map = new int[np1];
   allocated = 1;
 
-  if (narg < 4) utils::missing_cmd_args(FLERR, "pair_coeff", error);
+  if (narg < 7) utils::missing_cmd_args(FLERR, "pair_coeff", error);
   
+//   std::string pod_file = std::string(arg[2]);      // pod input file
+//   std::string coeff_file = std::string(arg[3]);    // coefficient input file
+//   std::string proj_file = "";
+//   std::string centroid_file = "";
+//   if (narg>5) {
+//     proj_file = std::string(arg[4]);    // coefficient input file
+//     centroid_file = std::string(arg[5]);    // coefficient input file
+//     //printf("proj_file = %s\n", proj_file.c_str());
+//     //printf("centroid_file = %s\n", centroid_file.c_str());
+//     map_element2type(narg - 6, arg + 6);    
+//   }
+//   else {
+//     map_element2type(narg - 4, arg + 4);
+//   }
+
   std::string pod_file = std::string(arg[2]);      // pod input file
   std::string coeff_file = std::string(arg[3]);    // coefficient input file
-  std::string proj_file = "";
-  std::string centroid_file = "";
-  if (narg>5) {
-    proj_file = std::string(arg[4]);    // coefficient input file
-    centroid_file = std::string(arg[5]);    // coefficient input file
-    //printf("proj_file = %s\n", proj_file.c_str());
-    //printf("centroid_file = %s\n", centroid_file.c_str());
-    map_element2type(narg - 6, arg + 6);    
-  }
-  else {
-    map_element2type(narg - 4, arg + 4);
-  }
-
+  std::string proj_file = std::string(arg[4]);
+  std::string centroid_file = std::string(arg[5]);
+  map_element2type(narg - 6, arg + 6);    
+  
   delete fastpodptr;
   fastpodptr = new EAPOD(lmp, pod_file, coeff_file, proj_file, centroid_file);
 

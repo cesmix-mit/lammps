@@ -2079,16 +2079,28 @@ int EAPOD::estimate_temp_memory(int Nj)
 void EAPOD::allocate_temp_memory(int Nj)
 {
   estimate_temp_memory(Nj);
-  memory->create(tmpmem, 2*ndblmem, "tmpmem");
+  memory->create(tmpmem, ndblmem, "tmpmem");
   memory->create(tmpint, nintmem, "tmpint");
   memory->create(bd, Mdesc, "bdd");
   memory->create(bdd, 3*Nj*Mdesc, "bdd");
   memory->create(pd, nClusters, "bdd");
-  memory->create(pdd, 3*Nj*nClusters, "bdd");
+  memory->create(pdd, 3*Nj*nClusters, "bdd"); 
+//   tmpmem = (double *) malloc(2*ndblmem*sizeof(double));
+//   tmpint = (int *) malloc(nintmem*sizeof(int));
+//   bd = (double *) malloc(Mdesc*sizeof(double));
+//   bdd = (double *) malloc(3*Nj*Mdesc*sizeof(double));  
+//   pd = (double *) malloc(nClusters*sizeof(double));
+//   pdd = (double *) malloc(3*Nj*nClusters*sizeof(double));    
 }
 
 void EAPOD::free_temp_memory()
 {
+//   free(tmpmem);
+//   free(tmpint);
+//   free(bd);
+//   free(bdd);
+//   free(pd);
+//   free(pdd);  
   memory->destroy(tmpmem);
   memory->destroy(tmpint);
   memory->destroy(bd);

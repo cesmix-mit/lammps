@@ -12,7 +12,7 @@
    See the README file in the top-level LAMMPS directory.
 ------------------------------------------------------------------------- */
 
-#include "compute_pod.h"
+#include "compute_pod_global.h"
 
 #include "atom.h"
 #include "comm.h"
@@ -32,47 +32,47 @@ using namespace LAMMPS_NS;
 
 enum{SCALAR,VECTOR,ARRAY};
 
-ComputePOD::ComputePOD(LAMMPS *lmp, int narg, char **arg) :
-  Compute(lmp, narg, arg), list(nullptr), pod(nullptr)
+ComputePODGlobal::ComputePODGlobal(LAMMPS *lmp, int narg, char **arg) :
+  Compute(lmp, narg, arg), list(nullptr), pod(nullptr), elements(nullptr)
 {  
-  int nargmin = 4;
+  array_flag = 1;
+  extarray = 0;
+  
+  int nargmin = 7;
 
   if (narg < nargmin) error->all(FLERR, "Illegal compute {} command", style);
   
   std::string pod_file = std::string(arg[3]);      // pod input file
   std::string coeff_file = "";    // coefficient input file
-  std::string proj_file = "";
-  std::string centroid_file = "";
-  if (narg>5) {
-    proj_file = std::string(arg[4]);    // coefficient input file
-    centroid_file = std::string(arg[5]);    // coefficient input file    
-  } 
+  std::string proj_file = std::string(arg[4]);    // coefficient input file
+  std::string centroid_file = std::string(arg[5]);    // coefficient input file              
+  podptr = new EAPOD(lmp, pod_file, coeff_file, proj_file, centroid_file);   
   
-  podptr = new EAPOD(lmp, pod_file, coeff_file, proj_file, centroid_file);
-  
+  int ntypes = atom->ntypes;
+  memory->create(map, ntypes + 1, "compute_pod_global:map");
+  map_element2type(narg - 6, arg + 6, podptr->nelements);    
+      
   size_array_rows = 1 + 3*atom->natoms;  
   size_array_cols = podptr->nCoeffAll;
   cutmax = podptr->rcut;
     
-  //size_peratom = 3*podptr->nCoeffPerElement*atom->ntypes;
-  
-  nmax = 0;
   nijmax = 0;
   pod = nullptr;
+  elements = nullptr;  
 }
 
 /* ---------------------------------------------------------------------- */
 
-ComputePOD::~ComputePOD()
+ComputePODGlobal::~ComputePODGlobal()
 {
+  memory->destroy(map);
   memory->destroy(pod);
-  //memory->destroy(pod_peratom);
   delete podptr;
 }
 
 /* ---------------------------------------------------------------------- */
 
-void ComputePOD::init()
+void ComputePODGlobal::init()
 {
   if (force->pair == nullptr)
     error->all(FLERR,"Compute pod requires a pair style be defined");
@@ -89,46 +89,30 @@ void ComputePOD::init()
   
  // allocate memory for global array
   memory->create(pod,size_array_rows,size_array_cols,
-                 "pod:pod");
+                 "compute_pod_global:pod");
   array = pod;
 }
 
 /* ---------------------------------------------------------------------- */
 
-void ComputePOD::init_list(int /*id*/, NeighList *ptr)
+void ComputePODGlobal::init_list(int /*id*/, NeighList *ptr)
 {
   list = ptr;
 }
 
 /* ---------------------------------------------------------------------- */
 
-void ComputePOD::compute_array()
+void ComputePODGlobal::compute_array()
 {
-  // int ntotal = atom->nlocal + atom->nghost;
-  
+  // int ntotal = atom->nlocal + atom->nghost;  
   invoked_peratom = update->ntimestep;
 
-//   // grow snap_peratom array if necessary
-// 
-//   if (atom->nmax > nmax) {
-//     memory->destroy(pod_peratom);
-//     nmax = atom->nmax;
-//     memory->create(pod_peratom,nmax,size_peratom,
-//                    "snap:snap_peratom");
-//   }
-  
   // clear global array
 
   for (int irow = 0; irow < size_array_rows; irow++)
     for (int icoeff = 0; icoeff < size_array_cols; icoeff++)
       pod[irow][icoeff] = 0.0;
-  
-  // clear local peratom array
-
-//   for (int i = 0; i < ntotal; i++)
-//     for (int icoeff = 0; icoeff < size_peratom; icoeff++)
-//       pod_peratom[i][icoeff] = 0.0;
-  
+    
   // invoke full neighbor list (will copy or build if necessary)
 
   neighbor->build_one(list);
@@ -144,8 +128,6 @@ void ComputePOD::compute_array()
   int nClusters = podptr->nClusters;
   int Mdesc = podptr->Mdesc;
   int nCoeffPerElement = podptr->nCoeffPerElement;
-  double *bd = &podptr->bd[0];
-  double *bdd = &podptr->bdd[0];
   
   double rcutsq = podptr->rcut*podptr->rcut;
   
@@ -171,10 +153,12 @@ void ComputePOD::compute_array()
     lammpsNeighborList(x, firstneigh, atom->tag, type, numneigh, rcutsq, i);
     
     // peratom base descriptors
+    double *bd = &podptr->bd[0];
+    double *bdd = &podptr->bdd[0];    
     podptr->peratombase_descriptors(bd, bdd, rij, tmpmem, ti, tj, nij);        
         
     pod[0][nCoeffPerElement*(ti[0]-1)] += 1.0; // one-body descriptor
-    
+      
     if (nClusters>1) {
       // peratom env descriptors
       double *pd = &podptr->pd[0];
@@ -218,31 +202,14 @@ void ComputePOD::compute_array()
         }
       }      
     }    
-  }
-  
-//   int nvalues = Mdesc*nClusters;
-//   
-//   for (int itype = 0; itype < atom->ntypes; itype++) {
-//     int typeoffset_local = 3*nvalues*itype;
-//     int typeoffset_global = (1+nvalues)*itype;
-//     for (int icoeff = 0; icoeff < nvalues; icoeff++) {
-//       for (int i = 0; i < ntotal; i++) {
-//         int iglobal = atom->tag[i];
-//         int irow = 3*(iglobal-1)+1;
-//         pod[irow++][1+icoeff+typeoffset_global] += pod_peratom[i][0 + 3*icoeff + typeoffset_local];
-//         pod[irow++][1+icoeff+typeoffset_global] += pod_peratom[i][1 + 3*icoeff + typeoffset_local];
-//         pod[irow][1+icoeff+typeoffset_global] += pod_peratom[i][2 + 3*icoeff + typeoffset_local];
-//       }
-//     }
-//   }
-  
+  }    
 }
 
 /* ----------------------------------------------------------------------
    memory usage
 ------------------------------------------------------------------------- */
 
-double ComputePOD::memory_usage()
+double ComputePODGlobal::memory_usage()
 {
   double bytes = 0.0;
 
@@ -250,11 +217,11 @@ double ComputePOD::memory_usage()
 }
 
 
-void ComputePOD::lammpsNeighborList(double **x, int **firstneigh, int *atomid, int *atomtypes, 
+void ComputePODGlobal::lammpsNeighborList(double **x, int **firstneigh, int *atomid, int *atomtypes, 
                                int *numneigh, double rcutsq, int gi)
 {
   nij = 0;
-  int itype = atomtypes[gi];
+  int itype = map[atomtypes[gi]] + 1;
   int m = numneigh[gi];
   for (int l = 0; l < m; l++) {           // loop over each atom around atom i
     int gj = firstneigh[gi][l];           // atom j
@@ -266,11 +233,49 @@ void ComputePOD::lammpsNeighborList(double **x, int **firstneigh, int *atomid, i
       rij[nij * 3 + 0] = delx;
       rij[nij * 3 + 1] = dely;
       rij[nij * 3 + 2] = delz;
-      ai[nij] = atomid[gi];
-      aj[nij] = atomid[gj];
+      ai[nij] = atomid[gi]-1;
+      aj[nij] = atomid[gj]-1;
       ti[nij] = itype;
-      tj[nij] = atomtypes[gj];
+      tj[nij] = map[atomtypes[gj]] + 1;
       nij++;
+    }
+  }
+}
+
+void ComputePODGlobal::map_element2type(int narg, char **arg, int nelements)
+{
+  int i,j;
+  const int ntypes = atom->ntypes;
+
+  // read args that map atom types to elements in potential file
+  // map[i] = which element the Ith atom type is, -1 if "NULL"
+  // nelements = # of unique elements
+  // elements = list of element names
+
+  if (narg != ntypes)
+    error->all(FLERR, "Number of element to type mappings does not match number of atom types");
+
+  if (elements) {
+    for (i = 0; i < nelements; i++) delete[] elements[i];
+    delete[] elements;
+  }
+  elements = new char*[ntypes];
+  for (i = 0; i < ntypes; i++) elements[i] = nullptr;
+
+  nelements = 0;
+  map[0] = -1;
+  for (i = 1; i <= narg; i++) {
+    std::string entry = arg[i-1];
+    if (entry == "NULL") {
+      map[i] = -1;
+      continue;
+    }
+    for (j = 0; j < nelements; j++)
+      if (entry == elements[j]) break;
+    map[i] = j;
+    if (j == nelements) {
+      elements[j] = utils::strdup(entry);
+      nelements++;
     }
   }
 }
