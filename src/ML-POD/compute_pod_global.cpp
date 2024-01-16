@@ -40,8 +40,9 @@ ComputePODGlobal::ComputePODGlobal(LAMMPS *lmp, int narg, char **arg) :
   
   int nargmin = 7;
 
-  if (narg < nargmin) error->all(FLERR, "Illegal compute {} command", style);
-  
+  if (narg < nargmin) error->all(FLERR, "Illegal compute {} command", style); 
+  if (comm->nprocs > 1) error->all(FLERR, "compute command does not support multi processors");
+          
   std::string pod_file = std::string(arg[3]);      // pod input file
   std::string coeff_file = "";    // coefficient input file
   std::string proj_file = std::string(arg[4]);    // coefficient input file

@@ -13,24 +13,24 @@
 
 #ifdef COMPUTE_CLASS
 // clang-format off
-ComputeStyle(pod/gdd,ComputePODGlobal);
+ComputeStyle(pod/atom,ComputePODAtom);
 // clang-format on
 #else
 
-#ifndef LMP_COMPUTE_POD_GLOBAL_H
-#define LMP_COMPUTE_POD_GLOBAL_H
+#ifndef LMP_COMPUTE_POD_ATOM_H
+#define LMP_COMPUTE_POD_ATOM_H
 
 #include "compute.h"
 
 namespace LAMMPS_NS {
 
-class ComputePODGlobal : public Compute {
+class ComputePODAtom : public Compute {
  public:
-  ComputePODGlobal(class LAMMPS *, int, char **);
-  ~ComputePODGlobal() override;
+  ComputePODAtom(class LAMMPS *, int, char **);
+  ~ComputePODAtom() override;
   void init() override;
   void init_list(int, class NeighList *) override;
-  void compute_array() override;
+  void compute_peratom() override;
   double memory_usage() override;
   void lammpsNeighborList(double **x, int **firstneigh, int *atomid, int *atomtype, int *numneigh,
                         double rcutsq, int i);
@@ -41,11 +41,12 @@ class ComputePODGlobal : public Compute {
   class EAPOD *podptr;
   double **pod;
   double cutmax;
+  int nmax;
   int nij;
   int nijmax;
-     
+
   double *tmpmem;      // temporary memory
-  double *rij;         // (xj - xi) for all pairs (I, J)
+  double *rij;         // (xj - xi) for all pairs (I, J)  
   char **elements;
   int *map;
   int *ai;             // IDs of atoms I for all pairs (I, J)

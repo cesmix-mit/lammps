@@ -46,7 +46,6 @@ class ComputePODLocal : public Compute {
      
   double *tmpmem;      // temporary memory
   double *rij;         // (xj - xi) for all pairs (I, J)
-  double *fij;         // force for all pairs (I, J)
   char **elements;
   int *map;
   int *ai;             // IDs of atoms I for all pairs (I, J)
