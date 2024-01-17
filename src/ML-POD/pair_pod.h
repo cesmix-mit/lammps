@@ -38,29 +38,43 @@ class PairPOD : public Pair {
 
   void lammpsNeighborList(double **x, int **firstneigh, int *atomtype, int *map, int *numneigh,
                         double rcutsq, int i);
+  void lammpsNeighborList(double **x, int **firstneigh, int *atomtype, int *map, int *numneigh,
+                        double rcutsq, int i1, int i2);
   void tallyforce(double **force, double *fij,  int *ai, int *aj, int N);
+  void divideInterval(int *intervals, int N, int M);
+  int calculateNumberOfIntervals(int N, int intervalSize); 
+  int numberOfNeighbors(int *numneigh, int gi1, int gi2);
+  int maximumNumberOfNeighbors(int *numneigh);
+  void free_temp_memory();
+  void allocate_temp_memory(int N);
  protected:
-  int dim;    // typically 3
-  int nablockmax;    // maximum number of atoms per computation block
+  int dim;    // typically 3  
+  int ni;            // number of atoms i
   int nij;           //  number of atom pairs
   int nijmax;        // maximum number of atom pairs
   int szd;           // size of tmpmem
-
+  
+  int atomBlockSize;        // size of each atom block
+  int nAtomBlocks;          // number of atoms blocks
+  int atomBlocks[100];      // atom blocks
+  int nNeighbors;           // number of neighbors in the current block 
+  int numNeighMax;          // maximum number of neighbors so far
+  
   //class MLPOD *podptr;
   class EAPOD *fastpodptr;
 
   // temporary arrays for computation blocks
 
   double *tmpmem;      // temporary memory
-  //int *typeai;         // types of atoms I only
+  int *typeai;         // types of atoms I only
   //int *numneighsum;    // cumulative sum for an array of numbers of neighbors
   double *rij;         // (xj - xi) for all pairs (I, J)
   double *fij;         // force for all pairs (I, J)
-  //int *idxi;           // storing linear indices for all pairs (I, J)
+  int *idxi;           // storing linear indices of atom I for all pairs (I, J)
   int *ai;             // IDs of atoms I for all pairs (I, J)
   int *aj;             // IDs of atoms J for all pairs (I, J)
   int *ti;             // types of atoms I for all pairs (I, J)
-  int *tj;             // types of atoms J  for all pairs (I, J)
+  int *tj;             // types of atoms J  for all pairs (I, J)  
 
   bool peratom_warn;    // print warning about missing per-atom energies or stresses
 };
