@@ -124,7 +124,10 @@ void PairPOD::compute(int eflag, int vflag)
     tj = &fastpodptr->tmpint[3*nNeighbors];
     idxi = &fastpodptr->tmpint[4*nNeighbors];
     typeai = &fastpodptr->tmpint[5*nNeighbors];
-    lammpsNeighborList(x, firstneigh, type, map, numneigh, rcutsq, gi1, gi2);            
+    lammpsNeighborList(x, firstneigh, type, map, numneigh, rcutsq, gi1, gi2);       
+
+    // blockatombase_descriptors(bd1, bdd1, rij, temp,
+    //     ti, tj, idxi, ni, nij);     
   }
 
 //     fastpodptr->timing = 1;

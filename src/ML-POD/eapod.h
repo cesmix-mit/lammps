@@ -217,6 +217,8 @@ public:
           int *jlist, int *pairnumsum, int natom);
   
   double peratomenergyforce(double *fij, double *rij, double *temp, int *ti, int *tj, int Nj);
+  double blockatomenergyforce(double *fij, double *rij, double *temp,
+        int *ti, int *tj, int *idxi, int Ni, int Nij);
 
   double energyforce(double *force, double *x, int *atomtype, int *alist,
           int *jlist, int *pairnumsum, int natom);

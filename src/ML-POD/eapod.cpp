@@ -974,6 +974,30 @@ double EAPOD::peratomenergyforce(double *fij, double *rij, double *temp,
   return e;
 }
 
+double EAPOD::blockatomenergyforce(double *fij, double *rij, double *temp,
+        int *ti, int *tj, int *idxi, int Ni, int Nij)
+{
+  int N = 3*Nij;
+  for (int n=0; n<N; n++) fij[n] = 0.0;
+
+  double *coeff1 = &coeff[nCoeffPerElement*(ti[0]-1)];
+  double e = coeff1[0];
+
+  // calculate base descriptors and their derivatives with respect to atom coordinates
+  blockatombase_descriptors(bd, bdd, rij, temp, ti, tj, idxi, Ni, Nij);  
+
+  for (int m=0; m<Mdesc; m++) 
+   for (int n=0; n<Ni; n++)      
+    e += coeff1[1+m]*bd[n + Ni*m];
+      
+  char chn = 'N';    
+  double alpha = 1.0, beta = 0.0;
+  int inc1 = 1;
+  DGEMV(&chn, &N, &Mdesc, &alpha, bdd, &N, &coeff1[1], &inc1, &beta, fij, &inc1);    
+
+  return e;
+}
+
 double EAPOD::energyforce(double *force, double *x, int *atomtype, int *alist,
           int *jlist, int *pairnumsum, int natom)
 {
