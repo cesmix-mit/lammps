@@ -40,7 +40,7 @@ using MathSpecial::powint;
 // constructor
 EAPOD::EAPOD(LAMMPS *_lmp, const std::string &pod_file, const std::string &coeff_file, const std::string &proj_file, const std::string &centroids_file) :
         Pointers(_lmp), elemindex(nullptr), Phi(nullptr), Lambda(nullptr), Proj(nullptr),
-        Centroids(nullptr), coeff(nullptr), tmpmem(nullptr), tmpint(nullptr),
+        Centroids(nullptr),  bd(nullptr), bdd(nullptr), pd(nullptr), pdd(nullptr), coeff(nullptr), tmpmem(nullptr), tmpint(nullptr),
         pn3(nullptr), pq3(nullptr), pc3(nullptr), pq4(nullptr), pa4(nullptr), pb4(nullptr), pc4(nullptr),
         ind23(nullptr), ind32(nullptr), ind33(nullptr), ind34(nullptr), ind43(nullptr), ind44(nullptr)
 {
