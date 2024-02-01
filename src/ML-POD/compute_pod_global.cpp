@@ -33,7 +33,7 @@ using namespace LAMMPS_NS;
 enum{SCALAR,VECTOR,ARRAY};
 
 ComputePODGlobal::ComputePODGlobal(LAMMPS *lmp, int narg, char **arg) :
-  Compute(lmp, narg, arg), list(nullptr), pod(nullptr), elements(nullptr)
+  Compute(lmp, narg, arg), list(nullptr), map(nullptr), pod(nullptr), elements(nullptr)
 {  
   array_flag = 1;
   extarray = 0;

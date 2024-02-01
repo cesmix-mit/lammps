@@ -63,17 +63,14 @@ private:
   void myneighbors(double *rij, double *x, int *ai, int *aj, int *ti, int *tj,
         int *jlist, int *pairnumsum, int *atomtype, int *alist, int i);
 
-  void radialbasis(double *rbf, double *rbfx, double *rbfy, double *rbfz, double *rij, int N);
-  void orthogonalradialbasis(double *rbf, double *rbfx, double *rbfy, double *rbfz, double *rij, double *temp, int Nj);
+  void radialbasis(double *rbf, double *rbfx, double *rbfy, double *rbfz, double *rij, double *besselparams, double rin,
+        double rmax, int besseldegree, int inversedegree, int nbesselpars, int N);
 
-  void angularbasis(double *abf, double *abfx, double *abfy, double *abfz, double *rij, double *tm, int N);
+  void angularbasis(double *abf, double *abfx, double *abfy, double *abfz, double *rij, double *tm, int *pq, int N, int K);
 
   void radialangularbasis(double *sumU, double *U, double *Ux, double *Uy, double *Uz,
         double *rbf, double *rbfx, double *rbfy, double *rbfz, double *abf,
-        double *abfx, double *abfy, double *abfz, int *atomtype, int N);
-  void radialangularbasis(double *sumU, double *U, double *Ux, double *Uy, double *Uz,
-        double *rbf, double *rbfx, double *rbfy, double *rbfz, double *abf, double *abfx, 
-        double *abfy, double *abfz, int *tj, int *idxi, int Ni, int Nij);
+        double *abfx, double *abfy, double *abfz, double *tm, int *atomtype, int N, int K, int M, int Ne);
 
   void MatMul(double *c, double *a, double *b, int r1, int c1, int c2);
 
@@ -88,7 +85,6 @@ public:
 
   double rin;
   double rcut;
-  double rmax;
   int true4BodyDesc;
   
 
@@ -181,21 +177,14 @@ public:
 
   void twobodydescderiv(double *d2, double *dd2, double *rbf, double *rbfx,
         double *rbfy, double *rbfz, int *tj, int N);
-  void twobodydescderiv(double *d2, double *dd2, double *rbf, double *rbfx,
-        double *rbfy, double *rbfz, int *tj, int *idxi, int Ni, int Nij);
 
-  void threebodydesc(double *d3, double *sumU);    
-  void threebodydesc(double *d3, double *sumU, int Ni);
+  void threebodydesc(double *d3, double *sumU, int N);
 
   void threebodydescderiv(double *dd3, double *sumU, double *Ux, double *Uy, double *Uz,
         int *atomtype, int N);
-  void threebodydescderiv(double *dd3, double *sumU, double *Ux, double *Uy, double *Uz,
-        int *tj, int *idxi, int Ni, int Nij);
 
   void fourbodydescderiv(double *d4, double *dd4, double *sumU, double *Ux, double *Uy, double *Uz,
       int *atomtype, int N);
-  void fourbodydescderiv(double *d4, double *dd4, double *sumU, double *Ux, double *Uy,
-        double *Uz, int *atomtype, int *idxi, int Ni, int Nij);
 
   void descriptors(double *gd, double *gdd, double *basedesc, double *probdesc, double *x, int *atomtype, int *alist,
           int *jlist, int *pairnumsum, int natom);
@@ -205,8 +194,6 @@ public:
 
   void peratombase_descriptors(double *bd, double *bdd, double *rij, double *temp,
         int *ti, int *tj, int Nj);
-  void blockatombase_descriptors(double *bd1, double *bdd1, double *rij, double *temp,
-        int *ti, int *tj, int *idx, int Ni, int Nij);
 
   void peratomenvironment_descriptors(double *P, double *dP_dR, double *B, double *dB_dR, double *tmp, int elem, int nNeighbors);
 
@@ -217,8 +204,6 @@ public:
           int *jlist, int *pairnumsum, int natom);
   
   double peratomenergyforce(double *fij, double *rij, double *temp, int *ti, int *tj, int Nj);
-  double blockatomenergyforce(double *fij, double *rij, double *temp,
-        int *ti, int *tj, int *idxi, int Ni, int Nij);
 
   double energyforce(double *force, double *x, int *atomtype, int *alist,
           int *jlist, int *pairnumsum, int natom);

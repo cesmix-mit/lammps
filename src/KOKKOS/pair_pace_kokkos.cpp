@@ -642,6 +642,8 @@ void PairPACEKokkos<DeviceType>::compute(int eflag_in, int vflag_in)
     {
       int vector_length = vector_length_default;
       int team_size = team_size_default;
+      // league_size = ((chunk_size+team_size-1)/team_size)*maxneigh = number of teams
+      // total number of threads = team_size * league_size = chunk_size*maxneigh
       check_team_size_for<TagPairPACEComputeRadial>(((chunk_size+team_size-1)/team_size)*maxneigh,team_size,vector_length);
       typename Kokkos::TeamPolicy<DeviceType, TagPairPACEComputeRadial> policy_radial(((chunk_size+team_size-1)/team_size)*maxneigh,team_size,vector_length);
       Kokkos::parallel_for("ComputeRadial",policy_radial,*this);
