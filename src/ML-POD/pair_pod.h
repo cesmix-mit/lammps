@@ -38,16 +38,15 @@ public:
 
   void lammpsNeighborList(double *rij1, int *ai1, int *aj1, int *ti1, int *tj1, double **x, int **firstneigh, int *atomtype, int *map, int *numneigh,
                         double rcutsq, int i);
-  void lammpsNeighborList(double **x, int **firstneigh, int *atomtype, int *map, int *numneigh,
+  void NeighborCount(double **x, int **firstneigh, int *ilist, int *numneigh, double rcutsq, int i1, int i2);
+  void NeighborList(double **x, int **firstneigh, int *atomtype, int *map, int *ilist, int *numneigh,
                         double rcutsq, int i1, int i2);
   void tallyenergy(double *ei, int istart, int Ni);          
   void tallystress(double *fij, double *rij, int *ai, int *aj, int nlocal, int N);              
   void tallyforce(double **force, double *fij,  int *ai, int *aj, int N);
   void divideInterval(int *intervals, int N, int M);
   int calculateNumberOfIntervals(int N, int intervalSize); 
-  int maximumNumberOfAtoms(); 
-  int numberOfNeighbors(int *numneigh, int gi1, int gi2);
-  int maximumNumberOfNeighbors(int *numneigh);
+  int numberOfNeighbors();
   
   void copy_data_from_pod_class();
   void radialbasis(double *rbft, double *rbftx, double *rbfty, double *rbftz, double *rij, int Nij);
@@ -68,22 +67,24 @@ public:
   void blockatombase_descriptors(double *bd1, double *bdd1, int Ni, int Nij);
   void blockatomenergyforce(double *ei, double *fij, int Ni, int Nij);
 
+  void savematrix2binfile(std::string filename, double *A, int nrows, int ncols);
+  void saveintmatrix2binfile(std::string filename, int *A, int nrows, int ncols);  
+  void savedatafordebugging();
+  
 protected:
   class EAPOD *fastpodptr;  
   virtual void allocate();
-  void grow(int ni, int nij);
-    
-  int dim;    // typically 3  
-  int ni;            // number of atoms i
-  int nij;           //  number of neighbors
-  int nimax;         // maximum number of atoms i
-  int nijmax;        // maximum number of neighbors
+  void grow_atoms(int Ni);
+  void grow_pairs(int Nij);
 
   int atomBlockSize;        // size of each atom block
   int nAtomBlocks;          // number of atoms blocks
-  int atomBlocks[100];      // atom blocks
-  int numAtomMax;           // maximum number of atoms so far
-  int nNeighbors;           // number of neighbors in the current block 
+  int atomBlocks[101];      // atom blocks
+  
+  int ni;            // total number of atoms i
+  int nij;           // total number of pairs (i,j)
+  int nimax;         // maximum number of atoms i
+  int nijmax;        // maximum number of pairs (i,j)
 
   int nelements; // number of elements 
   int onebody;   // one-body descriptors
@@ -102,21 +103,21 @@ protected:
   int nComponents; // number of principal components
   int Mdesc; // number of base descriptors 
 
-  // temporary arrays for computation blocks
-  //int *numneighsum;    // cumulative sum for an array of numbers of neighbors
+  double rin;  // inner cut-off radius
+  double rcut; // outer cut-off radius
+  double rmax; // rcut - rin
+  
   double *rij;         // (xj - xi) for all pairs (I, J)
   double *fij;         // force for all pairs (I, J)
   double *ei;          // energy for each atom I
   int *typeai;         // types of atoms I only
+  int *numij;          // number of pairs (I, J) for each atom I   
   int *idxi;           // storing linear indices of atom I for all pairs (I, J)
   int *ai;             // IDs of atoms I for all pairs (I, J)
   int *aj;             // IDs of atoms J for all pairs (I, J)
   int *ti;             // types of atoms I for all pairs (I, J)
   int *tj;             // types of atoms J  for all pairs (I, J)  
 
-  double rin;
-  double rcut;
-  double rmax;
   double besselparams[3];
   double *Phi ;  // eigenvectors matrix ns x ns
   double *rbf;  // radial basis functions nij x nrbfmax  

@@ -50,7 +50,6 @@ PairPOD::PairPOD(LAMMPS *lmp) : Pair(lmp), fastpodptr(nullptr)
   centroidstressflag = CENTROID_NOTAVAIL;
   peratom_warn = false;
 
-  dim = 3;
   ni = 0;
   nimax = 0;
   nij = 0;
@@ -62,6 +61,7 @@ PairPOD::PairPOD(LAMMPS *lmp) : Pair(lmp), fastpodptr(nullptr)
   fij = nullptr;
   ei = nullptr;
   typeai = nullptr;
+  numij =  nullptr;
   idxi = nullptr;
   ai = nullptr;
   aj = nullptr;
@@ -108,6 +108,7 @@ PairPOD::~PairPOD()
   memory->destroy(fij);
   memory->destroy(ei);
   memory->destroy(typeai);
+  memory->destroy(numij);
   memory->destroy(idxi);
   memory->destroy(ai);
   memory->destroy(aj);
@@ -232,20 +233,26 @@ void PairPOD::compute(int eflag, int vflag)
   if (nAtomBlocks > 100) nAtomBlocks = 100; 
   divideInterval(atomBlocks, inum, nAtomBlocks);
 
+  int nmax = 0;
+  for (int block =0; block<nAtomBlocks; block++) {    
+    int n = atomBlocks[block+1] - atomBlocks[block]; 
+    if (nmax < n) nmax = n;
+  }
+  grow_atoms(nmax); // reallocate memory only if necessary  
+  
   for (int block =0; block<nAtomBlocks; block++) {
     int gi1 = atomBlocks[block]-1;
     int gi2 = atomBlocks[block+1]-1;
-    int nAtoms = gi2 - gi1; // number of atoms in the current block
+    ni = gi2 - gi1; // total number of atoms in the current atom block
         
-    // number of neighbors in the current block
-    nNeighbors = numberOfNeighbors(numneigh, gi1, gi2);
-        
-    grow(nAtoms, nNeighbors);
+    NeighborCount(x, firstneigh, ilist, numneigh, rcutsq, gi1, gi2);                    
+    nij = numberOfNeighbors(); // total number of pairs (i,j) in the current atom block        
+    grow_pairs(nij); // reallocate memory only if necessary
 
-    // get neighbor list for atoms i in the current block
-    lammpsNeighborList(x, firstneigh, type, map, numneigh, rcutsq, gi1, gi2);       
+    // get neighbor list for atoms i in the current atom block
+    NeighborList(x, firstneigh, type, map, ilist, numneigh, rcutsq, gi1, gi2);       
     
-    // compute atomic energy and force for atom i
+    // compute atomic energy and force for the current atom block
     blockatomenergyforce(ei, fij, ni, nij);
 
     // tally atomic energy to global energy
@@ -256,6 +263,8 @@ void PairPOD::compute(int eflag, int vflag)
 
     // tally atomic stress
     if (vflag) tallystress(fij, rij, ai, aj, nlocal, nij);
+        
+    //savedatafordebugging();
   }    
   }
 
@@ -293,25 +302,10 @@ void PairPOD::coeff(int narg, char **arg)
 
   if (narg < 7) utils::missing_cmd_args(FLERR, "pair_coeff", error);
   
-//   std::string pod_file = std::string(arg[2]);      // pod input file
-//   std::string coeff_file = std::string(arg[3]);    // coefficient input file
-//   std::string proj_file = "";
-//   std::string centroid_file = "";
-//   if (narg>5) {
-//     proj_file = std::string(arg[4]);    // coefficient input file
-//     centroid_file = std::string(arg[5]);    // coefficient input file
-//     //printf("proj_file = %s\n", proj_file.c_str());
-//     //printf("centroid_file = %s\n", centroid_file.c_str());
-//     map_element2type(narg - 6, arg + 6);    
-//   }
-//   else {
-//     map_element2type(narg - 4, arg + 4);
-//   }
-
   std::string pod_file = std::string(arg[2]);      // pod input file
   std::string coeff_file = std::string(arg[3]);    // coefficient input file
-  std::string proj_file = std::string(arg[4]);
-  std::string centroid_file = std::string(arg[5]);
+  std::string proj_file = std::string(arg[4]);     // projection matrix file
+  std::string centroid_file = std::string(arg[5]); // centroid matrix file
   map_element2type(narg - 6, arg + 6);    
   
   delete fastpodptr;
@@ -340,7 +334,7 @@ void PairPOD::init_style()
   neighbor->add_request(this, NeighConst::REQ_FULL);
 
   // reset flag to print warning about per-atom energies or stresses
-  peratom_warn = true;
+  peratom_warn = false;
 }
 
 /* ----------------------------------------------------------------------
@@ -380,7 +374,6 @@ void PairPOD::lammpsNeighborList(double *rij1, int *ai1, int *aj1, int *ti1, int
   int itype = map[atomtypes[gi]] + 1;
   int m = numneigh[gi];
   for (int l = 0; l < m; l++) {           // loop over each atom around atom i
-    //printf("%d %d\n", gi, l);
     int gj = firstneigh[gi][l];           // atom j
     double delx = x[gj][0] - x[gi][0];    // xj - xi
     double dely = x[gj][1] - x[gi][1];    // xj - xi
@@ -399,35 +392,70 @@ void PairPOD::lammpsNeighborList(double *rij1, int *ai1, int *aj1, int *ti1, int
   }
 }
 
-void PairPOD::lammpsNeighborList(double **x, int **firstneigh, int *atomtypes, int *map,
-                               int *numneigh, double rcutsq, int gi1, int gi2)
-{
-  ni = 0;
-  nij = 0;
-  for (int gi=gi1; gi<gi2; gi++) {
-    int itype = map[atomtypes[gi]] + 1;
-    typeai[ni] = itype;    
+void PairPOD::NeighborCount(double **x, int **firstneigh, int *ilist, int *numneigh, double rcutsq, int gi1, int gi2)
+{  
+  for (int i=0; i<ni; i++) {
+    int gi = ilist[gi1 + i];
+    double xi0 = x[gi][0];    
+    double xi1 = x[gi][1];    
+    double xi2 = x[gi][2];        
     int m = numneigh[gi];
+    int n = 0;
     for (int l = 0; l < m; l++) {           // loop over each atom around atom i
       int gj = firstneigh[gi][l];           // atom j
-      double delx = x[gj][0] - x[gi][0];    // xj - xi
-      double dely = x[gj][1] - x[gi][1];    // xj - xi
-      double delz = x[gj][2] - x[gi][2];    // xj - xi
+      double delx = x[gj][0] - xi0;    // xj - xi
+      double dely = x[gj][1] - xi1;    // xj - xi
+      double delz = x[gj][2] - xi2;    // xj - xi
+      double rsq = delx * delx + dely * dely + delz * delz;
+      if (rsq < rcutsq && rsq > 1e-20) n++;      
+    }
+    numij[1+i] = n;
+  }  
+}
+
+int PairPOD::numberOfNeighbors()
+{
+  int n = 0;
+  for (int i=1; i<=ni; i++) {
+    n += numij[i];  
+    numij[i] += numij[i-1];   
+  }
+  return n;
+}
+
+void PairPOD::NeighborList(double **x, int **firstneigh, int *atomtypes, int *map,
+                               int *ilist, int *numneigh, double rcutsq, int gi1, int gi2)
+{  
+  for (int i=0; i<ni; i++) {
+    int gi = ilist[gi1 + i];
+    double xi0 = x[gi][0];    
+    double xi1 = x[gi][1];    
+    double xi2 = x[gi][2];    
+    int itype = map[atomtypes[gi]] + 1;
+    typeai[i] = itype;    
+    int m = numneigh[gi];
+    int nij0 = numij[i];    
+    int k = 0;    
+    for (int l = 0; l < m; l++) {           // loop over each atom around atom i
+      int gj = firstneigh[gi][l];           // atom j
+      double delx = x[gj][0] - xi0;    // xj - xi
+      double dely = x[gj][1] - xi1;    // xj - xi
+      double delz = x[gj][2] - xi2;    // xj - xi
       double rsq = delx * delx + dely * dely + delz * delz;
       if (rsq < rcutsq && rsq > 1e-20) {
-        rij[nij * 3 + 0] = delx;
-        rij[nij * 3 + 1] = dely;
-        rij[nij * 3 + 2] = delz;
-        idxi[nij] = ni;
-        ai[nij] = gi;
-        aj[nij] = gj;
-        ti[nij] = itype;
-        tj[nij] = map[atomtypes[gj]] + 1;
-         nij++;
+        int nij1 = nij0 + k;
+        rij[nij1 * 3 + 0] = delx;
+        rij[nij1 * 3 + 1] = dely;
+        rij[nij1 * 3 + 2] = delz;
+        idxi[nij1] = i;
+        ai[nij1] = gi;
+        aj[nij1] = gj;
+        ti[nij1] = itype;
+        tj[nij1] = map[atomtypes[gj]] + 1;
+        k++;
       }
     }
-    ni++;
-  }
+  }  
 }
 
 void PairPOD::tallyforce(double **force, double *fij,  int *ai, int *aj, int N)
@@ -596,23 +624,30 @@ void PairPOD::copy_data_from_pod_class()
   for (int i=0; i<nl44; i++) ind44r[i] = fastpodptr->ind44r[i];  
 }
 
-void PairPOD::grow(int ni, int nij)
+void PairPOD::grow_atoms(int Ni)
 {
-  if (ni > nimax) {
+  if (Ni > nimax) {
     memory->destroy(ei);
     memory->destroy(typeai);
+    memory->destroy(numij);
     memory->destroy(sumU);
     memory->destroy(bd);
     memory->destroy(pd);
-    nimax = ni;
+    nimax = Ni;
     memory->create(ei, nimax, "pair_pod:ei");
     memory->create(typeai, nimax, "pair_pod:typeai");
+    memory->create(numij, nimax+1, "pair_pod:typeai");
     memory->create(sumU, nimax * nelements * K3 * nrbfmax , "pair_pod:sumU");
     memory->create(bd, nimax * Mdesc, "pair_pod:bd");
     memory->create(pd, nimax * nClusters, "pair_pod:pd");    
+    
+    for (int i=0; i<=nimax; i++) numij[i] = 0;
   }
+}
 
-  if (nij > nijmax) {
+void PairPOD::grow_pairs(int Nij)
+{
+  if (Nij > nijmax) {
     memory->destroy(rij);
     memory->destroy(fij);
     memory->destroy(idxi);
@@ -630,7 +665,7 @@ void PairPOD::grow(int ni, int nij)
     memory->destroy(abfz);    
     memory->destroy(bdd);
     memory->destroy(pdd);        
-    nijmax = nij;
+    nijmax = Nij;
     memory->create(rij, 3 * nijmax,  "pair_pod:r_ij");
     memory->create(fij, 3 * nijmax,  "pair_pod:f_ij");  
     memory->create(idxi, nijmax, "pair_pod:idxi");
@@ -650,16 +685,6 @@ void PairPOD::grow(int ni, int nij)
     memory->create(bdd, 3 * nijmax  * Mdesc, "pair_pod:bdd");
     memory->create(pdd, 3 * nijmax * nClusters, "pair_pod:pdd");      
   }
-}
-
-int PairPOD::maximumNumberOfAtoms() 
-{
-  int nAtomMax = 0; 
-  for (int block=0; block<nAtomBlocks; block++) {    
-    int n = atomBlocks[block+1] - atomBlocks[block];    
-    if (n > nAtomMax) nAtomMax = n;
-  }
-  return nAtomMax;
 }
 
 void PairPOD::divideInterval(int *intervals, int N, int M) 
@@ -693,27 +718,6 @@ int PairPOD::calculateNumberOfIntervals(int N, int intervalSize)
   }
 
   return M;
-}
-
-int PairPOD::numberOfNeighbors(int *numneigh, int gi1, int gi2)
-{
-  int numNei = 0;
-  for (int gi=gi1; gi<gi2; gi++) {    
-    numNei += numneigh[gi];
-  }
-  return numNei;
-}
-
-int PairPOD::maximumNumberOfNeighbors(int *numneigh) 
-{
-  int nNeighMax = 0; 
-  for (int block=0; block<nAtomBlocks; block++) {
-    int gi1 = atomBlocks[block]-1;
-    int gi2 = atomBlocks[block+1]-1;
-    int nNeigh = numberOfNeighbors(numneigh, gi1, gi2);
-    if (nNeigh > nNeighMax) nNeighMax = nNeigh;
-  }
-  return nNeighMax;
 }
 
 void PairPOD::radialbasis(double *rbft, double *rbftx, double *rbfty, double *rbftz, double *rij, int Nij)
@@ -773,45 +777,45 @@ void PairPOD::radialbasis(double *rbft, double *rbftx, double *rbfty, double *rb
       double af1 = a*f1;
 
       double sinax = sin(a*x0);
-      int nij = n + Nij*i;
+      int idxni = n + Nij*i;
 
-      rbft[nij] = b*f1*sinax;
+      rbft[idxni] = b*f1*sinax;
       double drbftdr = b*(df1*sinax - f2*sinax + af1*cos(a*x0)*dx0);
-      rbftx[nij] = drbftdr*dr1;
-      rbfty[nij] = drbftdr*dr2;
-      rbftz[nij] = drbftdr*dr3;
+      rbftx[idxni] = drbftdr*dr1;
+      rbfty[idxni] = drbftdr*dr2;
+      rbftz[idxni] = drbftdr*dr3;
 
       sinax = sin(a*x1);
-      nij = n + Nij*i + Nij*besseldegree*1;
+      idxni = n + Nij*i + Nij*besseldegree*1;
 
-      rbft[nij] = b*f1*sinax;
+      rbft[idxni] = b*f1*sinax;
       drbftdr = b*(df1*sinax - f2*sinax + af1*cos(a*x1)*dx1);
-      rbftx[nij] = drbftdr*dr1;
-      rbfty[nij] = drbftdr*dr2;
-      rbftz[nij] = drbftdr*dr3;
+      rbftx[idxni] = drbftdr*dr1;
+      rbfty[idxni] = drbftdr*dr2;
+      rbftz[idxni] = drbftdr*dr3;
 
       sinax = sin(a*x2);
-      nij = n + Nij*i + Nij*besseldegree*2;
-      rbft[nij] = b*f1*sinax;
+      idxni = n + Nij*i + Nij*besseldegree*2;
+      rbft[idxni] = b*f1*sinax;
       drbftdr = b*(df1*sinax - f2*sinax + af1*cos(a*x2)*dx2);
-      rbftx[nij] = drbftdr*dr1;
-      rbfty[nij] = drbftdr*dr2;
-      rbftz[nij] = drbftdr*dr3;
+      rbftx[idxni] = drbftdr*dr1;
+      rbfty[idxni] = drbftdr*dr2;
+      rbftz[idxni] = drbftdr*dr3;
     }
   
     // Calculate fcut/dij and dfcut/dij
     f1 = fcut/dij;
     for (int i=0; i<inversedegree; i++) {
       int p = besseldegree*nbesselpars + i;
-      int nij = n + Nij*p;      
+      int idxni = n + Nij*p;      
       double a = powint(dij, i+1);
 
-      rbft[nij] = fcut/a;
+      rbft[idxni] = fcut/a;
 
       double drbftdr = (dfcut - (i+1.0)*f1)/a;
-      rbftx[nij] = drbftdr*dr1;
-      rbfty[nij] = drbftdr*dr2;
-      rbftz[nij] = drbftdr*dr3;
+      rbftx[idxni] = drbftdr*dr1;
+      rbfty[idxni] = drbftdr*dr2;
+      rbftz[idxni] = drbftdr*dr3;
     }
   }
 }
@@ -1402,5 +1406,56 @@ void PairPOD::blockatomenergyforce(double *ei, double *fij, int Ni, int Nij)
       fij[2 + n3] += coefficients[1 + m + nc]*bdd[2 + n3 + N3*m];
     }
   }
+}
+
+void PairPOD::savematrix2binfile(std::string filename, double *A, int nrows, int ncols)
+{
+  FILE *fp = fopen(filename.c_str(), "wb");
+  double sz[2];
+  sz[0] = (double) nrows;
+  sz[1] = (double) ncols;
+  fwrite( reinterpret_cast<char*>( sz ), sizeof(double) * (2), 1, fp);
+  fwrite( reinterpret_cast<char*>( A ), sizeof(double) * (nrows*ncols), 1, fp);
+  fclose(fp);
+}
+
+void PairPOD::saveintmatrix2binfile(std::string filename, int *A, int nrows, int ncols)
+{
+  FILE *fp = fopen(filename.c_str(), "wb");
+  int sz[2];
+  sz[0] = nrows;
+  sz[1] = ncols;
+  fwrite( reinterpret_cast<char*>( sz ), sizeof(int) * (2), 1, fp);
+  fwrite( reinterpret_cast<char*>( A ), sizeof(int) * (nrows*ncols), 1, fp);
+  fclose(fp);
+}
+
+void PairPOD::savedatafordebugging()
+{
+  saveintmatrix2binfile("podtypeai.bin", typeai, ni, 1);  
+  saveintmatrix2binfile("podnumij.bin", numij, ni+1, 1);  
+  saveintmatrix2binfile("podai.bin", ai, nij, 1);  
+  saveintmatrix2binfile("podaj.bin", aj, nij, 1);  
+  saveintmatrix2binfile("podti.bin", ai, nij, 1);  
+  saveintmatrix2binfile("podtj.bin", aj, nij, 1);  
+  saveintmatrix2binfile("podidxi.bin", idxi, nij, 1);     
+
+  savematrix2binfile("podrbf.bin", rbf, nij,nrbfmax);
+  savematrix2binfile("podrbfx.bin", rbfx, nij,nrbfmax);
+  savematrix2binfile("podrbfy.bin", rbfy, nij,nrbfmax);
+  savematrix2binfile("podrbfz.bin", rbfz, nij,nrbfmax);      
+  int kmax = (K3 > ns) ? K3 : ns;
+  savematrix2binfile("podabf.bin", abf, nij,kmax);
+  savematrix2binfile("podabfx.bin", abfx, nij,kmax);
+  savematrix2binfile("podabfy.bin", abfy, nij,kmax);
+  savematrix2binfile("podabfz.bin", abfz, nij,kmax);            
+  savematrix2binfile("podbdd.bin", bdd, 3*nij, Mdesc);      
+  savematrix2binfile("podbd.bin", bd, ni, Mdesc);      
+  savematrix2binfile("podsumU.bin", sumU, ni, nelements * K3 * nrbfmax);      
+
+  savematrix2binfile("podrij.bin", rij, 3*nij, 1);
+  savematrix2binfile("podfij.bin", fij, 3*nij, 1);
+  savematrix2binfile("podei.bin", ei, ni, 1);           
+  error->all(FLERR, "Save data and stop the run for debugging");
 }
 
