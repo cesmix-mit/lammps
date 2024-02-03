@@ -57,7 +57,7 @@ void FitPOD::command(int narg, char **arg)
   else
     coeff_file = "";
 
-  fastpodptr = new EAPOD(lmp, pod_file, coeff_file, coeff_file, coeff_file);        
+  fastpodptr = new EAPOD(lmp, pod_file, coeff_file, "", "");        
   desc.nCoeffAll = fastpodptr->nCoeffAll;
   desc.nClusters = fastpodptr->nClusters;
   read_data_files(data_file, fastpodptr->species);
@@ -89,7 +89,7 @@ void FitPOD::command(int narg, char **arg)
 
     // compute POD coefficients using least-squares method
 
-    least_squares_fit(traindata);
+    if (coeff_file == "") least_squares_fit(traindata);
     //error->all(FLERR, "stop after least_squares_fit");
 
     // calculate errors for the training data set

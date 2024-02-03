@@ -932,7 +932,7 @@ double EAPOD::energyforce(double *force, double *x, int *atomtype, int *alist,
     int Nj = pairnumsum[i+1] - pairnumsum[i]; // # neighbors around atom i
 
     if (Nj==0) {
-      etot += coeff[atomtype[i]-1];
+      etot += coeff[nCoeffPerElement*(ti[0]-1)];
     }
     else
     {
