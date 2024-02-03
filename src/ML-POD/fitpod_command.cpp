@@ -89,7 +89,7 @@ void FitPOD::command(int narg, char **arg)
 
     // compute POD coefficients using least-squares method
 
-    least_squares_fit(traindata);
+    if (coeff_file == "") least_squares_fit(traindata);
     //error->all(FLERR, "stop after least_squares_fit");
 
     // calculate errors for the training data set
