@@ -50,14 +50,22 @@ void FitPOD::command(int narg, char **arg)
 
   std::string pod_file = std::string(arg[0]);  // pod input file
   std::string data_file = std::string(arg[1]); // data input file
-  std::string coeff_file; // coefficient input file
+  std::string coeff_file, proj_file, cent_file; // coefficient input files
 
   if (narg > 2)
     coeff_file = std::string(arg[2]); // coefficient input file
   else
     coeff_file = "";
-
-  fastpodptr = new EAPOD(lmp, pod_file, coeff_file, coeff_file, coeff_file);        
+  if (narg > 3)
+    proj_file = std::string(arg[3]); // projection input file
+  else
+    proj_file = "";
+  if (narg > 4)
+    cent_file = std::string(arg[4]); // centroid input file
+  else
+    cent_file = "";
+  
+  fastpodptr = new EAPOD(lmp, pod_file, coeff_file, proj_file, cent_file);        
   desc.nCoeffAll = fastpodptr->nCoeffAll;
   desc.nClusters = fastpodptr->nClusters;
   read_data_files(data_file, fastpodptr->species);
