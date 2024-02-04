@@ -44,7 +44,7 @@ class PairPODKokkos : public PairPOD {
   void init_style() override;
   double init_one(int, int) override;
   
- protected:
+// protected:
   int inum;
   int host_flag;
 

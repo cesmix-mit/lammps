@@ -64,6 +64,10 @@ public:
   void crossdesc(double *d12, double *d1, double *d2, int *ind1, int *ind2, int n12, int Ni);
   void crossdescderiv(double *dd12, double *d1, double *d2, double *dd1, double *dd2,
         int *ind1, int *ind2, int *idxi, int n12, int Ni, int Nij);
+  void crossdesc(double *d12, double *d1, double *d2, int *ind1, int *ind2, 
+        int n12, int nd1, int nd2, int Ni);
+  void crossdescderiv(double *dd12, double *d1, double *d2, double *dd1, double *dd2,
+        int *ind1, int *ind2, int *idxi, int n12, int nd1, int nd2, int Ni, int Nij);
   void blockatombase_descriptors(double *bd1, double *bdd1, int Ni, int Nij);
   void blockatomenergyforce(double *ei, double *fij, int Ni, int Nij);
 
