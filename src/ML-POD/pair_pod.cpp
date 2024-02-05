@@ -208,7 +208,7 @@ void PairPOD::compute(int eflag, int vflag)
     int *tj1 = &fastpodptr->tmpint[3*nijmax];    
     lammpsNeighborList(rij1, ai1, aj1, ti1, tj1, x, firstneigh, type, map, numneigh, rcutsq, i);
     
-    evdwl = fastpodptr->peratomenergyforce(fij1, rij1, &fastpodptr->tmpmem[6*nijmax], ti1, tj1, nij);
+    evdwl = fastpodptr->peratomenergyforce(fij1, rij1, tmp, ti1, tj1, nij);
 
     // tally atomic energy to global energy
     ev_tally_full(i,2.0*evdwl,0.0,0.0,0.0,0.0,0.0);
@@ -513,7 +513,7 @@ void PairPOD::tallystress(double *fij, double *rij, int *ai, int *aj, int nlocal
     for (int k = 0; k < N; k++) {
       int i = ai[k];
       int j = aj[k];
-      int k3 = k3;
+      int k3 = k*3;
       v[0] = -rij[0 + k3]*fij[0 + k3]; // delx*fx;
       v[1] = -rij[1 + k3]*fij[1 + k3]; // dely*fy;
       v[2] = -rij[2 + k3]*fij[2 + k3]; // delz*fz;
@@ -1156,7 +1156,7 @@ void PairPOD::extractsumU(int Ni)
 void PairPOD::fourbodydesc(double *d4, int Ni)
 {
   int totalIterations = nrbf4 * Ni;
-  int ne4 = nelements*(nelements+1)*(nelements+2)/6;
+  //int ne4 = nelements*(nelements+1)*(nelements+2)/6;
   for (int idx = 0; idx < totalIterations; idx++) {
 //     int i = idx % Ni;
 //     int m = idx / Ni;
@@ -1270,7 +1270,7 @@ void PairPOD::fourbodydescderiv(double *dd4, int Ni, int Nij)
   }
   else {        
     int N3 = 3*Nij * nabf4 * nrbf4;
-    int ne4 = nelements*(nelements+1)*(nelements+2)/6;
+    //int ne4 = nelements*(nelements+1)*(nelements+2)/6;
     int totalIterations = nrbf4 * Nij;
     for (int idx = 0; idx < totalIterations; idx++) {
       int j = idx / nrbf4;  // Derive the original j value
