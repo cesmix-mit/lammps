@@ -125,6 +125,8 @@ void PairPOD::compute(int eflag, int vflag)
     // compute atomic energy and force for atom i
     evdwl = fastpodptr->peratomenergyforce(fij, rij, tmpmem, ti, tj, nij);
 
+    if (eflag_atom) eatom[i] = evdwl;
+    
     // tally atomic energy to global energy
     ev_tally_full(i,2.0*evdwl,0.0,0.0,0.0,0.0,0.0);
 
