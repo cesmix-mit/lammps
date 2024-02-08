@@ -35,7 +35,6 @@
 
 using namespace LAMMPS_NS;
 using namespace MathConst;
-using MathSpecial::powint;
 
 enum{FS,FS_SHIFTEDSCALED};
 
@@ -111,11 +110,11 @@ void PairPODKokkos<DeviceType>::init_style()
   neighflag = lmp->kokkos->neighflag;
 
   auto request = neighbor->add_request(this, NeighConst::REQ_FULL);
-  request->set_kokkos_host(std::is_same_v<DeviceType,LMPHostType> &&
-                           !std::is_same_v<DeviceType,LMPDeviceType>);
-  request->set_kokkos_device(std::is_same_v<DeviceType,LMPDeviceType>);
+  request->set_kokkos_host(std::is_same<DeviceType,LMPHostType>::value &&
+                           !std::is_same<DeviceType,LMPDeviceType>::value);
+  request->set_kokkos_device(std::is_same<DeviceType,LMPDeviceType>::value);
   if (neighflag == FULL)
-    error->all(FLERR,"Must use half neighbor list style with pair pace/kk");
+    error->all(FLERR,"Must use half neighbor list style with pair pace/kk");  
 }
 
 /* ----------------------------------------------------------------------
@@ -170,11 +169,11 @@ void PairPODKokkos<DeviceType>::coeff(int narg, char **arg)
 
 /* ---------------------------------------------------------------------- */
 
-template<class DeviceType>
-void PairPODKokkos<DeviceType>::allocate()
-{
-  PairPOD::allocate();
-}
+// template<class DeviceType>
+// void PairPODKokkos<DeviceType>::allocate()
+// {
+//   PairPOD::allocate();
+// }
 
 template<class DeviceType>
 struct FindMaxNumNeighs {

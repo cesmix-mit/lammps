@@ -81,7 +81,7 @@ class PairPODKokkos : public PairPOD {
   void grow_atoms(int Ni);
   void grow_pairs(int Nij);
    
-  void allocate() override;
+  //void allocate() override;
   double memory_usage() override;
 
   typedef Kokkos::View<int*, DeviceType> t_pod_1i;
