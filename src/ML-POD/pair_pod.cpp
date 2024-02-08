@@ -186,7 +186,7 @@ void PairPOD::compute(int eflag, int vflag)
 //     if (fastpodptr->timing == 1)
 //       for (int i=0; i<20; i++) fastpodptr->comptime[i] = 0;
 
-  int blockMode = 1;
+  int blockMode = 0;
   if (blockMode==0) {
   for (int ii = 0; ii < inum; ii++) {
     int i = ilist[ii];
@@ -909,13 +909,8 @@ void PairPOD::angularbasis(double *tm, double *tmu, double *tmv, double *tmw, in
     double dwdy = -yz/dij3;
     double dwdz = (xx+yy)/dij3;
 
-    // Initialize first angular basis function and its derivatives
-//     abf[j] = tm[0];
-//     abfx[j] = 0.0;
-//     abfy[j] = 0.0;
-//     abfz[j] = 0.0;
     int idxa = 0 + K3*j;
-    abf[idxa] = tm[0];
+    abf[idxa] = 1.0;
     abfx[idxa] = 0.0;
     abfy[idxa] = 0.0;
     abfz[idxa] = 0.0;
@@ -925,36 +920,95 @@ void PairPOD::angularbasis(double *tm, double *tmu, double *tmv, double *tmw, in
       // Get indices for angular basis function
       int m = pq3[n]-1;
       int d = pq3[n + K3];
+      int mj = m + K3*j;
+      double tmm = abf[mj]; 
+      double tmum = abfx[mj];
+      double tmvm = abfy[mj];
+      double tmwm = abfz[mj];
 
+      double tmn, tmun, tmvn, tmwn;      
       // Calculate angular basis function and its derivatives using recursion relation
       if (d==1) {
-        tm[n] = tm[m]*u;
-        tmu[n] = tmu[m]*u + tm[m];
-        tmv[n] = tmv[m]*u;
-        tmw[n] = tmw[m]*u;
+        tmn = tmm*u;
+        tmun = tmum*u + tmm;
+        tmvn = tmvm*u;
+        tmwn = tmwm*u;
       }
       else if (d==2) {
-        tm[n] = tm[m]*v;
-        tmu[n] = tmu[m]*v;
-        tmv[n] = tmv[m]*v + tm[m];
-        tmw[n] = tmw[m]*v;
+        tmn = tmm*v;
+        tmun = tmum*v;
+        tmvn = tmvm*v + tmm;
+        tmwn = tmwm*v;
       }
       else if (d==3) {
-        tm[n] = tm[m]*w;
-        tmu[n] = tmu[m]*w;
-        tmv[n] = tmv[m]*w;
-        tmw[n] = tmw[m]*w + tm[m];
+        tmn = tmm*w;
+        tmun = tmum*w;
+        tmvn = tmvm*w;
+        tmwn = tmwm*w + tmm;
       }
-//       abf[j + N*n] = tm[n];
-//       abfx[j + N*n] = tmu[n]*dudx + tmv[n]*dvdx + tmw[n]*dwdx;
-//       abfy[j + N*n] = tmu[n]*dudy + tmv[n]*dvdy + tmw[n]*dwdy;
-//       abfz[j + N*n] = tmu[n]*dudz + tmv[n]*dvdz + tmw[n]*dwdz;
       idxa = n + K3*j;
-      abf[idxa] = tm[n];
-      abfx[idxa] = tmu[n]*dudx + tmv[n]*dvdx + tmw[n]*dwdx;
-      abfy[idxa] = tmu[n]*dudy + tmv[n]*dvdy + tmw[n]*dwdy;
-      abfz[idxa] = tmu[n]*dudz + tmv[n]*dvdz + tmw[n]*dwdz;      
+      abf[idxa] = tmn;
+      abfx[idxa] = tmun;
+      abfy[idxa] = tmvn;
+      abfz[idxa] = tmwn;
     }
+    for (int n=1; n<K3; n++) {
+      double tmun, tmvn, tmwn;    
+      idxa = n + K3*j;
+      tmun = abfx[idxa];
+      tmvn = abfy[idxa];
+      tmwn = abfz[idxa];
+      abfx[idxa] = tmun*dudx + tmvn*dvdx + tmwn*dwdx;
+      abfy[idxa] = tmun*dudy + tmvn*dvdy + tmwn*dwdy;
+      abfz[idxa] = tmun*dudz + tmvn*dvdz + tmwn*dwdz;      
+    }
+
+    // Initialize first angular basis function and its derivatives
+    // abf[j] = tm[0];
+    // abfx[j] = 0.0;
+    // abfy[j] = 0.0;
+    // abfz[j] = 0.0;
+//     int idxa = 0 + K3*j;
+//     abf[idxa] = tm[0];
+//     abfx[idxa] = 0.0;
+//     abfy[idxa] = 0.0;
+//     abfz[idxa] = 0.0;
+
+//     // Loop over all angular basis functions
+//     for (int n=1; n<K3; n++) {
+//       // Get indices for angular basis function
+//       int m = pq3[n]-1;
+//       int d = pq3[n + K3];
+
+//       // Calculate angular basis function and its derivatives using recursion relation
+//       if (d==1) {
+//         tm[n] = tm[m]*u;
+//         tmu[n] = tmu[m]*u + tm[m];
+//         tmv[n] = tmv[m]*u;
+//         tmw[n] = tmw[m]*u;
+//       }
+//       else if (d==2) {
+//         tm[n] = tm[m]*v;
+//         tmu[n] = tmu[m]*v;
+//         tmv[n] = tmv[m]*v + tm[m];
+//         tmw[n] = tmw[m]*v;
+//       }
+//       else if (d==3) {
+//         tm[n] = tm[m]*w;
+//         tmu[n] = tmu[m]*w;
+//         tmv[n] = tmv[m]*w;
+//         tmw[n] = tmw[m]*w + tm[m];
+//       }
+// //       abf[j + N*n] = tm[n];
+// //       abfx[j + N*n] = tmu[n]*dudx + tmv[n]*dvdx + tmw[n]*dwdx;
+// //       abfy[j + N*n] = tmu[n]*dudy + tmv[n]*dvdy + tmw[n]*dwdy;
+// //       abfz[j + N*n] = tmu[n]*dudz + tmv[n]*dvdz + tmw[n]*dwdz;
+//       idxa = n + K3*j;
+//       abf[idxa] = tm[n];
+//       abfx[idxa] = tmu[n]*dudx + tmv[n]*dvdx + tmw[n]*dwdx;
+//       abfy[idxa] = tmu[n]*dudy + tmv[n]*dvdy + tmw[n]*dwdy;
+//       abfz[idxa] = tmu[n]*dudz + tmv[n]*dvdz + tmw[n]*dwdz;      
+//     }
   }
 }
 
@@ -984,6 +1038,33 @@ void PairPOD::radialangularsum(int Ni, int Nij)
     int tn = tj[n] - 1; // offset the atom type by 1, since atomtype is 1-based
     //sumU[idxi[n] + Ni * (tn + nelements * k + nelements * K3 * m)] += rbf[ib] * abf[ia];      
     sumU[tn + nelements*k + nelements*K3*m + nelements*K3*nrbf3*idxi[n]] += rbf[ib] * abf[ia];
+  }
+}
+
+void PairPOD::radialangularsum2(int Ni, int Nij)
+{
+  // Initialize sumU to zero
+  std::fill(sumU, sumU + Ni * nelements * K3 * nrbf3, 0.0);
+
+  int totalIterations = nrbf3 * K3 * Ni;
+  for (int idx = 0; idx < totalIterations; idx++) {
+    int k = idx % K3;     // K3
+    int temp = idx / K3;
+    int m = temp % nrbf3; // nrbf3
+    int i = temp / nrbf3; // Ni
+    int kmi = nelements*k + nelements*K3*m + nelements*K3*nrbf3*i;
+
+    int start = numij[i];
+    int nj = numij[i+1]-start;
+    double sum[nelements];
+    for (int j=0; j<nj; j++) {
+      int n = start + j;
+      int ia = k + K3 * n;
+      int ib = m + nrbfmax * n;            
+      int tn = tj[n] - 1; // offset the atom type by 1, since atomtype is 1-based
+      sum[tn] += rbf[ib] * abf[ia];    
+    }        
+    for (int e=0; e<nelements; e++) sumU[e + kmi] = sum[e];
   }
 }
 
@@ -1507,7 +1588,7 @@ void PairPOD::blockatombase_descriptors(double *bd1, double *bdd1, int Ni, int N
 
   if ((nl3 > 0) && (Nij>1)) {
     angularbasis(abftm, &abftm[K3], &abftm[2*K3], &abftm[3*K3], Nij);
-    radialangularsum(Ni, Nij);
+    radialangularsum2(Ni, Nij);
 
     threebodydesc(d3, Ni);
     threebodydescderiv(dd3, Ni, Nij);
@@ -1603,25 +1684,23 @@ void PairPOD::savedatafordebugging()
   saveintmatrix2binfile("podnumij.bin", numij, ni+1, 1);  
   saveintmatrix2binfile("podai.bin", ai, nij, 1);  
   saveintmatrix2binfile("podaj.bin", aj, nij, 1);  
-  saveintmatrix2binfile("podti.bin", ai, nij, 1);  
-  saveintmatrix2binfile("podtj.bin", aj, nij, 1);  
+  saveintmatrix2binfile("podti.bin", ti, nij, 1);  
+  saveintmatrix2binfile("podtj.bin", tj, nij, 1);  
   saveintmatrix2binfile("podidxi.bin", idxi, nij, 1);     
-
-  savematrix2binfile("podrbf.bin", rbf, nij,nrbfmax);
-  savematrix2binfile("podrbfx.bin", rbfx, nij,nrbfmax);
-  savematrix2binfile("podrbfy.bin", rbfy, nij,nrbfmax);
-  savematrix2binfile("podrbfz.bin", rbfz, nij,nrbfmax);      
+  savematrix2binfile("podrbf.bin", rbf, nrbfmax, nij);
+  savematrix2binfile("podrbfx.bin", rbfx, nrbfmax, nij);
+  savematrix2binfile("podrbfy.bin", rbfy, nrbfmax, nij);
+  savematrix2binfile("podrbfz.bin", rbfz, nrbfmax, nij);      
   int kmax = (K3 > ns) ? K3 : ns;
-  savematrix2binfile("podabf.bin", abf, nij,kmax);
-  savematrix2binfile("podabfx.bin", abfx, nij,kmax);
-  savematrix2binfile("podabfy.bin", abfy, nij,kmax);
-  savematrix2binfile("podabfz.bin", abfz, nij,kmax);            
+  savematrix2binfile("podabf.bin", abf,   kmax, nij);
+  savematrix2binfile("podabfx.bin", abfx, kmax, nij);
+  savematrix2binfile("podabfy.bin", abfy, kmax, nij);
+  savematrix2binfile("podabfz.bin", abfz, kmax, nij);            
   savematrix2binfile("podbdd.bin", bdd, 3*nij, Mdesc);      
   savematrix2binfile("podbd.bin", bd, ni, Mdesc);      
-  savematrix2binfile("podsumU.bin", sumU, ni, nelements * K3 * nrbfmax);      
-
-  savematrix2binfile("podrij.bin", rij, 3*nij, 1);
-  savematrix2binfile("podfij.bin", fij, 3*nij, 1);
+  savematrix2binfile("podsumU.bin", sumU, nelements * K3 * nrbfmax, ni);      
+  savematrix2binfile("podrij.bin", rij, 3, nij);
+  savematrix2binfile("podfij.bin", fij, 3, nij);
   savematrix2binfile("podei.bin", ei, ni, 1);           
   error->all(FLERR, "Save data and stop the run for debugging");
 }

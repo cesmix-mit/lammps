@@ -94,7 +94,9 @@ class PairPODKokkos : public PairPOD {
   int atomBlockSize;        // size of each atom block
   int nAtomBlocks;          // number of atoms blocks
   int atomBlocks[101];      // atom blocks
-
+  double comptime[100];
+  int timing;
+  
   int ni;            // number of atoms i in the current atom block 
   int nij;           // number of pairs (i,j) in the current atom block 
   int nimax;         // maximum number of atoms i
@@ -142,10 +144,6 @@ class PairPODKokkos : public PairPOD {
   t_pod_1d abfx; // x-derivatives of angular basis functions nij x K3
   t_pod_1d abfy; // y-derivatives of angular basis functions nij x K3  
   t_pod_1d abfz; // z-derivatives of angular basis functions nij x K3
-  t_pod_1d abftm;  // temp array for angular basis functions K3
-  t_pod_1d abftmx; // temp array for x-derivatives of angular basis functions K3
-  t_pod_1d abftmy; // temp array for y-derivatives of angular basis functions K3  
-  t_pod_1d abftmz; // temp array for z-derivatives of angular basis functions K3
   t_pod_1d sumU; // sum of radial basis functions ni x K3 x nrbfmax x nelements
   t_pod_1d Proj; // PCA Projection matrix
   t_pod_1d Centroids; // centroids of the clusters  
@@ -163,42 +161,56 @@ class PairPODKokkos : public PairPOD {
   t_pod_1i ind44l, ind44r; // nl44
   t_pod_1i elemindex;  
   
-  void NeighborCount(double rcutsq, int gi1, int Ni);
+  void set_array_to_zero(t_pod_1d a, int N);
   
-  int numberOfNeighbors(int Ni);
-  
-  void NeighborList(double rcutsq, int gi1, int Ni);
-  
-  void radialbasis(t_pod_1d rbft, t_pod_1d rbftx, t_pod_1d rbfty, t_pod_1d rbftz, int Nij);    
-  
+  int NeighborCount(t_pod_1i, double, int, int);
+    
+  void NeighborList(t_pod_1d l_rij, t_pod_1i l_numij,  t_pod_1i l_typeai, t_pod_1i l_idxi, 
+    t_pod_1i l_ai, t_pod_1i l_aj, t_pod_1i l_ti, t_pod_1i l_tj, double l_rcutsq, int gi1, int Ni);
+   
+  void radialbasis(t_pod_1d rbft, t_pod_1d rbftx, t_pod_1d rbfty, t_pod_1d rbftz, 
+    t_pod_1d rij, t_pod_1d l_besselparams, double l_rin, double l_rmax, int l_besseldegree, 
+    int l_inversedegree, int l_nbesselpars, int l_ns,  int Nij); 
+      
   void matrixMultiply(t_pod_1d a, t_pod_1d b, t_pod_1d c, int r1, int c1, int c2); 
   
-  void angularbasis(t_pod_1d tm, t_pod_1d tmu, t_pod_1d tmv, t_pod_1d tmw, int Nij);  
+  void angularbasis(t_pod_1d l_abf, t_pod_1d l_abfx, t_pod_1d l_abfy, t_pod_1d l_abfz,
+        t_pod_1d l_rij, t_pod_1i l_pq3, int l_K3, int N);  
+   
+  void radialangularsum(t_pod_1d l_sumU, t_pod_1d l_rbf, t_pod_1d l_abf, t_pod_1i l_tj, 
+    t_pod_1i l_numij, const int l_nelements, const int l_nrbf3, const int l_K3, const int Ni, const int Nij);
   
-  void radialangularsum(const int Ni, const int Nij); 
+  void twobodydescderiv(t_pod_1d d2, t_pod_1d dd2, t_pod_1d l_rbf, t_pod_1d l_rbfx, t_pod_1d l_rbfy, 
+    t_pod_1d l_rbfz, t_pod_1i l_idxi, t_pod_1i l_tj, int l_nrbfmax, int l_nrbf2, const int Ni, const int Nij); 
   
-  void twobodydescderiv(t_pod_1d d2, t_pod_1d dd2, const int Ni, const int Nij); 
+  void threebodydesc(t_pod_1d d3, t_pod_1d l_sumU, t_pod_1i l_pc3, t_pod_1i l_pn3, 
+        int l_nelements, int l_nrbf3, int l_nabf3, int l_K3, const int Ni);
   
-  void threebodydesc(t_pod_1d d3, const int Ni);
-  
-  void threebodydescderiv(t_pod_1d dd3, int Ni, int Nij);
-  
-  void extractsumU(int Ni);
-  
-  void fourbodydesc(t_pod_1d d4, int Ni);
+  void threebodydescderiv(t_pod_1d dd3, t_pod_1d l_rbf, t_pod_1d l_rbfx, 
+    t_pod_1d l_rbfy, t_pod_1d l_rbfz, t_pod_1d l_abf, t_pod_1d l_abfx, t_pod_1d l_abfy, t_pod_1d l_abfz, 
+    t_pod_1d l_sumU, t_pod_1i l_idxi, t_pod_1i l_tj, t_pod_1i l_pc3, t_pod_1i l_pn3, t_pod_1i l_elemindex, 
+    int l_nelements, int l_nrbfmax, int l_nrbf3, int l_nabf3, int l_K3, int Ni, int Nij);
     
-  void fourbodydescderiv(t_pod_1d dd4, int Ni, int Nij);
+  void fourbodydesc(t_pod_1d d4,  t_pod_1d l_sumU, t_pod_1i l_pa4, t_pod_1i l_pb4, t_pod_1i l_pc4, 
+      int l_nelements, int l_nrbf3, int l_nrbf4, int l_nabf4, int l_K3, int l_Q4, int Ni);
+    
+  void fourbodydescderiv(t_pod_1d dd4, t_pod_1d l_rbf, t_pod_1d l_rbfx, t_pod_1d l_rbfy, t_pod_1d l_rbfz, 
+    t_pod_1d l_abf, t_pod_1d l_abfx, t_pod_1d l_abfy, t_pod_1d l_abfz, t_pod_1d l_sumU, t_pod_1i l_idxi, 
+    t_pod_1i l_tj, t_pod_1i l_pa4, t_pod_1i l_pb4, t_pod_1i l_pc4, t_pod_1i l_elemindex, int l_nelements, 
+    int l_nrbfmax,  int l_nrbf3, int l_nrbf4, int l_nabf4, int l_K3, int l_Q4, int Ni, int Nij);
   
-  void fourbodydesc23(t_pod_1d d23, t_pod_1d d2, t_pod_1d d3, int Ni);
+  void fourbodydesc23(t_pod_1d d23, t_pod_1d d2, t_pod_1d d3, t_pod_1i l_ind23,
+    t_pod_1i l_ind32, int l_n23, int l_n32, int Ni);
   
-  void fourbodydescderiv23(t_pod_1d dd23, t_pod_1d d2, t_pod_1d d3, t_pod_1d dd2, t_pod_1d dd3, int Ni, int Nij);
+  void fourbodydescderiv23(t_pod_1d dd23, t_pod_1d d2, t_pod_1d d3, t_pod_1d dd2, 
+    t_pod_1d dd3,  t_pod_1i l_idxi, t_pod_1i l_ind23, t_pod_1i l_ind32, int l_n23, int l_n32, int Ni, int N);
   
   void crossdesc(t_pod_1d d12, t_pod_1d d1, t_pod_1d d2, t_pod_1i ind1, t_pod_1i ind2, int n12, int Ni);
   
   void crossdescderiv(t_pod_1d dd12, t_pod_1d d1, t_pod_1d d2, t_pod_1d dd1, t_pod_1d dd2,
-        t_pod_1i ind1, t_pod_1i ind2, int n12, int Ni, int Nij);
+        t_pod_1i l_idxi, t_pod_1i ind1, t_pod_1i ind2, int n12, int Ni, int Nij);
   
-  void blockatom_base_descriptors(int Ni, int Nij);
+  void blockatom_base_descriptors(t_pod_1d bd, t_pod_1d bdd, int Ni, int Nij);
       
   void blockatomenergyforce(int Ni, int Nij);
   

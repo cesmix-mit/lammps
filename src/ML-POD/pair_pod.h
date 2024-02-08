@@ -53,6 +53,7 @@ public:
   void orthogonalradialbasis(int Nij);
   void angularbasis(double *tm, double *tmu, double *tmv, double *tmw, int N);
   void radialangularsum(int Ni, int Nij);
+  void radialangularsum2(int Ni, int Nij);
   void twobodydescderiv(double *d2, double *dd2, int Ni, int Nij);
   void threebodydesc(double *d3, int Ni);
   void threebodydescderiv(double *dd3, int Ni, int Nij);
