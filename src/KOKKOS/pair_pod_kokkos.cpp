@@ -755,17 +755,16 @@ void PairPODKokkos<DeviceType>::radialbasis(t_pod_1d rbft, t_pod_1d rbftx, t_pod
 template<class DeviceType>
 void PairPODKokkos<DeviceType>::matrixMultiply(t_pod_1d a, t_pod_1d b, t_pod_1d c, int r1, int c1, int c2) 
 {
-    Kokkos::parallel_for("MatrixMultiply", r1 * c2, KOKKOS_LAMBDA(int idx) {
-        int j = idx / r1;  // Calculate column index
-        int i = idx % r1;  // Calculate row index
-        double sum = 0.0;
-        for (int k = 0; k < c1; ++k) {
-            sum += a(i + r1*k) * b(k + c1*j);  // Manually calculate the 1D index
-        }
-        c(i + r1*j) = sum;  // Manually calculate the 1D index for c
-    });        
+  Kokkos::parallel_for("MatrixMultiply", r1 * c2, KOKKOS_LAMBDA(int idx) {
+    int j = idx / r1;  // Calculate column index
+    int i = idx % r1;  // Calculate row index
+    double sum = 0.0;
+    for (int k = 0; k < c1; ++k) {
+        sum += a(i + r1*k) * b(k + c1*j);  // Manually calculate the 1D index
+    }
+    c(i + r1*j) = sum;  // Manually calculate the 1D index for c
+  });        
 }
-
 
 template<class DeviceType>
 void PairPODKokkos<DeviceType>::angularbasis(t_pod_1d l_abf, t_pod_1d l_abfx, t_pod_1d l_abfy, t_pod_1d l_abfz,
