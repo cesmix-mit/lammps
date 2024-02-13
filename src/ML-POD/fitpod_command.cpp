@@ -1147,8 +1147,6 @@ void FitPOD::allocate_memory_descriptorstruct(int nCoeffAll)
 void FitPOD::estimate_memory_fastpod(const datastruct &data)
 {
   int dim = 3;
-  int natom_max = data.num_atom_max;
-  int nelements = fastpodptr->nelements;
   int *pbc = fastpodptr->pbc;
   double rcut = fastpodptr->rcut;
 
@@ -1359,8 +1357,6 @@ void FitPOD::environment_cluster_calculation(const datastruct &data)
     }
   }
 
-  //printf("SIZES: %d  %d  %d  %d\n", Mdesc, nAtoms, nComponents, nClusters);  
-
   for (int elem=0; elem < nelements; elem++) {  // loop over each element   
     nAtoms = nElemAtoms[elem];
     nTotalAtoms = nAtoms;
@@ -1435,156 +1431,6 @@ void FitPOD::environment_cluster_calculation(const datastruct &data)
   free(nElemAtoms);
   free(nElemAtomsCumSum);
   free(nElemAtomsCount);
-
-//   int nComponents = fastpodptr->nComponents;
-//   int Mdesc = fastpodptr->Mdesc;
-//   int nClusters = fastpodptr->nClusters;
-//   int nelements = fastpodptr->nelements;  
-//   memory->create(fastpodptr->Centroids, nClusters*nComponents*nelements, "fitpod:centroids");
-//   memory->create(fastpodptr->Proj, Mdesc*nComponents*nelements, "fitpod:P");
-
-//   int nAtoms = 0;
-//   int nTotalAtoms = 0;
-//   for (int ci=0; ci < (int) data.num_atom.size(); ci++) {
-//     if ((ci % comm->nprocs) == comm->me) nAtoms += data.num_atom[ci];    
-//     nTotalAtoms += data.num_atom[ci];    
-//   }
-
-//   double *localdescmatrix = (double *) malloc(nAtoms*Mdesc*sizeof(double));
-//   double *pca = (double *) malloc(nAtoms*nComponents*sizeof(double));
-//   double *A = (double *) malloc(Mdesc*Mdesc*sizeof(double));
-//   double *b = (double *) malloc(Mdesc*sizeof(double));
-//   double *Lambda = (double *) malloc(Mdesc*nelements*sizeof(double));
-//   int *clusterSizes = (int *) malloc(nClusters*nelements*sizeof(int));
-//   int *assignments = (int *) malloc(nAtoms*sizeof(int));
-
-//   double *Proj = &fastpodptr->Proj[0];
-//   double *centroids = &fastpodptr->Centroids[0];
-
-// // loop over each configuration in the data set
-//   int k = 0;
-//   for (int ci=0; ci < (int) data.num_atom.size(); ci++) {
-
-//     if ((ci % 100)==0) {
-//       if (comm->me == 0)
-//         utils::logmesg(lmp, "Configuration: # {}\n", ci+1);
-//     }
-
-//     if ((ci % comm->nprocs) == comm->me) {
-
-//       // compute linear POD descriptors
-//       base_descriptors_fastpod(data, ci);
-
-//       // localdescmatrix is a Mdesc x nAtoms matrix
-//       int natom =  data.num_atom[ci];      
-//       for (int n=0; n<natom; n++)
-//         for (int m=0; m<Mdesc; m++)        
-//           localdescmatrix[m + Mdesc*(k+n)] = desc.bd[n + natom*(m)];      
-//       k = k + natom;  
-//     }
-//   }
-  
-//   char chn = 'N';
-//   char cht = 'T';
-//   char chv = 'V';
-//   char chu = 'U';
-//   double alpha = 1.0, beta = 0.0;
-
-//   if (comm->me == 0)
-//     printf("SIZES: %d  %d  %d  %d  %d\n", 1, Mdesc, nAtoms, nComponents, nClusters);  
-
-//   // Calculate covariance matrix A = localdescmatrix*localdescmatrix'. A is a Mdesc x Mdesc matrix
-//   DGEMM(&chn, &cht, &Mdesc, &Mdesc, &nAtoms, &alpha, localdescmatrix, &Mdesc, localdescmatrix, &Mdesc, &beta, A, &Mdesc);
-
-//   if (comm->me == 0)
-//     printf("SIZES: %d  %d  %d  %d  %d\n", 1, Mdesc, nAtoms, nComponents, nClusters);  
-
-//   MPI_Allreduce(MPI_IN_PLACE, A, Mdesc*Mdesc, MPI_DOUBLE, MPI_SUM, world);  
-
-//   if (comm->me == 0) 
-//     savematrix2binfile(data.filenametag + "_covariance_matrix"  + ".bin", A, Mdesc, Mdesc);
-
-//   if (comm->me == 0)
-//     printf("SIZES: %d  %d  %d  %d  %d\n", 2, Mdesc, nAtoms, nComponents, nClusters);  
-
-//   // Calculate eigenvalues and eigenvectors of A
-//   int lwork = Mdesc * Mdesc;  // the length of the array work, lwork >= max(1,3*N-1)
-//   int info = 1;     // = 0:  successful exit
-//   double work[lwork];
-
-//   DSYEV(&chv, &chu, &Mdesc, A, &Mdesc, b, work, &lwork, &info);
-
-//   if (comm->me == 0)
-//     savematrix2binfile(data.filenametag + "_eigenvector_matrix"  + ".bin", A, Mdesc, Mdesc);
-
-//   if (comm->me == 0)
-//     printf("SIZES: %d  %d  %d  %d  %d\n", 3, Mdesc, nAtoms, nComponents, nClusters);  
-
-//   // order eigenvalues and eigenvectors from largest to smallest
-//   for (int i=0; i<Mdesc; i++)
-//     Lambda[(Mdesc-i-1)] = b[i];
-
-//   if (comm->me == 0)
-//     savematrix2binfile(data.filenametag + "_eigenvalues"  + ".bin", Lambda, Mdesc, 1);
-
-//   // desc.P is a Mdesc x nComponents matrix
-//   // for (int j=0; j<nComponents; j++)
-//   //   for (int i=0; i<Mdesc; i++)
-//   //     Proj[i + Mdesc*j] = A[i + Mdesc*(Mdesc-j-1)]*sqrt(fabs(b[(Mdesc-j-1)]/Lambda[0]));
-
-//   for (int j=0; j<nComponents; j++)
-//     for (int i=0; i<Mdesc; i++)
-//       Proj[j + nComponents*i] = A[i + Mdesc*(Mdesc-j-1)]*sqrt(fabs(b[(Mdesc-j-1)]/Lambda[0]));
-
-//   if (comm->me == 0)
-//     printf("SIZES: %d  %d  %d  %d  %d\n", 4, Mdesc, nAtoms, nComponents, nClusters);  
-
-//   // // Calculate principal compoment analysis matrix pca = P'*localdescmatrix. pca is a nComponents x nAtoms matrix
-//   // DGEMM(&cht, &chn, &nComponents, &nAtoms, &Mdesc, &alpha, Proj, &Mdesc, localdescmatrix, &Mdesc, &beta, pca, &nComponents);
-//   // Calculate principal compoment analysis matrix pca = P*descmatrix. pca is a nComponents x nAtoms matrix
-//   DGEMM(&chn, &chn, &nComponents, &nAtoms, &Mdesc, &alpha, Proj, &nComponents, localdescmatrix, &Mdesc, &beta, pca, &nComponents);
-
-//   if (comm->me == 0)
-//     printf("SIZES: %d  %d  %d  %d  %d\n", 5, Mdesc, nAtoms, nComponents, nClusters);  
-
-//   // initialize centroids 
-//   for (int i = 0; i < nClusters * nComponents; i++) centroids[i] = 0.0;  
-//   for (int i=0; i < nAtoms; i++) {    
-//     int m = (i*nClusters)/nAtoms;
-//     for (int j=0; j < nComponents; j++)
-//       centroids[j + nComponents*m] += pca[j + nComponents*i];
-//   }
-//   MPI_Allreduce(MPI_IN_PLACE, centroids, nClusters * nComponents, MPI_DOUBLE, MPI_SUM, world);  
-//   double fac = ((double) nClusters)/((double) nTotalAtoms);
-//   for (int i = 0; i < nClusters * nComponents; i++) centroids[i] = centroids[i]*fac;
-//   //for (int i = 0; i < nClusters * nComponents; i++) printf("centroids[%d] = %f\n", i, centroids[i]);
-
-//   if (comm->me == 0)
-//     printf("SIZES: %d  %d  %d  %d  %d\n", 6, Mdesc, nAtoms, nComponents, nClusters);  
-
-//   // Calculate centroids using k-means clustering
-//   int max_iter = 100;
-//   KmeansClustering(pca, centroids, assignments, clusterSizes, nAtoms, nClusters, nComponents, max_iter);
-
-//   if (comm->me == 0)
-//     printf("SIZES: %d  %d  %d  %d  %d\n", 7, Mdesc, nAtoms, nComponents, nClusters);  
-
-//   savedata2textfile(data.filenametag + "_projection_matrix"  + ".pod", "projection_matrix: {} \n", Proj, Mdesc*nComponents, 1, 1);
-//   savedata2textfile(data.filenametag + "_centroids"  + ".pod", "centroids: {} \n", centroids, nComponents*nClusters, 1, 1);
-    
-//   // savematrix2binfile(data.filenametag + "_desc_matrix_proc" + std::to_string(comm->me+1) + ".bin", localdescmatrix, Mdesc, nAtoms);  
-//   // savematrix2binfile(data.filenametag + "_pca_matrix_proc" + std::to_string(comm->me+1) + ".bin", pca, nComponents, nAtoms);
-//   // saveintmatrix2binfile(data.filenametag + "_cluster_assignments_proc" + std::to_string(comm->me+1) + ".bin", assignments, nAtoms, 1);
-//   if (comm->me == 0)
-//     printf("SIZES: %d  %d  %d  %d  %d\n", 8, Mdesc, nAtoms, nComponents, nClusters);  
-
-//   free(localdescmatrix);
-//   free(pca);
-//   free(A);
-//   free(b);
-//   free(clusterSizes);
-//   free(Lambda);
-//   free(assignments);
 
   if (comm->me == 0)
     utils::logmesg(lmp, "**************** End Calculating Enviroment Descriptor Matrix ****************\n");

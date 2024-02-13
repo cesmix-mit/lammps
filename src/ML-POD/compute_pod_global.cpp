@@ -123,9 +123,7 @@ void ComputePODGlobal::compute_array()
   int *numneigh = list->numneigh;
   int *type = atom->type;
   int *ilist = list->ilist;
-  int inum = list->inum;
-  int nlocal = atom->nlocal;
-  
+  int inum = list->inum;  
   int nClusters = podptr->nClusters;
   int Mdesc = podptr->Mdesc;
   int nCoeffPerElement = podptr->nCoeffPerElement;
@@ -170,7 +168,6 @@ void ComputePODGlobal::compute_array()
         for (int m=0; m<Mdesc; m++) {
           int k = nCoeffPerElement*(ti[0]-1) + 1 + m + j*Mdesc; // increment by 1 because of the one-body descriptor
           pod[0][k] += pd[j]*bd[m];
-          int k3 = 3*nClusters*Mdesc*(ti[0]-1) + 3*(m + j*Mdesc); 
           for (int n=0; n<nij; n++) {
             int ain = 3*ai[n];
             int ajn = 3*aj[n];     

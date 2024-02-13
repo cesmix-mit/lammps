@@ -25,15 +25,15 @@
 #define DPOSV dposv_
 
 extern "C" {
-double DDOT(int *, double *, int *, double *, int *);
-void DGEMV(char *, int *, int *, double *, double *, int *, double *, int *, double *, double *,
-           int *);
-void DGEMM(char *, char *, int *, int *, int *, double *, double *, int *, double *, int *,
-           double *, double *, int *);
-void DGETRF(int *, int *, double *, int *, int *, int *);
-void DGETRI(int *, double *, int *, int *, double *, int *, int *);
-void DSYEV(char *, char *, int *, double *, int *, double *, double *, int *, int *);
-void DPOSV(char *, int *, int *, double *, int *, double *, int *, int *);
+  double DDOT(int *, double *, int *, double *, int *);
+  void DGEMV(char *, int *, int *, double *, double *, int *, double *, int *, double *, double *,
+             int *);
+  void DGEMM(char *, char *, int *, int *, int *, double *, double *, int *, double *, int *,
+             double *, double *, int *);
+  void DGETRF(int *, int *, double *, int *, int *, int *);
+  void DGETRI(int *, double *, int *, int *, double *, int *, int *);
+  void DSYEV(char *, char *, int *, double *, int *, double *, double *, int *, int *);
+  void DPOSV(char *, int *, int *, double *, int *, double *, int *, int *);
 }
 
 namespace LAMMPS_NS {
@@ -209,25 +209,14 @@ public:
           int *jlist, int *pairnumsum, int natom);
 
   void tallyforce(double *force, double *fij,  int *ai, int *aj, int N);
-  //void tallyforce(double **force, double *fij,  int *ai, int *aj, int N);
 
   void fourbodydesc23(double* d23, double* d2, double *d3);
   void fourbodydescderiv23(double* dd23, double* d2, double *d3, double* dd2, double *dd3, int N);
 
   void crossdesc(double *d12, double *d1, double *d2, int *ind1, int *ind2, int n12);
   void crossdescderiv(double *dd12, double *d1, double *d2, double *dd1, double *dd2,
-        int *ind1, int *ind2, int n12, int N);
-  
+        int *ind1, int *ind2, int n12, int N);  
 
-//   void calcProbabilities(double *P, const double *Proj, const double *centroids, const double *ld,  
-//                         double *pca, double *D);
-
-//   void calcdPdR(double* dP_dR, const double* dP_dld, const double* dld_dR, int nNeighbors); 
-
-//   void calcQ(double* probabilities, double* ld, double* Q);
-
-//   void calcdQdR(double* dQ_dR, double* dP_dR, const double* ld, const double* dld_dR, const double* P, 
-//                     const double* dP_dld, int nNeighbors);
 };
 
 }    // namespace LAMMPS_NS

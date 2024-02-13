@@ -125,13 +125,9 @@ void ComputePODAtom::compute_peratom()
   int *numneigh = list->numneigh;
   int *type = atom->type;
   int *ilist = list->ilist;
-  int inum = list->inum;
-  int nlocal = atom->nlocal;
-  int natoms = atom->natoms;
-  
+  int inum = list->inum;      
   int nClusters = podptr->nClusters;
   int Mdesc = podptr->Mdesc;
-  int nCoeffPerElement = podptr->nCoeffPerElement;    
   double rcutsq = podptr->rcut*podptr->rcut;
   
   for (int ii = 0; ii < inum; ii++) {

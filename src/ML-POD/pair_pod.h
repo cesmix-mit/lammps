@@ -70,12 +70,13 @@ public:
   void crossdescderiv(double *dd12, double *d1, double *d2, double *dd1, double *dd2,
         int *ind1, int *ind2, int *idxi, int n12, int nd1, int nd2, int Ni, int Nij);
   void blockatombase_descriptors(double *bd1, double *bdd1, int Ni, int Nij);
+  void environment_descriptors(double *ei, double *cb, double *B, int Ni);
   void blockatomenergyforce(double *ei, double *fij, int Ni, int Nij);
 
   void savematrix2binfile(std::string filename, double *A, int nrows, int ncols);
   void saveintmatrix2binfile(std::string filename, int *A, int nrows, int ncols);  
-  void savedatafordebugging();
-  
+  void savedatafordebugging();    
+
 protected:
   class EAPOD *fastpodptr;  
   virtual void allocate();

@@ -32,7 +32,7 @@ namespace LAMMPS_NS {
 
 template<class DeviceType>
 class PairPODKokkos : public PairPOD {
- public:
+ public:   
   typedef DeviceType device_type;
   typedef ArrayTypes<DeviceType> AT;
 
@@ -44,8 +44,8 @@ class PairPODKokkos : public PairPOD {
   void init_style() override;
   double init_one(int, int) override;
   
-// protected:
-  int inum;
+ //protected:
+  int inum, maxneigh;
   int host_flag;
 
   int eflag, vflag;
@@ -122,6 +122,7 @@ class PairPODKokkos : public PairPOD {
   double rin;  // inner cut-off radius
   double rcut; // outer cut-off radius
   double rmax; // rcut - rin  
+  double rcutsq;
   
   t_pod_1d rij;         // (xj - xi) for all pairs (I, J)
   t_pod_1d fij;         // force for all pairs (I, J)
@@ -149,8 +150,6 @@ class PairPODKokkos : public PairPOD {
   t_pod_1d Centroids; // centroids of the clusters  
   t_pod_1d bd;   // base descriptors ni x Mdesc
   t_pod_1d bdd;  // base descriptors derivatives 3 x nij x Mdesc 
-  t_pod_1d pd;   // environment probability descriptors ni x nClusters
-  t_pod_1d pdd;  // environment probability descriptors derivatives 3 x nij x nClusters
   t_pod_1d coefficients; // coefficients nCoeffPerElement x nelements
   t_pod_1i pq3, pn3, pc3; // arrays to compute 3-body angular basis functions
   t_pod_1i pa4, pb4, pc4; // arrays to compute 4-body angular basis functions  
@@ -164,6 +163,7 @@ class PairPODKokkos : public PairPOD {
   void set_array_to_zero(t_pod_1d a, int N);
   
   int NeighborCount(t_pod_1i, double, int, int);
+  int NeighborCount(t_pod_1i, int);
     
   void NeighborList(t_pod_1d l_rij, t_pod_1i l_numij,  t_pod_1i l_typeai, t_pod_1i l_idxi, 
     t_pod_1i l_ai, t_pod_1i l_aj, t_pod_1i l_ti, t_pod_1i l_tj, double l_rcutsq, int gi1, int Ni);
@@ -211,7 +211,8 @@ class PairPODKokkos : public PairPOD {
         t_pod_1i l_idxi, t_pod_1i ind1, t_pod_1i ind2, int n12, int Ni, int Nij);
   
   void blockatom_base_descriptors(t_pod_1d bd, t_pod_1d bdd, int Ni, int Nij);
-      
+  void blockatomenv_descriptors(t_pod_1d ei, t_pod_1d cb, t_pod_1d B, int Ni);
+  
   void blockatomenergyforce(int Ni, int Nij);
   
   void tallyforce(int Nij);

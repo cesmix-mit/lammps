@@ -32,6 +32,7 @@
 
 #include <cmath>
 #include <cstring>
+#include <chrono>
 
 using namespace LAMMPS_NS;
 using MathConst::MY_PI;
@@ -177,17 +178,11 @@ void PairPOD::compute(int eflag, int vflag)
   int nlocal = atom->nlocal;
   int newton_pair = force->newton_pair;
 
-  // initialize global descriptors to zero
-
   double rcutsq = rcut*rcut;
   double evdwl = 0.0;
 
-//     fastpodptr->timing = 1;
-//     if (fastpodptr->timing == 1)
-//       for (int i=0; i<20; i++) fastpodptr->comptime[i] = 0;
-
-  int blockMode = 0;
-  if (blockMode==0) {
+  int blockMode = 0;  
+  if (blockMode==0) {    
   for (int ii = 0; ii < inum; ii++) {
     int i = ilist[ii];
     int jnum = numneigh[i];
@@ -209,7 +204,7 @@ void PairPOD::compute(int eflag, int vflag)
     lammpsNeighborList(rij1, ai1, aj1, ti1, tj1, x, firstneigh, type, map, numneigh, rcutsq, i);
     
     evdwl = fastpodptr->peratomenergyforce(fij1, rij1, tmp, ti1, tj1, nij);
-
+            
     // tally atomic energy to global energy
     ev_tally_full(i,2.0*evdwl,0.0,0.0,0.0,0.0,0.0);
 
@@ -224,8 +219,8 @@ void PairPOD::compute(int eflag, int vflag)
                     fij1[0 + 3*jj],fij1[1 + 3*jj],fij1[2 + 3*jj],
                     -rij1[0 + 3*jj], -rij1[1 + 3*jj], -rij1[2 + 3*jj]);
       }
-    }    
-  }
+    }            
+  }  
   }
   else if (blockMode == 1) {
  // determine the number of atom blocks and divide atoms into blocks
@@ -267,12 +262,7 @@ void PairPOD::compute(int eflag, int vflag)
     //savedatafordebugging();
   }    
   }
-
-//   if (fastpodptr->timing == 1) {
-//     for (int i=0; i<20; i++) printf("%g  ", fastpodptr->comptime[i]);
-//     printf("\n");
-//   }
-
+  
   if (vflag_fdotr) virial_fdotr_compute();
 }
 
@@ -311,6 +301,11 @@ void PairPOD::coeff(int narg, char **arg)
   delete fastpodptr;
   fastpodptr = new EAPOD(lmp, pod_file, coeff_file, proj_file, centroid_file);
 
+  if (fastpodptr->nClusters > 1) {
+    if (proj_file == "") error->all(FLERR,"The projection file name can not be empty when the number of clusters is greater than 1.");    
+    if (centroid_file == "") error->all(FLERR,"The centroids file name can not be empty when the number of clusters is greater than 1.");
+  }
+  
   copy_data_from_pod_class();
   rcut = fastpodptr->rcut;
   
@@ -593,6 +588,16 @@ void PairPOD::copy_data_from_pod_class()
   for (int i=0; i<nCoeffPerElement * nelements; i++)
       coefficients[i] = fastpodptr->coeff[i];
 
+  if (nClusters > 1) {
+    memory->create(Proj, Mdesc * nComponents * nelements, "pair_pod:Proj");
+    for (int i=0; i<Mdesc * nComponents * nelements; i++)
+        Proj[i] = fastpodptr->Proj[i];
+
+    memory->create(Centroids, nClusters * nComponents * nelements, "pair_pod:Centroids");
+    for (int i=0; i<nClusters * nComponents * nelements; i++)
+        Centroids[i] = fastpodptr->Centroids[i];
+  }
+  
   memory->create(pn3, nabf3+1, "pn3"); // array stores the number of monomials for each degree
   memory->create(pq3, K3*2, "pq3"); // array needed for the recursive computation of the angular basis functions
   memory->create(pc3, K3, "pc3");   // array needed for the computation of the three-body descriptors
@@ -637,7 +642,9 @@ void PairPOD::grow_atoms(int Ni)
     memory->create(ei, nimax, "pair_pod:ei");
     memory->create(typeai, nimax, "pair_pod:typeai");
     memory->create(numij, nimax+1, "pair_pod:typeai");
-    memory->create(sumU, nimax * nelements * K3 * nrbfmax , "pair_pod:sumU");
+    int n = nimax * nelements * K3 * nrbfmax;
+    if (nClusters>1) n = (n > nimax*Mdesc) ? n : nimax*Mdesc;
+    memory->create(sumU, n , "pair_pod:sumU");
     memory->create(bd, nimax * Mdesc, "pair_pod:bd");
     memory->create(pd, nimax * nClusters, "pair_pod:pd");    
     
@@ -689,11 +696,6 @@ void PairPOD::grow_pairs(int Nij)
 
 void PairPOD::divideInterval(int *intervals, int N, int M) 
 {
-//   int *intervals = malloc((M + 1) * sizeof(int));
-//   if (intervals == NULL) {
-//     perror("Failed to allocate memory");
-//     exit(EXIT_FAILURE);
-//   }
   int intervalSize = N / M; // Basic size of each interval
   int remainder = N % M;    // Remainder to distribute
   intervals[0] = 1;         // Start of the first interval
@@ -824,19 +826,6 @@ void PairPOD::radialbasis(double *rbft, double *rbftx, double *rbfty, double *rb
   }
 }
 
-// void matrixMultiply(double *a, double *b, double *c, int r1, int c1, int c2) 
-// {
-//   for (int idx=0; idx<r1*c2*; ++)  
-//     int j = idx / r1;  // Calculate column index
-//     int i = idx % r1;  // Calculate row index
-//     double sum = 0.0;
-//     for (int k = 0; k < c1; ++k) {
-//         sum += a[i + r1*k] * b[k + c1*j];  // Manually calculate the 1D index
-//     }
-//     c[i + r1*j] = sum;  // Manually calculate the 1D index for c
-//   }        
-// }
-
 void matrixMultiply(double *Phi, double *rbft, double *rbf, int nrbfmax, int ns, int Nij) 
 {
   for (int idx=0; idx<nrbfmax*Nij; idx++)  {
@@ -857,13 +846,6 @@ void PairPOD::orthogonalradialbasis(int Nij)
   matrixMultiply(Phi, abfx, rbfx, nrbfmax, ns,  Nij); 
   matrixMultiply(Phi, abfy, rbfy, nrbfmax, ns,  Nij); 
   matrixMultiply(Phi, abfz, rbfz, nrbfmax, ns,  Nij); 
-
-//   char chn = 'N';
-//   double alpha = 1.0, beta = 0.0;
-//   DGEMM(&chn, &chn, &Nij, &nrbfmax, &ns, &alpha, abf, &Nij, Phi, &ns, &beta, rbf, &Nij);
-//   DGEMM(&chn, &chn, &Nij, &nrbfmax, &ns, &alpha, abfx, &Nij, Phi, &ns, &beta, rbfx, &Nij);
-//   DGEMM(&chn, &chn, &Nij, &nrbfmax, &ns, &alpha, abfy, &Nij, Phi, &ns, &beta, rbfy, &Nij);
-//   DGEMM(&chn, &chn, &Nij, &nrbfmax, &ns, &alpha, abfz, &Nij, Phi, &ns, &beta, rbfz, &Nij);    
 }
 
 void PairPOD::angularbasis(double *tm, double *tmu, double *tmv, double *tmw, int N)
@@ -952,6 +934,7 @@ void PairPOD::angularbasis(double *tm, double *tmu, double *tmv, double *tmw, in
       abfy[idxa] = tmvn;
       abfz[idxa] = tmwn;
     }
+    
     for (int n=1; n<K3; n++) {
       double tmun, tmvn, tmwn;    
       idxa = n + K3*j;
@@ -962,53 +945,6 @@ void PairPOD::angularbasis(double *tm, double *tmu, double *tmv, double *tmw, in
       abfy[idxa] = tmun*dudy + tmvn*dvdy + tmwn*dwdy;
       abfz[idxa] = tmun*dudz + tmvn*dvdz + tmwn*dwdz;      
     }
-
-    // Initialize first angular basis function and its derivatives
-    // abf[j] = tm[0];
-    // abfx[j] = 0.0;
-    // abfy[j] = 0.0;
-    // abfz[j] = 0.0;
-//     int idxa = 0 + K3*j;
-//     abf[idxa] = tm[0];
-//     abfx[idxa] = 0.0;
-//     abfy[idxa] = 0.0;
-//     abfz[idxa] = 0.0;
-
-//     // Loop over all angular basis functions
-//     for (int n=1; n<K3; n++) {
-//       // Get indices for angular basis function
-//       int m = pq3[n]-1;
-//       int d = pq3[n + K3];
-
-//       // Calculate angular basis function and its derivatives using recursion relation
-//       if (d==1) {
-//         tm[n] = tm[m]*u;
-//         tmu[n] = tmu[m]*u + tm[m];
-//         tmv[n] = tmv[m]*u;
-//         tmw[n] = tmw[m]*u;
-//       }
-//       else if (d==2) {
-//         tm[n] = tm[m]*v;
-//         tmu[n] = tmu[m]*v;
-//         tmv[n] = tmv[m]*v + tm[m];
-//         tmw[n] = tmw[m]*v;
-//       }
-//       else if (d==3) {
-//         tm[n] = tm[m]*w;
-//         tmu[n] = tmu[m]*w;
-//         tmv[n] = tmv[m]*w;
-//         tmw[n] = tmw[m]*w + tm[m];
-//       }
-// //       abf[j + N*n] = tm[n];
-// //       abfx[j + N*n] = tmu[n]*dudx + tmv[n]*dvdx + tmw[n]*dwdx;
-// //       abfy[j + N*n] = tmu[n]*dudy + tmv[n]*dvdy + tmw[n]*dwdy;
-// //       abfz[j + N*n] = tmu[n]*dudz + tmv[n]*dvdz + tmw[n]*dwdz;
-//       idxa = n + K3*j;
-//       abf[idxa] = tm[n];
-//       abfx[idxa] = tmu[n]*dudx + tmv[n]*dvdx + tmw[n]*dwdx;
-//       abfy[idxa] = tmu[n]*dudy + tmv[n]*dvdy + tmw[n]*dwdy;
-//       abfz[idxa] = tmu[n]*dudz + tmv[n]*dvdz + tmw[n]*dwdz;      
-//     }
   }
 }
 
@@ -1019,24 +955,15 @@ void PairPOD::radialangularsum(int Ni, int Nij)
 
   int totalIterations = nrbf3 * K3 * Nij;
   for (int idx = 0; idx < totalIterations; idx++) {
-//       int n = idx % Nij;
-//       int temp = idx / Nij;
-//       int k = temp % K3;
-//       int m = temp / K3;
     int k = idx % K3;
     int temp = idx / K3;
     int m = temp % nrbf3;
     int n = temp / nrbf3;
-
-//       int ia = n + Nij * k;
-//       int ib = n + Nij * m;
-//       int ii = ia + Nij * K3 * m;
     int ia = k + K3 * n;
     int ib = m + nrbfmax * n;      
 
       // Update sumU with atomtype adjustment
     int tn = tj[n] - 1; // offset the atom type by 1, since atomtype is 1-based
-    //sumU[idxi[n] + Ni * (tn + nelements * k + nelements * K3 * m)] += rbf[ib] * abf[ia];      
     sumU[tn + nelements*k + nelements*K3*m + nelements*K3*nrbf3*idxi[n]] += rbf[ib] * abf[ia];
   }
 }
@@ -1073,24 +1000,15 @@ void PairPOD::twobodydescderiv(double *d2, double *dd2, int Ni, int Nij)
   // Calculate the two-body descriptors and their derivatives
   int totalIterations = nrbf2 * Nij;
   for (int idx = 0; idx < totalIterations; idx++) {
-//       int m = idx / Nij; // Recalculate m
-//       int n = idx % Nij; // Recalculate n
     int n = idx / nrbf2; // Recalculate m
     int m = idx % nrbf2; // Recalculate n
 
-      //int i2 = n + Nij * m; // Index of the radial basis function for atom n and RBF m
     int i2 = m + nrbfmax * n; // Index of the radial basis function for atom n and RBF m
     int i1 = 3*(n + Nij * m + Nij * nrbf2 * (tj[n] - 1)); // Index of the descriptor for atom n, RBF m, and atom type tj[n]
     d2[idxi[n] + Ni * (m + nrbf2 * (tj[n] - 1))] += rbf[i2]; // Add the radial basis function to the corresponding descriptor
     dd2[0 + i1] = rbfx[i2]; // Add the derivative with respect to x to the corresponding descriptor derivative
     dd2[1 + i1] = rbfy[i2]; // Add the derivative with respect to y to the corresponding descriptor derivative
     dd2[2 + i1] = rbfz[i2]; // Add the derivative with respect to z to the corresponding descriptor derivative
-//       int i2 = m + nrbfmax * n; // Index of the radial basis function for atom n and RBF m
-//       int i1 = m + nrbf2 * (tj[n] - 1) + nrbf2*nelements*n; // Index of the descriptor for atom n, RBF m, and atom type tj[n]
-//       d2[m + nrbf2 * (tj[n] - 1) + nrbf2*nelements*idxi[n]] += rbf[i2]; // Add the radial basis function to the corresponding descriptor
-//       dd2[0 + 3 * i1] += rbfx[i2]; // Add the derivative with respect to x to the corresponding descriptor derivative
-//       dd2[1 + 3 * i1] += rbfy[i2]; // Add the derivative with respect to y to the corresponding descriptor derivative
-//       dd2[2 + 3 * i1] += rbfz[i2]; // Add the derivative with respect to z to the corresponding descriptor derivative      
   }
 }
 
@@ -1098,8 +1016,6 @@ void PairPOD::threebodydesc(double *d3, int Ni)
 {
   int totalIterations = nrbf3 * Ni;
   for (int idx = 0; idx < totalIterations; idx++) {
-//     int i = idx % Ni;
-//     int m = idx / Ni;
     int m = idx % nrbf3;
     int i = idx / nrbf3;    
     for (int p = 0; p < nabf3; p++) {   
@@ -1109,12 +1025,9 @@ void PairPOD::threebodydesc(double *d3, int Ni)
       for (int q = 0; q < nn; q++) {
         int k = 0;
         for (int i1 = 0; i1 < nelements; i1++) {
-          //double t1 = pc3[n1 + q] * sumU[i + Ni * (i1 + nelements * (n1 + q) + nelements * K3 * m)];
           double t1 = pc3[n1 + q] * sumU[i1 + nelements * (n1 + q) + nelements * K3 * m + nelements * K3 * nrbf3*i];
           for (int i2 = i1; i2 < nelements; i2++) {
-            //d3[i + Ni * (p + nabf3 * m + nabf3 * nrbf3 * k)] += t1 * sumU[i + Ni * (i2 + nelements * (n1 + q) + nelements * K3 * m)];
             d3[i + Ni * (p + nabf3 * m + nabf3 * nrbf3 * k)] += t1 * sumU[i2 + nelements * (n1 + q) + nelements * K3 * m + nelements * K3 * nrbf3*i];
-            //d3[p + nabf3 * m + nabf3 * nrbf3 * k + nabf3 * nrbf3* nelements*(nelements+1)/2*i] += t1 * sumU[i2 + nelements * (n1 + q) + nelements * K3 * m + nelements * K3 * nrbf3*i];
             k += 1;
           }
         }
@@ -1130,7 +1043,6 @@ void PairPOD::threebodydescderiv(double *dd3, int Ni, int Nij)
     for (int idx = 0; idx < totalIterations; ++idx) {
       int j = idx / nrbf3;       // Calculate j using integer division
       int m = idx % nrbf3;       // Calculate m using modulo operation
-      //int idxR = j + Nij * m;  // Pre-compute the index for rbf
       int idxR = m + nrbfmax * j;  // Pre-compute the index for rbf
       double rbfBase = rbf[idxR];
       double rbfxBase = rbfx[idxR];
@@ -1142,18 +1054,14 @@ void PairPOD::threebodydescderiv(double *dd3, int Ni, int Nij)
         int n2 = pn3[p + 1];
         int nn = n2 - n1;
         int baseIdx = 3 * j + 3 * Nij * (p + nabf3 * m);  // Pre-compute the base index for dd3
-        //int baseIdx = 3 * (p + nabf3 * m + nabf3*nrbf3*j);  // Pre-compute the base index for dd3
-        //int idxU = idxi[j] + Ni * (K3 * m);
         int idxU = K3 * m + K3*nrbf3*idxi[j];
         double tmp1 = 0;
         double tmp2 = 0;
         double tmp3 = 0;
         for (int q = 0; q < nn; q++) {                  
           int idxNQ = n1 + q;  // Combine n1 and q into a single index for pc3 and sumU
-          //double t1 = pc3[idxNQ] * sumU[idxU + Ni * idxNQ];
           double t1 = pc3[idxNQ] * sumU[idxNQ + idxU];
           double f = 2.0 * t1;          
-          //int idxA = j + Nij * idxNQ;  // Pre-compute the index for abf          
           int idxA = idxNQ + K3 * j;  // Pre-compute the index for abf          
           double abfA = abf[idxA];  
 
@@ -1173,7 +1081,6 @@ void PairPOD::threebodydescderiv(double *dd3, int Ni, int Nij)
     for (int idx = 0; idx < totalIterations; ++idx) {
       int j = idx / nrbf3;  // Derive the original j value
       int m = idx % nrbf3;  // Derive the original m value
-      //int idxR = j + Nij * m;  // Pre-compute the index for rbf
       int idxR = m + nrbfmax * j;  // Pre-compute the index for rbf
       double rbfBase = rbf[idxR];
       double rbfxBase = rbfx[idxR];
@@ -1184,25 +1091,20 @@ void PairPOD::threebodydescderiv(double *dd3, int Ni, int Nij)
         int n2 = pn3[p + 1];
         int nn = n2 - n1;
         int jmp = 3 * j + 3 * Nij * (p + nabf3 * m);
-        //int jmp = 3 * (p + nabf3 * m + nabf3*nrbf3*nelements*(nelements+1)/2*j);
         for (int q = 0; q < nn; q++) {
           int idxNQ = n1 + q;  // Combine n1 and q into a single index
-          //int idxU = idxi[j] + Ni * (nelements * idxNQ + nelements * K3 * m);
           int idxU = nelements * idxNQ + nelements * K3 * m + nelements*K3*nrbf3*idxi[j];
-          //int idxA = j + Nij * idxNQ;  // Pre-compute the index for abf      
           int idxA = idxNQ + K3 * j;  // Pre-compute the index for abf          
           double abfA = abf[idxA];   
           double abfxA = abfx[idxA];
           double abfyA = abfy[idxA];
           double abfzA = abfz[idxA];
           for (int i1 = 0; i1 < nelements; i1++) {
-            //double t1 = pc3[idxNQ] * sumU[idxU + Ni*i1];
             double t1 = pc3[idxNQ] * sumU[i1 + idxU];
             int i2 = tj[j] - 1;
             int k = elemindex[i2 + nelements * i1];
             double f = (i1 == i2) ? 2.0 * t1 : t1;
             int ii = jmp + N3 * k;                     
-            //int ii = jmp +  3 * nabf3 * nrbf3 * k;                     
 
             // Update dd3
             dd3[0 + ii] += f * (abfxA * rbfBase + rbfxBase * abfA);
@@ -1215,35 +1117,12 @@ void PairPOD::threebodydescderiv(double *dd3, int Ni, int Nij)
   }
 }
 
-void PairPOD::extractsumU(int Ni)
-{
-//   int totalIterations = nrbf4 * K4 * nelements * Ni;
-//   for (int idx = 0; idx < totalIterations; idx++) {
-//     int n = idx % Ni;
-//     int temp = idx / Ni;
-//     int i = temp % nelements;
-//     temp = temp / nelements;
-//     int k = temp % K4;
-//     int m = temp / K4;
-// 
-// //     int indexDst = n + Ni * i + Ni * nelements * k + Ni * nelements * K4 * m;
-// //     int indexSrc = n + Ni * i + Ni * nelements * k + Ni * nelements * K3 * m;    
-//     int indexDst =  i +  nelements * k + nelements * K4 * m + nelements * K4 * nrbf4 * n;
-//     int indexSrc =  i +  nelements * k + nelements * K3 * m + nelements * K3 * nrbf3 * n;        
-//     sumU[indexDst] = sumU[indexSrc];
-//   }
-}
-
 void PairPOD::fourbodydesc(double *d4, int Ni)
 {
   int totalIterations = nrbf4 * Ni;
-  //int ne4 = nelements*(nelements+1)*(nelements+2)/6;
   for (int idx = 0; idx < totalIterations; idx++) {
-//     int i = idx % Ni;
-//     int m = idx / Ni;
     int m = idx % nrbf4;
     int i = idx / nrbf4;    
-    //int idxU = i + Ni * nelements * K4 * m;
     int idxU = nelements * K3 * m + nelements * K3 * nrbf3 * i;
     for (int p = 0; p < nabf4; p++) {
       int n1 = pa4[p];
@@ -1256,18 +1135,14 @@ void PairPOD::fourbodydesc(double *d4, int Ni)
         int j3 = pb4[n1 + q + 2 * Q4];
         int k = 0;
         for (int i1 = 0; i1 < nelements; i1++) {
-          //double c1 =  sumU[idxU + Ni * (i1 + nelements * j1)];
           double c1 =  sumU[idxU + i1 + nelements * j1];
           for (int i2 = i1; i2 < nelements; i2++) {
-            //double c2 = sumU[idxU + Ni * (i2 + nelements * j2)];
             double c2 = sumU[idxU + i2 + nelements * j2];
             double t12 = c * c1 * c2;
             for (int i3 = i2; i3 < nelements; i3++) {
-              //double c3 = sumU[idxU + Ni * (i3 + nelements * j3)];
               double c3 = sumU[idxU + i3 + nelements * j3];
               int kk = p + nabf4 * m + nabf4 * nrbf4 * k;
               d4[i + Ni * kk] += t12 * c3;              
-              //d4[p + nabf4 * m + nabf4 * nrbf4 * k + nabf4 * nrbf4 * ne4 * i] += t12 * c3;              
               k += 1;
             }
           }
@@ -1283,9 +1158,7 @@ void PairPOD::fourbodydescderiv(double *dd4, int Ni, int Nij)
     for (int idx = 0; idx < Nij * nrbf4; ++idx) {
       int j = idx / nrbf4;  // Derive the original j value
       int m = idx % nrbf4;  // Derive the original m value
-      //int idxU = idxi[j] + Ni * (K4 * m);
       int idxU = K3 * m + K3*nrbf3*idxi[j];
-      //int baseIdxJ = j + Nij * m; // Common index for rbf, rbfx, rbfy, rbfz
       int baseIdxJ = m + nrbfmax * j;  // Pre-compute the index for rbf
       double rbfBase = rbf[baseIdxJ];
       double rbfxBase = rbfx[baseIdxJ];
@@ -1299,7 +1172,6 @@ void PairPOD::fourbodydescderiv(double *dd4, int Ni, int Nij)
         int kk = p + nabf4 * m;
         int ii = 3 * Nij * kk;
         int baseIdx = 3 * j + ii;
-        //int baseIdx = 3*(p + nabf4*m + nabf4*nrbf4*j);
         double tmp1 = 0;
         double tmp2 = 0;
         double tmp3 = 0;
@@ -1309,9 +1181,6 @@ void PairPOD::fourbodydescderiv(double *dd4, int Ni, int Nij)
           int j1 = pb4[idxNQ];
           int j2 = pb4[idxNQ + Q4];
           int j3 = pb4[idxNQ + 2 * Q4];
-//           double c1 = sumU[idxU + Ni * (j1)];
-//           double c2 = sumU[idxU + Ni * (j2)];
-//           double c3 = sumU[idxU + Ni * (j3)];
           double c1 = sumU[idxU + j1];
           double c2 = sumU[idxU + j2];
           double c3 = sumU[idxU + j3];          
@@ -1320,9 +1189,6 @@ void PairPOD::fourbodydescderiv(double *dd4, int Ni, int Nij)
           double t23 = c * c2 * c3;
           
           // Pre-calculate commonly used indices          
-//           int baseIdxJ3 = j + Nij * j3; // Common index for j3 terms
-//           int baseIdxJ2 = j + Nij * j2; // Common index for j2 terms
-//           int baseIdxJ1 = j + Nij * j1; // Common index for j1 terms
           int baseIdxJ3 = j3 + K3 * j; // Common index for j3 terms
           int baseIdxJ2 = j2 + K3 * j; // Common index for j2 terms
           int baseIdxJ1 = j1 + K3 * j; // Common index for j1 terms
@@ -1351,13 +1217,11 @@ void PairPOD::fourbodydescderiv(double *dd4, int Ni, int Nij)
   }
   else {        
     int N3 = 3*Nij * nabf4 * nrbf4;
-    //int ne4 = nelements*(nelements+1)*(nelements+2)/6;
     int totalIterations = nrbf4 * Nij;
     for (int idx = 0; idx < totalIterations; idx++) {
       int j = idx / nrbf4;  // Derive the original j value
       int m = idx % nrbf4;  // Derive the original m value
     
-      //int idxM = j + Nij * m;
       int idxM = m + nrbfmax * j;
       // Temporary variables to store frequently used products
       double rbfM = rbf[idxM];
@@ -1371,7 +1235,6 @@ void PairPOD::fourbodydescderiv(double *dd4, int Ni, int Nij)
         int n2 = pa4[p + 1];
         int nn = n2 - n1;
         int jpm = 3 * j + 3 * Nij * (p + nabf4 * m);
-        //int jpm = 3 * (p + nabf4 * m + nabf4 * nrbf4 * ne4 * j);
 
         for (int q = 0; q < nn; q++) {
           int c = pc4[n1 + q];
@@ -1379,15 +1242,9 @@ void PairPOD::fourbodydescderiv(double *dd4, int Ni, int Nij)
           int j2 = pb4[n1 + q + Q4];
           int j3 = pb4[n1 + q + 2 * Q4];
           // Pre-calculate commonly used indices for j3, j2, j1, and m
-//           int idxJ3 = j + Nij * j3;
-//           int idxJ2 = j + Nij * j2;
-//           int idxJ1 = j + Nij * j1;
           int idxJ3 = j3 + K3 * j;
           int idxJ2 = j2 + K3 * j;
           int idxJ1 = j1 + K3 * j;          
-//           int idx1 = idxi[j] + Ni * (nelements * j1 + nelements * K4 * m);
-//           int idx2 = idxi[j] + Ni * (nelements * j2 + nelements * K4 * m);
-//           int idx3 = idxi[j] + Ni * (nelements * j3 + nelements * K4 * m);
           int idx1 = nelements * j1 + nelements * K3 * m + nelements * K3 * nrbf3 * idxi[j];
           int idx2 = nelements * j2 + nelements * K3 * m + nelements * K3 * nrbf3 * idxi[j];
           int idx3 = nelements * j3 + nelements * K3 * m + nelements * K3 * nrbf3 * idxi[j];
@@ -1408,19 +1265,15 @@ void PairPOD::fourbodydescderiv(double *dd4, int Ni, int Nij)
 
           int k = 0;          
           for (int i1 = 0; i1 < nelements; i1++) {            
-            //double c1 = sumU[idx1 + Ni*i1];
             double c1 = sumU[idx1 + i1];
             for (int i2 = i1; i2 < nelements; i2++) {
-              //double c2 = sumU[idx2 + Ni*i2];
               double c2 = sumU[idx2 + i2];
               double t12 = c*(c1 * c2);  
               for (int i3 = i2; i3 < nelements; i3++) {                                                
-                //double c3 = sumU[idx3 + Ni*i3];                
                 double c3 = sumU[idx3 + i3];                
                 double t13 = c*(c1 * c3);
                 double t23 = c*(c2 * c3);
                 int baseIdx = jpm + N3 * k;
-                //int baseIdx = jpm +  3 * nabf4 * nrbf4 * k;
                 
                 // Compute contributions for each condition
                 if (typej == i3) {
@@ -1461,10 +1314,6 @@ void PairPOD::fourbodydesc23(double *d23, double *d2, double *d3, int Ni)
     int indexSrc2 = n + Ni * ind23[i];
     int indexSrc3 = n + Ni * ind32[j];
     d23[indexDst] = d2[indexSrc2] * d3[indexSrc3];
-//     int indexDst = i + n23 * j + n23*n32*n;
-//     int indexSrc2 = ind23[i] + nl2*n;
-//     int indexSrc3 = ind32[j] + nl3*n;
-//     d23[indexDst] = d2[indexSrc2] * d3[indexSrc3];    
   }
 }
 
@@ -1485,14 +1334,6 @@ void PairPOD::fourbodydescderiv23(double* dd23, double *d2, double *d3, double *
     dd23[0 + k] = d2[m1] * dd3[0 + k2] + dd2[0 + k1] * d3[m2];
     dd23[1 + k] = d2[m1] * dd3[1 + k2] + dd2[1 + k1] * d3[m2];
     dd23[2 + k] = d2[m1] * dd3[2 + k2] + dd2[2 + k1] * d3[m2];
-//     int k = 3 * (i + n23 * j + n23*n32*n);        
-//     int k1 = 3 * (ind23[i] + nl2*n);
-//     int k2 = 3 * (ind32[i] + nl3*n );
-//     int m1 = ind23[i] + nl2*idxi[n];
-//     int m2 = ind32[i] + nl3*idxi[n];
-//     dd23[0 + k] = d2[m1] * dd3[0 + k2] + dd2[0 + k1] * d3[m2];
-//     dd23[1 + k] = d2[m1] * dd3[1 + k2] + dd2[1 + k1] * d3[m2];
-//     dd23[2 + k] = d2[m1] * dd3[2 + k2] + dd2[2 + k1] * d3[m2];    
   }
 }
 
@@ -1601,13 +1442,10 @@ void PairPOD::blockatombase_descriptors(double *bd1, double *bdd1, int Ni, int N
     if ((nl33>0) && (Nij>3)) {
       crossdesc(d33, d3, d3, ind33l, ind33r, nl33, Ni);
       crossdescderiv(dd33, d3, d3, dd3, dd3, ind33l, ind33r, idxi, nl33, Ni, Nij);
-//       crossdesc(d33, d3, d3, ind33l, ind33r, nl33, nl3, nl3, Ni);
-//       crossdescderiv(dd33, d3, d3, dd3, dd3, ind33l, ind33r, idxi, nl33, nl3, nl3, Ni, Nij);      
     }
     
     if ((nl4 > 0) && (Nij>2)) {
-      if (K4 < K3) {
-        extractsumU(Ni);                
+      if (K4 < K3) {        
         fourbodydesc(d4, Ni);
         fourbodydescderiv(dd4, Ni, Nij);        
       }
@@ -1615,18 +1453,117 @@ void PairPOD::blockatombase_descriptors(double *bd1, double *bdd1, int Ni, int N
       if ((nl34>0) && (Nij>4)) {
         crossdesc(d34, d3, d4, ind34l, ind34r, nl34, Ni);
         crossdescderiv(dd34, d3, d4, dd3, dd4, ind34l, ind34r, idxi, nl34, Ni, Nij);
-//         crossdesc(d34, d3, d4, ind34l, ind34r, nl34, nl3, nl4, Ni);
-//         crossdescderiv(dd34, d3, d4, dd3, dd4, ind34l, ind34r, idxi, nl34, nl3, nl4, Ni, Nij);        
       }
 
       if ((nl44>0) && (Nij>5)) {
         crossdesc(d44, d4, d4, ind44l, ind44r, nl44, Ni);
         crossdescderiv(dd44, d4, d4, dd4, dd4, ind44l, ind44r, idxi, nl44, Ni, Nij);
-//         crossdesc(d44, d4, d4, ind44l, ind44r, nl44, nl4, nl4, Ni);
-//         crossdescderiv(dd44, d4, d4, dd4, dd4, ind44l, ind44r, idxi, nl44, nl4, nl4, Ni, Nij);        
       }
     }
   }
+}
+
+void PairPOD::environment_descriptors(double *ei, double *cb, double *B, int Ni)
+{
+  double *P = &abf[0];
+  double *cp = &abfx[0];  
+  double *pca = &abfy[0]; // Ni*nComponents 
+  double *D = &abfz[0];   // Ni*nClusters
+  double *sumD = &rbf[0]; // Ni
+    
+  double *proj = &Proj[0];
+  double *cent = &Centroids[0];
+  double *cefs = &coefficients[0];  
+  int *tyai = &typeai[0];  
+  
+  int nCom = nComponents;
+  int nCls = nClusters;
+  int nDes = Mdesc;
+  int nCoeff = nCoeffPerElement;
+  
+  for (int idx=0; idx<Ni*nCom; idx++) {
+    int k = idx % nCom;
+    int i = idx / nCom;     
+    double sum = 0.0;
+    int typei = tyai[i]-1;
+    for (int m = 0; m < nDes; m++) {
+      sum += proj[k + nCom*m + nCom*nDes*typei] * B[i + Ni*m];
+    }
+    pca[i + Ni*k] = sum;    
+  }
+  
+  for (int idx=0; idx<Ni*nCls; idx++) {
+    int j = idx % nCls;
+    int i = idx / nCls;     
+    int typei = tyai[i]-1;
+    double sum = 1e-20; 
+    for (int k = 0; k < nCom; k++) {
+      double c = cent[k + j * nCom + nCls*nCom*typei];
+      double p = pca[i + Ni*k];
+      sum += (p - c) * (p - c);
+    }
+    D[i + Ni*j] = 1.0 / sum;
+  }
+  
+  for (int i = 0; i< Ni; i++) {    
+    double sum = 0; 
+    for (int j = 0; j < nCls; j++) sum += D[i + Ni*j];    
+    sumD[i] = sum;
+    for (int j = 0; j < nCls; j++) P[i + Ni*j] = D[i + Ni*j]/sum;    
+  }
+  
+  for (int n=0; n<Ni; n++) {
+    int nc = nCoeff*(tyai[n]-1);
+    ei[n] = cefs[0 + nc];
+    for (int k = 0; k<nCls; k++)
+      for (int m=0; m<nDes; m++)     
+        ei[n] += cefs[1 + m + nDes*k + nc]*B[n + Ni*m]*P[n + Ni*k];
+  }    
+  
+  for (int idx=0; idx<Ni*nCls; idx++) {
+    int n = idx % Ni;
+    int k = idx / Ni;
+    int nc = nCoeff*(tyai[n]-1);            
+    double sum = 0;
+    for (int m = 0; m<nDes; m++)     
+      sum += cefs[1 + m + k*nDes + nc]*B[n + Ni*m];
+    cp[n + Ni*k] = sum;
+  }            
+
+  for (int idx=0; idx<Ni*nDes; idx++) {
+    int n = idx % Ni;
+    int m = idx / Ni;
+    int nc = nCoeff*(tyai[n]-1);            
+    double sum = 0.0;    
+    for (int k = 0; k<nCls; k++)    
+      sum += cefs[1 + m + k*nDes + nc]*P[n + Ni*k];      
+    cb[n + Ni*m] = sum;
+  }              
+  
+  for (int idx=0; idx<Ni*nDes; idx++) {
+    int i = idx % Ni;
+    int m = idx / Ni;
+    int typei = tyai[i]-1;
+    double S1 = 1/sumD[i];
+    double S2 = sumD[i]*sumD[i];   
+    double sum = 0.0;
+    for (int j=0; j<nCls; j++) {
+      double dP_dB = 0.0;
+      for (int k = 0; k < nCls; k++) {
+        double dP_dD = -D[i + Ni*j] / S2;
+        if (k==j) dP_dD += S1;
+        double dD_dB = 0.0;
+        double D2 = 2 * D[i + Ni*k] * D[i + Ni*k];
+        for (int n = 0; n < nCom; n++) {
+          double dD_dpca = D2 * (cent[n + k * nCom + nCls*nCom*typei] - pca[i + Ni*n]);        
+          dD_dB += dD_dpca * proj[n + m * nCom + nCom*nDes*typei];
+        }                
+        dP_dB += dP_dD * dD_dB;
+      }      
+      sum += cp[i + Ni*j]*dP_dB;      
+    }
+    cb[i + Ni*m] += sum;
+  }  
 }
 
 void PairPOD::blockatomenergyforce(double *ei, double *fij, int Ni, int Nij)
@@ -1634,26 +1571,49 @@ void PairPOD::blockatomenergyforce(double *ei, double *fij, int Ni, int Nij)
   // calculate base descriptors and their derivatives with respect to atom coordinates
   blockatombase_descriptors(bd, bdd, Ni, Nij);  
   
-  for (int n=0; n<Ni; n++) {
-    ei[n] = coefficients[0 + nCoeffPerElement*(typeai[n]-1)];
-    for (int m=0; m<Mdesc; m++)     
-      ei[n] += coefficients[1 + m + nCoeffPerElement*(typeai[n]-1)]*bd[n + Ni*m];
-  }
-
-  //for (int n=0; n<3*Nij; n++) fij[n] = 0.0;
-  for (int n=0; n<Nij; n++) {
-    int n3 = 3*n;
-    int nc = nCoeffPerElement*(ti[n]-1);
+  if (nClusters > 1) {    
+    double *cb = &sumU[0];
+    environment_descriptors(ei, cb, bd, Ni);
+    
     int N3 = 3*Nij;
-    fij[0 + n3] = 0.0;
-    fij[1 + n3] = 0.0;
-    fij[2 + n3] = 0.0;
-    for (int m=0; m<Mdesc; m++) {    
-      fij[0 + n3] += coefficients[1 + m + nc]*bdd[0 + n3 + N3*m];
-      fij[1 + n3] += coefficients[1 + m + nc]*bdd[1 + n3 + N3*m];
-      fij[2 + n3] += coefficients[1 + m + nc]*bdd[2 + n3 + N3*m];
+    for (int n=0; n<Nij; n++) {
+      int n3 = 3*n;
+      int i = idxi[n];
+      double fx = 0.0;
+      double fy = 0.0;
+      double fz = 0.0;            
+      for (int m=0; m<Mdesc; m++) {    
+        double c = cb[i + Ni*m];
+        fx += c*bdd[0 + n3 + N3*m];
+        fy += c*bdd[1 + n3 + N3*m];
+        fz += c*bdd[2 + n3 + N3*m];
+      }
+      fij[0 + n3] = fx;
+      fij[1 + n3] = fy;
+      fij[2 + n3] = fz;      
+    }        
+  }
+  else {
+    for (int n=0; n<Ni; n++) {
+      ei[n] = coefficients[0 + nCoeffPerElement*(typeai[n]-1)];
+      for (int m=0; m<Mdesc; m++)     
+        ei[n] += coefficients[1 + m + nCoeffPerElement*(typeai[n]-1)]*bd[n + Ni*m];
     }
-  }      
+
+    for (int n=0; n<Nij; n++) {
+      int n3 = 3*n;
+      int nc = nCoeffPerElement*(ti[n]-1);
+      int N3 = 3*Nij;
+      fij[0 + n3] = 0.0;
+      fij[1 + n3] = 0.0;
+      fij[2 + n3] = 0.0;
+      for (int m=0; m<Mdesc; m++) {    
+        fij[0 + n3] += coefficients[1 + m + nc]*bdd[0 + n3 + N3*m];
+        fij[1 + n3] += coefficients[1 + m + nc]*bdd[1 + n3 + N3*m];
+        fij[2 + n3] += coefficients[1 + m + nc]*bdd[2 + n3 + N3*m];
+      }
+    }      
+  }
 }
 
 void PairPOD::savematrix2binfile(std::string filename, double *A, int nrows, int ncols)

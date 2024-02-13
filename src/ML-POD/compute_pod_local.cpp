@@ -125,12 +125,9 @@ void ComputePODLocal::compute_array()
   int *numneigh = list->numneigh;
   int *type = atom->type;
   int *ilist = list->ilist;
-  int inum = list->inum;
-  int nlocal = atom->nlocal;
-  
+  int inum = list->inum;  
   int nClusters = podptr->nClusters;
   int Mdesc = podptr->Mdesc;
-  int nCoeffPerElement = podptr->nCoeffPerElement;
   
   double rcutsq = podptr->rcut*podptr->rcut;
   
