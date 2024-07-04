@@ -720,19 +720,25 @@ void PairPOD::radialbasis(double *rbft, double *rbftx, double *rbfty, double *rb
     double r = dij - rin;
     double y = r/rmax;
     double y2 = y*y;
+    
+//     double y3 = 1.0 - y2*y;
+//     double y4 = y3*y3 + 1e-6;
+//     double y5 = sqrt(y4);
+//     double y6 = exp(-1.0/y5);
+//     double y7 = y4*sqrt(y4);
+// 
+//     // Calculate the final cutoff function as y6/exp(-1)
+//     double fcut = y6/exp(-1.0);
+// 
+//     // Calculate the derivative of the final cutoff function
+//     double dfcut = ((3.0/(rmax*exp(-1.0)))*(y2)*y6*(y*y2 - 1.0))/y7;
 
-    double y3 = 1.0 - y2*y;
-    double y4 = y3*y3 + 1e-6;
-    double y5 = sqrt(y4);
-    double y6 = exp(-1.0/y5);
-    double y7 = y4*sqrt(y4);
-
-    // Calculate the final cutoff function as y6/exp(-1)
-    double fcut = y6/exp(-1.0);
-
-    // Calculate the derivative of the final cutoff function
-    double dfcut = ((3.0/(rmax*exp(-1.0)))*(y2)*y6*(y*y2 - 1.0))/y7;
-
+    double y4 = y2*y2;
+    double y5 = y*y4;
+    double y6 = (y - 1)*(y - 1);  
+    double fcut = (y*(y*((315 - 70*y)*y - 540) + 420) - 126)*y5 + 1;
+    double dfcut = -630*y4*y6*y6/rmax;    
+    
     // Calculate fcut/r, fcut/r^2, and dfcut/r
     double f1 = fcut/r;
     double f2 = f1/r;
