@@ -1970,11 +1970,16 @@ void EAPOD::radialbasis(double *rbf, double *rbfx, double *rbfy, double *rbfz, d
 //     // Calculate the derivative of the final cutoff function
 //     double dfcut = ((3.0/(rmax*exp(-1.0)))*(y2)*y6*(y*y2 - 1.0))/y7;
 
+//     double y4 = y2*y2;
+//     double y5 = y*y4;
+//     double y6 = (y - 1)*(y - 1);  
+//     double fcut = (y*(y*((315 - 70*y)*y - 540) + 420) - 126)*y5 + 1;
+//     double dfcut = -630*y4*y6*y6/rmax;    
+    
+    double y3 = y2*y;
     double y4 = y2*y2;
-    double y5 = y*y4;
-    double y6 = (y - 1)*(y - 1);  
-    double fcut = (y*(y*((315 - 70*y)*y - 540) + 420) - 126)*y5 + 1;
-    double dfcut = -630*y4*y6*y6/rmax;    
+    double fcut = (y*(y*(20*y - 70) + 84) - 35)*y4 + 1;
+    double dfcut = 140*y3*(y - 1)*(y - 1)*(y - 1)/rmax;
     
     // Calculate fcut/r, fcut/r^2, and dfcut/r
     double f1 = fcut/r;
@@ -2355,10 +2360,14 @@ void EAPOD::snapshots(double *rbf, double *xij, int N)
 //     // Compute the cutoff function
 //     double fcut = y6/exp(-1.0);
 
+//     double y4 = y2*y2;
+//     double y5 = y*y4;
+//     double y6 = (y - 1)*(y - 1);  
+//     double fcut = (y*(y*((315 - 70*y)*y - 540) + 420) - 126)*y5 + 1;
+
+    double y3 = y2*y;
     double y4 = y2*y2;
-    double y5 = y*y4;
-    double y6 = (y - 1)*(y - 1);  
-    double fcut = (y*(y*((315 - 70*y)*y - 540) + 420) - 126)*y5 + 1;
+    double fcut = (y*(y*(20*y - 70) + 84) - 35)*y4 + 1;
     
     // Loop over all Bessel parameters
     for (int j=0; j<nbesselpars; j++) {
