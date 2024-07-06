@@ -2004,7 +2004,11 @@ void EAPOD::radialbasis(double *rbf, double *rbfx, double *rbfy, double *rbfz, d
     double y2 = y*y;
 
     double fcut, dfcut;
-    if (cutofftype==1) {
+    if (cutofftype==0) {
+      fcut = 1;
+      dfcut = 0;
+    }
+    else if (cutofftype==1) {
       double y3 = 1.0 - y2*y;
       double y4 = y3*y3 + 1e-6;
       double y5 = sqrt(y4);
@@ -2199,7 +2203,11 @@ void EAPOD::gaussianbasis(double *rbf, double *rbfx, double *rbfy, double *rbfz,
 //     double dfcut = 140*y3*(y - 1)*(y - 1)*(y - 1)/rmax;
         
     double fcut, dfcut;
-    if (cutofftype==1) {
+    if (cutofftype==0) {
+      fcut = 1;
+      dfcut = 0;
+    }
+    else if (cutofftype==1) {
       double y3 = 1.0 - y2*y;
       double y4 = y3*y3 + 1e-6;
       double y5 = sqrt(y4);
@@ -2517,7 +2525,10 @@ void EAPOD::snapshots(double *rbf, double *xij, int N)
 //     double fcut = (y*(y*(20*y - 70) + 84) - 35)*y4 + 1;
     
     double fcut;
-    if (cutofftype==1) {
+    if (cutofftype==0) {
+      fcut = 1;      
+    }
+    else if (cutofftype==1) {
       double y3 = 1.0 - y2*y;
       double y4 = y3*y3 + 1e-6;
       double y5 = sqrt(y4);
@@ -2606,7 +2617,10 @@ void EAPOD::gaussiansnapshots(double *rbf, double *rij, double *gaussianexponent
 //     double fcut = (y*(y*(20*y - 70) + 84) - 35)*y4 + 1;
         
     double fcut;
-    if (cutofftype==1) {
+    if (cutofftype==0) {
+      fcut = 1;      
+    }
+    else if (cutofftype==1) {
       double y3 = 1.0 - y2*y;
       double y4 = y3*y3 + 1e-6;
       double y5 = sqrt(y4);
