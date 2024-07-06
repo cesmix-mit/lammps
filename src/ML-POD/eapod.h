@@ -63,6 +63,13 @@ class EAPOD : protected Pointers {
   void myneighbors(double *rij, double *x, int *ai, int *aj, int *ti, int *tj, int *jlist,
                    int *pairnumsum, int *atomtype, int *alist, int i);
 
+  void gaussianbasis(double *rbf, double *rbfx, double *rbfy, double *rbfz, 
+          double *rij, double *gaussianexponents, int *polydegrees, double rin,
+          double rmax, int ngaussianfuncs, int N);
+  
+  void gaussiansnapshots(double *rbf, double *rij, double *gaussianexponents, 
+        int *polydegrees, double rin, double rmax, int ngaussianfuncs, int N);
+  
   void radialbasis(double *rbf, double *rbfx, double *rbfy, double *rbfz, double *rij,
                    double *besselparams, double rin, double rmax, int besseldegree,
                    int inversedegree, int nbesselpars, int N);
@@ -87,6 +94,7 @@ class EAPOD : protected Pointers {
 
   double rin;
   double rcut;
+  int cutofftype;
   int true4BodyDesc;
 
   int nelements;    // number of elements
@@ -98,6 +106,9 @@ class EAPOD : protected Pointers {
   int inversedegree;
   int pdegree[2];
   int nbesselpars;
+  int ngaussianfuncs;
+  double gaussianexponents[100];
+  int polydegrees[100];
   int timing;
   double comptime[20];
   double besselparams[3];

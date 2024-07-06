@@ -48,6 +48,7 @@ EAPOD::EAPOD(LAMMPS *_lmp, const std::string &pod_file, const std::string &coeff
 {
   rin = 0.5;
   rcut = 5.0;
+  cutofftype = 1;
   nClusters = 1;
   nComponents = 1;
   nelements = 1;
@@ -55,6 +56,7 @@ EAPOD::EAPOD(LAMMPS *_lmp, const std::string &pod_file, const std::string &coeff
   besseldegree = 4;
   inversedegree = 8;
   nbesselpars = 3;
+  ngaussianfuncs = 0;
   true4BodyDesc = 1;
   ns = nbesselpars*besseldegree + inversedegree;
   Njmax = 100;
@@ -189,13 +191,28 @@ void EAPOD::read_pod_file(std::string pod_file)
       pbc[2] = utils::inumeric(FLERR,words[3],false,lmp);
     }
 
-    if ((keywd != "#") && (keywd != "species") && (keywd != "pbc")) {
+    if (keywd == "gaussian_exponents") {
+      ngaussianfuncs = words.size()-1;      
+      for (int i = 0; i<ngaussianfuncs; i++)
+        gaussianexponents[i] = utils::numeric(FLERR,words[i+1],false,lmp);      
+    }
+
+    if (keywd == "polynomial_degrees") {
+      if (ngaussianfuncs != words.size()-1)
+        error->one(FLERR,"Number of polynomial degrees does not match number of gaussian exponents.", utils::getsyserror());
+      for (int i = 0; i<ngaussianfuncs; i++)
+        polydegrees[i] = utils::inumeric(FLERR,words[i+1],false,lmp);      
+    }
+    
+    if ((keywd != "#") && (keywd != "species") && (keywd != "pbc") && (keywd != "gaussian_exponents") && (keywd != "polynomial_degrees")) {
 
       if (words.size() != 2)
         error->one(FLERR,"Improper POD file.", utils::getsyserror());
 
       if (keywd == "rin") rin = utils::numeric(FLERR,words[1],false,lmp);
       if (keywd == "rcut") rcut = utils::numeric(FLERR,words[1],false,lmp);
+      if (keywd == "cutoff_function_type")
+        cutofftype = utils::inumeric(FLERR,words[1],false,lmp);
       if (keywd == "number_of_environment_clusters")
         nClusters = utils::inumeric(FLERR,words[1],false,lmp);
       if (keywd == "number_of_principal_components")
@@ -229,6 +246,8 @@ void EAPOD::read_pod_file(std::string pod_file)
         P44 = utils::inumeric(FLERR,words[1],false,lmp);
     }
   }
+    
+  if (nrbf2 < nrbf3) error->all(FLERR,"number of three-body radial basis functions must be equal or less than number of two-body radial basis functions");
   if (nrbf3 < nrbf4) error->all(FLERR,"number of four-body radial basis functions must be equal or less than number of three-body radial basis functions");
   if (nrbf4 < nrbf33) error->all(FLERR,"number of five-body radial basis functions must be equal or less than number of four-body radial basis functions");
   if (nrbf4 < nrbf34) error->all(FLERR,"number of six-body radial basis functions must be equal or less than number of four-body radial basis functions");
@@ -239,6 +258,13 @@ void EAPOD::read_pod_file(std::string pod_file)
   nrbfmax = (nrbfmax < nrbf34) ? nrbf34 : nrbfmax;
   nrbfmax = (nrbfmax < nrbf44) ? nrbf44 : nrbfmax;
 
+  ns = nbesselpars*besseldegree + inversedegree;  
+  if (ngaussianfuncs > 0) {
+    ns = ngaussianfuncs;    
+    nrbfmax = ngaussianfuncs;
+    if (ngaussianfuncs < nrbf2) error->all(FLERR,"number of two-body radial basis functions must be equal or less than number of gaussian functions");    
+  }
+  
   if (P3 < P4) error->all(FLERR,"four-body angular degree must be equal or less than three-body angular degree");
   if (P4 < P33) error->all(FLERR,"five-body angular degree must be equal or less than four-body angular degree");
   if (P4 < P34) error->all(FLERR,"six-body angular degree must be equal or less than four-body angular degree");
@@ -366,6 +392,18 @@ void EAPOD::read_pod_file(std::string pod_file)
     utils::logmesg(lmp, "number of principal compoments: {}\n", nComponents);
     utils::logmesg(lmp, "inner cut-off radius: {}\n", rin);
     utils::logmesg(lmp, "outer cut-off radius: {}\n", rcut);
+    utils::logmesg(lmp, "cut-off function type: {}\n", cutofftype);
+    
+    utils::logmesg(lmp, "gaussian_exponents: ");
+    for (int i=0; i<ngaussianfuncs; i++)
+      utils::logmesg(lmp, "{} ", gaussianexponents[i]);
+    utils::logmesg(lmp, "\n");
+    
+    utils::logmesg(lmp, "polynomial_degrees: ");
+    for (int i=0; i<ngaussianfuncs; i++)
+      utils::logmesg(lmp, "{} ", polydegrees[i]);
+    utils::logmesg(lmp, "\n");
+    
     utils::logmesg(lmp, "bessel polynomial degree: {}\n", besseldegree);
     utils::logmesg(lmp, "inverse polynomial degree: {}\n",inversedegree);
     utils::logmesg(lmp, "one-body potential: {}\n", onebody);
@@ -870,8 +908,11 @@ void EAPOD::peratombase_descriptors(double *bd1, double *bdd1, double *rij, doub
   double *rbfyt = &temp[4*n1 + n5 + 4*n2 + 2*n3]; // Nj*ns
   double *rbfzt = &temp[4*n1 + n5 + 4*n2 + 3*n3]; // Nj*ns
 
-  radialbasis(rbft, rbfxt, rbfyt, rbfzt, rij, besselparams, rin, rcut-rin, pdegree[0], pdegree[1], nbesselpars, Nj);
-
+  if (ngaussianfuncs==0)
+    radialbasis(rbft, rbfxt, rbfyt, rbfzt, rij, besselparams, rin, rcut-rin, pdegree[0], pdegree[1], nbesselpars, Nj);
+  else
+    gaussianbasis(rbft, rbfxt, rbfyt, rbfzt, rij, gaussianexponents, polydegrees, rin, rcut-rin, ngaussianfuncs, Nj);
+    
   char chn = 'N';
   double alpha = 1.0, beta = 0.0;
   DGEMM(&chn, &chn, &Nj, &nrbfmax, &ns, &alpha, rbft, &Nj, Phi, &ns, &beta, rbf, &Nj);
@@ -1256,7 +1297,11 @@ double EAPOD::peratomenergyforce2(double *fij, double *rij, double *temp,
   double *rbfyt = &temp[4*n1 + n5 + 4*n2 + 2*n3]; // Nj*ns
   double *rbfzt = &temp[4*n1 + n5 + 4*n2 + 3*n3]; // Nj*ns
 
-  radialbasis(rbft, rbfxt, rbfyt, rbfzt, rij, besselparams, rin, rcut-rin, pdegree[0], pdegree[1], nbesselpars, Nj);
+  //radialbasis(rbft, rbfxt, rbfyt, rbfzt, rij, besselparams, rin, rcut-rin, pdegree[0], pdegree[1], nbesselpars, Nj);
+  if (ngaussianfuncs==0)
+    radialbasis(rbft, rbfxt, rbfyt, rbfzt, rij, besselparams, rin, rcut-rin, pdegree[0], pdegree[1], nbesselpars, Nj);
+  else
+    gaussianbasis(rbft, rbfxt, rbfyt, rbfzt, rij, gaussianexponents, polydegrees, rin, rcut-rin, ngaussianfuncs, Nj);
 
   char chn = 'N';
   double alpha = 1.0, beta = 0.0;
@@ -1958,28 +2003,37 @@ void EAPOD::radialbasis(double *rbf, double *rbfx, double *rbfy, double *rbfz, d
     double y = r/rmax;
     double y2 = y*y;
 
-//     double y3 = 1.0 - y2*y;
-//     double y4 = y3*y3 + 1e-6;
-//     double y5 = sqrt(y4);
-//     double y6 = exp(-1.0/y5);
-//     double y7 = y4*sqrt(y4);
-// 
-//     // Calculate the final cutoff function as y6/exp(-1)
-//     double fcut = y6/exp(-1.0);
-// 
-//     // Calculate the derivative of the final cutoff function
-//     double dfcut = ((3.0/(rmax*exp(-1.0)))*(y2)*y6*(y*y2 - 1.0))/y7;
+    double fcut, dfcut;
+    if (cutofftype==1) {
+      double y3 = 1.0 - y2*y;
+      double y4 = y3*y3 + 1e-6;
+      double y5 = sqrt(y4);
+      double y6 = exp(-1.0/y5);
+      double y7 = y4*sqrt(y4);
 
-//     double y4 = y2*y2;
-//     double y5 = y*y4;
-//     double y6 = (y - 1)*(y - 1);  
-//     double fcut = (y*(y*((315 - 70*y)*y - 540) + 420) - 126)*y5 + 1;
-//     double dfcut = -630*y4*y6*y6/rmax;    
-    
-    double y3 = y2*y;
-    double y4 = y2*y2;
-    double fcut = (y*(y*(20*y - 70) + 84) - 35)*y4 + 1;
-    double dfcut = 140*y3*(y - 1)*(y - 1)*(y - 1)/rmax;
+      // Calculate the final cutoff function as y6/exp(-1)
+      fcut = y6/exp(-1.0);
+
+      // Calculate the derivative of the final cutoff function
+      dfcut = ((3.0/(rmax*exp(-1.0)))*(y2)*y6*(y*y2 - 1.0))/y7;
+    }
+    else if (cutofftype==2) {
+      fcut = 0.5*cos(MY_PI*y) + 0.5;
+      dfcut = -0.5*(MY_PI*sin(MY_PI*y));
+    }
+    else if (cutofftype==3) {    
+      double y3 = y2*y;
+      double y4 = y2*y2;
+      fcut = (y*(y*(20*y - 70) + 84) - 35)*y4 + 1;
+      dfcut = 140*y3*(y - 1)*(y - 1)*(y - 1)/rmax;
+    }
+    else if (cutofftype==4) {    
+      double y4 = y2*y2;
+      double y5 = y*y4;
+      double y6 = (y - 1)*(y - 1);  
+      fcut = (y*(y*((315 - 70*y)*y - 540) + 420) - 126)*y5 + 1;
+      dfcut = -630*y4*y6*y6/rmax;    
+    }
     
     // Calculate fcut/r, fcut/r^2, and dfcut/r
     double f1 = fcut/r;
@@ -2095,6 +2149,99 @@ void EAPOD::radialbasis(double *rbf, double *rbfx, double *rbfy, double *rbfz, d
       rbf[nij] = fcut/a;
 
       double drbfdr = (dfcut - (i+1.0)*f1)/a;
+      rbfx[nij] = drbfdr*dr1;
+      rbfy[nij] = drbfdr*dr2;
+      rbfz[nij] = drbfdr*dr3;
+    }
+  }
+}
+
+void EAPOD::gaussianbasis(double *rbf, double *rbfx, double *rbfy, double *rbfz, 
+        double *rij, double *gaussianexponents, int *polydegrees, double rin,
+        double rmax, int ngaussianfuncs, int N)
+{
+  // Loop over all neighboring atoms
+  for (int n=0; n<N; n++) {
+    double xij1 = rij[0+3*n];
+    double xij2 = rij[1+3*n];
+    double xij3 = rij[2+3*n];
+
+    double dij = sqrt(xij1*xij1 + xij2*xij2 + xij3*xij3);
+    double dr1 = xij1/dij;
+    double dr2 = xij2/dij;
+    double dr3 = xij3/dij;
+
+    double r = dij - rin;
+    double y = r/rmax;
+    double y2 = y*y;
+
+//     double y3 = 1.0 - y2*y;
+//     double y4 = y3*y3 + 1e-6;
+//     double y5 = sqrt(y4);
+//     double y6 = exp(-1.0/y5);
+//     double y7 = y4*sqrt(y4);
+// 
+//     // Calculate the final cutoff function as y6/exp(-1)
+//     double fcut = y6/exp(-1.0);
+// 
+//     // Calculate the derivative of the final cutoff function
+//     double dfcut = ((3.0/(rmax*exp(-1.0)))*(y2)*y6*(y*y2 - 1.0))/y7;
+
+//     double y4 = y2*y2;
+//     double y5 = y*y4;
+//     double y6 = (y - 1)*(y - 1);  
+//     double fcut = (y*(y*((315 - 70*y)*y - 540) + 420) - 126)*y5 + 1;
+//     double dfcut = -630*y4*y6*y6/rmax;    
+    
+//     double y3 = y2*y;
+//     double y4 = y2*y2;
+//     double fcut = (y*(y*(20*y - 70) + 84) - 35)*y4 + 1;
+//     double dfcut = 140*y3*(y - 1)*(y - 1)*(y - 1)/rmax;
+        
+    double fcut, dfcut;
+    if (cutofftype==1) {
+      double y3 = 1.0 - y2*y;
+      double y4 = y3*y3 + 1e-6;
+      double y5 = sqrt(y4);
+      double y6 = exp(-1.0/y5);
+      double y7 = y4*sqrt(y4);
+
+      // Calculate the final cutoff function as y6/exp(-1)
+      fcut = y6/exp(-1.0);
+
+      // Calculate the derivative of the final cutoff function
+      dfcut = ((3.0/(rmax*exp(-1.0)))*(y2)*y6*(y*y2 - 1.0))/y7;
+    }
+    else if (cutofftype==2) {
+      fcut = 0.5*cos(MY_PI*y) + 0.5;
+      dfcut = -0.5*(MY_PI*sin(MY_PI*y));
+    }
+    else if (cutofftype==3) {    
+      double y3 = y2*y;
+      double y4 = y2*y2;
+      fcut = (y*(y*(20*y - 70) + 84) - 35)*y4 + 1;
+      dfcut = 140*y3*(y - 1)*(y - 1)*(y - 1)/rmax;
+    }
+    else if (cutofftype==4) {    
+      double y4 = y2*y2;
+      double y5 = y*y4;
+      double y6 = (y - 1)*(y - 1);  
+      fcut = (y*(y*((315 - 70*y)*y - 540) + 420) - 126)*y5 + 1;
+      dfcut = -630*y4*y6*y6/rmax;    
+    }
+    
+    for (int i=0; i<ngaussianfuncs; i++) {      
+      double alpha = gaussianexponents[i];  // gaussian exponents
+      int beta = polydegrees[i];       // polynomial degrees
+      
+      double a = powint(y, beta);       // a = y^beta      
+      double g = a * exp(-alpha * y2 ); // g = y^beta * exp(-alpha * y^2 );
+      // dg = y^beta*exp(-alpha*y^2)*(- 2*alpha*y + beta/y)
+      double dg = a*exp(-alpha*y2)*(- 2*alpha*y + beta/y); 
+
+      int nij = n + N*i;
+      rbf[nij] = fcut * g;
+      double drbfdr = (dfcut * g + fcut * dg);
       rbfx[nij] = drbfdr*dr1;
       rbfy[nij] = drbfdr*dr2;
       rbfz[nij] = drbfdr*dr3;
@@ -2365,10 +2512,33 @@ void EAPOD::snapshots(double *rbf, double *xij, int N)
 //     double y6 = (y - 1)*(y - 1);  
 //     double fcut = (y*(y*((315 - 70*y)*y - 540) + 420) - 126)*y5 + 1;
 
-    double y3 = y2*y;
-    double y4 = y2*y2;
-    double fcut = (y*(y*(20*y - 70) + 84) - 35)*y4 + 1;
+//     double y3 = y2*y;
+//     double y4 = y2*y2;
+//     double fcut = (y*(y*(20*y - 70) + 84) - 35)*y4 + 1;
     
+    double fcut;
+    if (cutofftype==1) {
+      double y3 = 1.0 - y2*y;
+      double y4 = y3*y3 + 1e-6;
+      double y5 = sqrt(y4);
+      double y6 = exp(-1.0/y5);
+
+      // Calculate the final cutoff function as y6/exp(-1)
+      fcut = y6/exp(-1.0);
+    }
+    else if (cutofftype==2) {
+      fcut = 0.5*cos(MY_PI*y) + 0.5;
+    }
+    else if (cutofftype==3) {    
+      double y4 = y2*y2;
+      fcut = (y*(y*(20*y - 70) + 84) - 35)*y4 + 1;
+    }
+    else if (cutofftype==4) {    
+      double y4 = y2*y2;
+      double y5 = y*y4;
+      fcut = (y*(y*((315 - 70*y)*y - 540) + 420) - 126)*y5 + 1;
+    }
+
     // Loop over all Bessel parameters
     for (int j=0; j<nbesselpars; j++) {
       double alpha = besselparams[j];
@@ -2399,6 +2569,77 @@ void EAPOD::snapshots(double *rbf, double *xij, int N)
   }
 }
 
+void EAPOD::gaussiansnapshots(double *rbf, double *rij, double *gaussianexponents, int *polydegrees, double rin,
+        double rmax, int ngaussianfuncs, int N)
+{
+  // Loop over all neighboring atoms
+  for (int n=0; n<N; n++) {
+    double xij1 = rij[0+3*n];
+    double xij2 = rij[1+3*n];
+    double xij3 = rij[2+3*n];
+
+    double dij = sqrt(xij1*xij1 + xij2*xij2 + xij3*xij3);
+    double r = dij - rin;
+    double y = r/rmax;
+    double y2 = y*y;
+
+//     double y3 = 1.0 - y2*y;
+//     double y4 = y3*y3 + 1e-6;
+//     double y5 = sqrt(y4);
+//     double y6 = exp(-1.0/y5);
+//     double y7 = y4*sqrt(y4);
+// 
+//     // Calculate the final cutoff function as y6/exp(-1)
+//     double fcut = y6/exp(-1.0);
+// 
+//     // Calculate the derivative of the final cutoff function
+//     double dfcut = ((3.0/(rmax*exp(-1.0)))*(y2)*y6*(y*y2 - 1.0))/y7;
+
+//     double y4 = y2*y2;
+//     double y5 = y*y4;
+//     double y6 = (y - 1)*(y - 1);  
+//     double fcut = (y*(y*((315 - 70*y)*y - 540) + 420) - 126)*y5 + 1;
+//     double dfcut = -630*y4*y6*y6/rmax;    
+    
+//     double y3 = y2*y;
+//     double y4 = y2*y2;
+//     double fcut = (y*(y*(20*y - 70) + 84) - 35)*y4 + 1;
+        
+    double fcut;
+    if (cutofftype==1) {
+      double y3 = 1.0 - y2*y;
+      double y4 = y3*y3 + 1e-6;
+      double y5 = sqrt(y4);
+      double y6 = exp(-1.0/y5);
+
+      // Calculate the final cutoff function as y6/exp(-1)
+      fcut = y6/exp(-1.0);
+    }
+    else if (cutofftype==2) {
+      fcut = 0.5*cos(MY_PI*y) + 0.5;
+    }
+    else if (cutofftype==3) {    
+      double y4 = y2*y2;
+      fcut = (y*(y*(20*y - 70) + 84) - 35)*y4 + 1;
+    }
+    else if (cutofftype==4) {    
+      double y4 = y2*y2;
+      double y5 = y*y4;
+      fcut = (y*(y*((315 - 70*y)*y - 540) + 420) - 126)*y5 + 1;
+    }
+    
+    for (int i=0; i<ngaussianfuncs; i++) {      
+      double alpha = gaussianexponents[i];  // gaussian exponents
+      int beta = polydegrees[i];            // polynomial degrees 
+      
+      double a = powint(y, beta);       // a = y^beta      
+      double g = a * exp(-alpha * y2 ); // g = y^beta * exp(-alpha * y^2 );
+
+      int nij = n + N*i;
+      rbf[nij] = fcut * g;
+    }
+  }
+}
 
 /**
  * @brief Perform eigenvalue decomposition of the snapshots matrix S and return the eigenvectors and eigenvalues.
@@ -2429,9 +2670,17 @@ void EAPOD::eigenvaluedecomposition(double *Phi, double *Lambda, int N)
   for (int i=0; i<N; i++)
     xij[i] = (rin+1e-6) + (rcut-rin-1e-6)*(i*1.0/(N-1));
 
+//   if (ngaussianfuncs==0)
+//     radialbasis(rbft, rbfxt, rbfyt, rbfzt, rij, besselparams, rin, rcut-rin, pdegree[0], pdegree[1], nbesselpars, Nj);
+//   else
+//     gaussianbasis(rbft, rbfxt, rbfyt, rbfzt, rij, gaussianexponents, polydegrees, rin, rcut-rin, ngaussianfuncs, Nj);
+  
   // Compute the snapshots matrix S
-  snapshots(S, xij, N);
-
+  if (ngaussianfuncs==0)
+    snapshots(S, xij, N);
+  else
+    gaussiansnapshots(S, xij, gaussianexponents, polydegrees, rin, rcut-rin, ngaussianfuncs, N);
+            
   // Compute the matrix A = S^T * S
   char chn = 'N';
   char cht = 'T';
