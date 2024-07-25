@@ -319,7 +319,9 @@ int FitPOD::read_data_file(double *fitting_weights, std::string &file_format,
 
     auto keywd = words[0];
 
-    if (words.size() != 2) error->one(FLERR, "Improper POD data file.", utils::getsyserror());
+    if (words.size() > 3) {
+      error->one(FLERR, "Improper POD data file.", utils::getsyserror());
+    }
 
     // settings for fitting weights
 
@@ -410,7 +412,7 @@ int FitPOD::read_data_file(double *fitting_weights, std::string &file_format,
         } catch (TokenizerException &) {
           // ignore
         }
-        numwords = words.size();
+        numwords = words.size();                
       }
     }
   }
@@ -434,6 +436,14 @@ int FitPOD::read_data_file(double *fitting_weights, std::string &file_format,
     utils::logmesg(lmp, "fitting weight for energy: {}\n", fitting_weights[0]);
     utils::logmesg(lmp, "fitting weight for force: {}\n", fitting_weights[1]);
     utils::logmesg(lmp, "fitting weight for stress: {}\n", fitting_weights[2]);
+    utils::logmesg(lmp, "group_weights: {}\n", group_weight_type);    
+//     if (std::strcmp(group_weight_type.c_str(), "table") == 0) {
+//       for (int i = 0; i < nfiles; i++) {        
+//         we_group = we_map[group_name];
+//         wf_group = wf_map[group_name];      
+//         printf("%s  :   %g   %g\n", group_name.c_str(), we_group, wf_group);
+//       }
+//     }
     utils::logmesg(lmp, "save pod descriptors: {}\n", save_descriptors);
     utils::logmesg(lmp, "compute pod descriptors: {}\n", compute_descriptors);
     utils::logmesg(lmp, "**************** End of Data File ****************\n");
@@ -743,6 +753,7 @@ void FitPOD::get_data(datastruct &data, const std::vector<std::string> &species)
     if (data.we_map.find(group_name) != data.we_map.end()) {
       we_group = data.we_map[group_name];
       wf_group = data.wf_map[group_name];
+      //if (comm->me == 0) printf("%s  :   %g   %g\n", group_name.c_str(), we_group, wf_group);
     } else {
       we_group = data.fitting_weights[0];
       wf_group = data.fitting_weights[1];
