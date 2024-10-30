@@ -1618,7 +1618,6 @@ void FitPOD::least_squares_matrix(const datastruct &data, int ci)
 
   double energy = data.energy[ci];
   double *force = &data.force[dim * natom_cumsum];
-  double *forcetemp = &data.forcetemp[0];
 
   // least-square matrix for all descriptors: A = A + (we*we)*(gd^T * gd)
 
@@ -1645,6 +1644,8 @@ void FitPOD::least_squares_matrix(const datastruct &data, int ci)
   int inc1 = 1;
   double fmax = 10.0;
   
+  double *forcetemp = &data.forcetemp[0];
+    
   for (int j= 0; j<nforce; j++) {
     double fm = fabs(force[j]);
     double wfj = wf*fmcutoff(fm, fmax);
