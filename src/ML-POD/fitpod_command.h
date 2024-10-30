@@ -59,6 +59,7 @@ class FitPOD : public Command {
     double *stress;
     double *position;
     double *force;
+    double *forcetemp;
     int *atomtype;
     // Group weights will have same size as energy.
     double *we;

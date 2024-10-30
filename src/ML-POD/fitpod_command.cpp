@@ -776,6 +776,8 @@ void FitPOD::get_data(datastruct &data, const std::vector<std::string> &species)
   data.num_config_cumsum.resize(nfiles + 1);
   podCumsum(&data.num_config_cumsum[0], &data.num_config[0], nfiles + 1);
 
+  memory->create(data.forcetemp, 3 * data.num_atom_max, "fitpod:forcetemp");
+  
   // convert all structures to triclinic system
 
   constexpr int DIM = 3;
@@ -1042,6 +1044,7 @@ void FitPOD::read_data_files(const std::string &data_file, const std::vector<std
     memory->destroy(data.stress);
     memory->destroy(data.position);
     memory->destroy(data.force);
+    memory->destroy(data.forcetemp);
     memory->destroy(data.atomtype);
   }
 
@@ -1585,6 +1588,14 @@ void FitPOD::environment_cluster_calculation(const datastruct &data)
         lmp, "**************** End Calculating Environment Descriptor Matrix ****************\n");
 }
 
+double fmcutoff(double fm, double fmax)
+{
+  double wfmin = 0.001;
+  double afm = log(1/wfmin) / fmax;
+  if (fm >= fmax)
+    return wfmin;
+  return exp(-afm*fm);
+}
 
 void FitPOD::least_squares_matrix(const datastruct &data, int ci)
 {
@@ -1612,6 +1623,7 @@ void FitPOD::least_squares_matrix(const datastruct &data, int ci)
 
   double energy = data.energy[ci];
   double *force = &data.force[dim * natom_cumsum];
+  double *forcetemp = &data.forcetemp[0];
   
   // least-square matrix for all descriptors: A = A + (we*we)*(gd^T * gd)
   
@@ -1631,11 +1643,11 @@ void FitPOD::least_squares_matrix(const datastruct &data, int ci)
 // 
 //   DGEMV(&cht, &nforce, &nCoeffAll, &wf2, desc.gdd, &nforce, force, &inc1, &one, desc.b, &inc1);
           
-  double fmax = 1.0;
+  double fmax = 10.0;
   for (int j= 0; j<nforce; j++) {
     double fm = fabs(force[j]);    
-    double wfj = wf; //*cutoff(fm, fmax);
-    force[j] = wfj * force[j];
+    double wfj = wf*fmcutoff(fm, fmax);
+    forcetemp[j] = wfj * force[j];
     for (int i = 0; i<nCoeffAll; i++)
       desc.gdd[j + nforce*i] = wfj*desc.gdd[j + nforce*i];
   }
@@ -1647,12 +1659,11 @@ void FitPOD::least_squares_matrix(const datastruct &data, int ci)
 
   // least-square vector for all descriptors derivatives: b = b + (wf*wf) * (gdd^T * f)
 
-  DGEMV(&cht, &nforce, &nCoeffAll, &one, desc.gdd, &nforce, force, &inc1, &one, desc.b, &inc1);
+  DGEMV(&cht, &nforce, &nCoeffAll, &one, desc.gdd, &nforce, forcetemp, &inc1, &one, desc.b, &inc1);
   
   for (int j= 0; j<nforce; j++) {
     double fm = fabs(force[j]);    
-    double wfj = wf; //cutoff(fm, fmax);
-    force[j] = force[j]/wfj ;
+    double wfj = wf*fmcutoff(fm, fmax);
     for (int i = 0; i<nCoeffAll; i++)
       desc.gdd[j + nforce*i] = desc.gdd[j + nforce*i]/wfj;
   }
