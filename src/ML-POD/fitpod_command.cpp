@@ -134,7 +134,7 @@ void FitPOD::command(int narg, char **arg)
 
   if (coeff_file != "") podArrayCopy(desc.c, fastpodptr->coeff, fastpodptr->nCoeffAll);
 
-  if (((int) envdata.data_path.size() > 1) && (desc.nClusters > 1)) {    
+  if (((int) envdata.data_path.size() > 1) && (desc.nClusters > 1)) {
     environment_cluster_calculation(envdata);
     memory->destroy(envdata.lattice);
     memory->destroy(envdata.energy);
@@ -412,7 +412,7 @@ int FitPOD::read_data_file(double *fitting_weights, std::string &file_format,
         } catch (TokenizerException &) {
           // ignore
         }
-        numwords = words.size();                
+        numwords = words.size();
       }
     }
   }
@@ -436,11 +436,11 @@ int FitPOD::read_data_file(double *fitting_weights, std::string &file_format,
     utils::logmesg(lmp, "fitting weight for energy: {}\n", fitting_weights[0]);
     utils::logmesg(lmp, "fitting weight for force: {}\n", fitting_weights[1]);
     utils::logmesg(lmp, "fitting weight for stress: {}\n", fitting_weights[2]);
-    utils::logmesg(lmp, "group_weights: {}\n", group_weight_type);    
+    utils::logmesg(lmp, "group_weights: {}\n", group_weight_type);
 //     if (std::strcmp(group_weight_type.c_str(), "table") == 0) {
-//       for (int i = 0; i < nfiles; i++) {        
+//       for (int i = 0; i < nfiles; i++) {
 //         we_group = we_map[group_name];
-//         wf_group = wf_map[group_name];      
+//         wf_group = wf_map[group_name];
 //         printf("%s  :   %g   %g\n", group_name.c_str(), we_group, wf_group);
 //       }
 //     }
@@ -777,7 +777,7 @@ void FitPOD::get_data(datastruct &data, const std::vector<std::string> &species)
   podCumsum(&data.num_config_cumsum[0], &data.num_config[0], nfiles + 1);
 
   memory->create(data.forcetemp, 3 * data.num_atom_max, "fitpod:forcetemp");
-  
+
   // convert all structures to triclinic system
 
   constexpr int DIM = 3;
@@ -1610,23 +1610,18 @@ void FitPOD::least_squares_matrix(const datastruct &data, int ci)
   double normconst = 1.0;
   if (data.normalizeenergy == 1) normconst = 1.0 / natom;
   double we = data.we[ci];
-  double wf = data.wf[ci];  
+  double wf = data.wf[ci];
   double we2 = (we * we) * (normconst * normconst);
   double wf2 = (wf * wf);
-  
-  char cht = 'T';
-  char chn = 'N';
-  double one = 1.0;
-  int inc1 = 1;
-  
+
   // get energy and force from the training data set
 
   double energy = data.energy[ci];
   double *force = &data.force[dim * natom_cumsum];
   double *forcetemp = &data.forcetemp[0];
-  
+
   // least-square matrix for all descriptors: A = A + (we*we)*(gd^T * gd)
-  
+
   podKron(desc.A, desc.gd, desc.gd, we2, nCoeffAll, nCoeffAll);
 
   // least-square vector for all descriptors: b = b + (we*we*energy)*gd
@@ -1634,38 +1629,38 @@ void FitPOD::least_squares_matrix(const datastruct &data, int ci)
   double wee = we2 * energy;
   for (int i = 0; i < nCoeffAll; i++) desc.b[i] += wee * desc.gd[i];
 
-// //   least-square matrix for all descriptors derivatives: A =  A + (wf*wf) * (gdd^T * gdd)
-// //  
+//   least-square matrix for all descriptors derivatives: A =  A + (wf*wf) * (gdd^T * gdd)
+//
 //   DGEMM(&cht, &chn, &nCoeffAll, &nCoeffAll, &nforce, &wf2, desc.gdd, &nforce, desc.gdd, &nforce,
 //         &one, desc.A, &nCoeffAll);
-// // 
-// //   least-square vector for all descriptors derivatives: b = b + (wf*wf) * (gdd^T * f)
-// 
+//
+//   least-square vector for all descriptors derivatives: b = b + (wf*wf) * (gdd^T * f)
+//
 //   DGEMV(&cht, &nforce, &nCoeffAll, &wf2, desc.gdd, &nforce, force, &inc1, &one, desc.b, &inc1);
-          
+
   double fmax = 10.0;
   for (int j= 0; j<nforce; j++) {
-    double fm = fabs(force[j]);    
+    double fm = fabs(force[j]);
     double wfj = wf*fmcutoff(fm, fmax);
     forcetemp[j] = wfj * force[j];
     for (int i = 0; i<nCoeffAll; i++)
       desc.gdd[j + nforce*i] = wfj*desc.gdd[j + nforce*i];
   }
-        
+
   //   least-square matrix for all descriptors derivatives: A =  A + (wf*wf) * (gdd^T * gdd)
-  
+
   DGEMM(&cht, &chn, &nCoeffAll, &nCoeffAll, &nforce, &one, desc.gdd, &nforce, desc.gdd, &nforce,
         &one, desc.A, &nCoeffAll);
 
   // least-square vector for all descriptors derivatives: b = b + (wf*wf) * (gdd^T * f)
 
   DGEMV(&cht, &nforce, &nCoeffAll, &one, desc.gdd, &nforce, forcetemp, &inc1, &one, desc.b, &inc1);
-  
+
   for (int j= 0; j<nforce; j++) {
-    double fm = fabs(force[j]);    
+    double fm = fabs(force[j]);
     double wfj = wf*fmcutoff(fm, fmax);
     for (int i = 0; i<nCoeffAll; i++)
-      desc.gdd[j + nforce*i] = desc.gdd[j + nforce*i]/wfj;
+      desc.gdd[j + nforce*i] = desc.gdd[j + nforce*i] / wfj;
   }
   
 }
