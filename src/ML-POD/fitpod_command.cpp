@@ -1588,7 +1588,7 @@ void FitPOD::environment_cluster_calculation(const datastruct &data)
         lmp, "**************** End Calculating Environment Descriptor Matrix ****************\n");
 }
 
-double fmcutoff(double fm, double fmax)
+double FitPOD::fmcutoff(double fm, double fmax)
 {
   double wfmin = 0.001;
   double afm = log(1/wfmin) / fmax;
@@ -1638,7 +1638,13 @@ void FitPOD::least_squares_matrix(const datastruct &data, int ci)
 //
 //   DGEMV(&cht, &nforce, &nCoeffAll, &wf2, desc.gdd, &nforce, force, &inc1, &one, desc.b, &inc1);
 
+
+  char cht = 'T';
+  char chn = 'N';
+  double one = 1.0;
+  int inc1 = 1;
   double fmax = 10.0;
+  
   for (int j= 0; j<nforce; j++) {
     double fm = fabs(force[j]);
     double wfj = wf*fmcutoff(fm, fmax);

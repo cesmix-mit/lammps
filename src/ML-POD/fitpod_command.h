@@ -196,6 +196,7 @@ class FitPOD : public Command {
   double energyforce_calculation_fastpod(double *force, const datastruct &data, int ci);
   void energyforce_calculation(const datastruct &data);
   double fmcutoff(double fm, double fmax);
+  
 };
 }    // namespace LAMMPS_NS
 #endif
