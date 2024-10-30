@@ -1585,6 +1585,14 @@ void FitPOD::environment_cluster_calculation(const datastruct &data)
         lmp, "**************** End Calculating Environment Descriptor Matrix ****************\n");
 }
 
+double FitPOD::fmcutoff(double fm, double fmax)
+{
+  double wfmin = 0.001;
+  double afm = log(1/wfmin) / fmax;
+  if (fm >= fmax)
+    return wfmin;
+  return exp(-afm*fm);
+}
 
 void FitPOD::least_squares_matrix(const datastruct &data, int ci)
 {
@@ -1599,15 +1607,10 @@ void FitPOD::least_squares_matrix(const datastruct &data, int ci)
   double normconst = 1.0;
   if (data.normalizeenergy == 1) normconst = 1.0 / natom;
   double we = data.we[ci];
-  double wf = data.wf[ci];  
+  double wf = data.wf[ci];
   double we2 = (we * we) * (normconst * normconst);
   double wf2 = (wf * wf);
-  
-  char cht = 'T';
-  char chn = 'N';
-  double one = 1.0;
-  int inc1 = 1;
-  
+
   // get energy and force from the training data set
 
   double energy = data.energy[ci];
@@ -1622,19 +1625,36 @@ void FitPOD::least_squares_matrix(const datastruct &data, int ci)
   double wee = we2 * energy;
   for (int i = 0; i < nCoeffAll; i++) desc.b[i] += wee * desc.gd[i];
 
-// //   least-square matrix for all descriptors derivatives: A =  A + (wf*wf) * (gdd^T * gdd)
-// //  
+//   least-square matrix for all descriptors derivatives: A =  A + (wf*wf) * (gdd^T * gdd)
+//  
 //   DGEMM(&cht, &chn, &nCoeffAll, &nCoeffAll, &nforce, &wf2, desc.gdd, &nforce, desc.gdd, &nforce,
 //         &one, desc.A, &nCoeffAll);
-// // 
-// //   least-square vector for all descriptors derivatives: b = b + (wf*wf) * (gdd^T * f)
+// 
+//   least-square vector for all descriptors derivatives: b = b + (wf*wf) * (gdd^T * f)
 // 
 //   DGEMV(&cht, &nforce, &nCoeffAll, &wf2, desc.gdd, &nforce, force, &inc1, &one, desc.b, &inc1);
-          
-  double fmax = 1.0;
+  
+
+  // A = [gd; gdd] : (1 + 3*N) * M
+  // A = [gd*we;  wf*gdd] 
+  // we : 1
+  // wf : 3*N
+  // fw = [wfmin wfmax] 
+  
+  // b = [e; f] : (1 + 3*N) 
+  // b = [e*we; f*fw] 
+  
+      
+  char cht = 'T';
+  char chn = 'N';
+  double one = 1.0;
+  int inc1 = 1;
+  
+  double fmax = 10.0;
+
   for (int j= 0; j<nforce; j++) {
     double fm = fabs(force[j]);    
-    double wfj = wf; //*cutoff(fm, fmax);
+    double wfj = wf * fmcutoff(fm, fmax);
     force[j] = wfj * force[j];
     for (int i = 0; i<nCoeffAll; i++)
       desc.gdd[j + nforce*i] = wfj*desc.gdd[j + nforce*i];
@@ -1651,10 +1671,10 @@ void FitPOD::least_squares_matrix(const datastruct &data, int ci)
   
   for (int j= 0; j<nforce; j++) {
     double fm = fabs(force[j]);    
-    double wfj = wf; //cutoff(fm, fmax);
-    force[j] = force[j]/wfj ;
+    double wfj = wf * fmcutoff(fm, fmax);
+    force[j] = force[j] / wfj ;
     for (int i = 0; i<nCoeffAll; i++)
-      desc.gdd[j + nforce*i] = desc.gdd[j + nforce*i]/wfj;
+      desc.gdd[j + nforce*i] = desc.gdd[j + nforce*i] / wfj;
   }
   
 }
