@@ -31,6 +31,7 @@
 #include <vector>
 
 #include "eapod.h"
+#include "mlpod.h"
 
 using namespace LAMMPS_NS;
 using MathSpecial::powint;
@@ -53,6 +54,11 @@ FitPOD::datastruct::datastruct() :
   randomize = 1;
   precision = 8;
   fraction = 1.0;
+  
+  num_atom_sum = 0;
+  num_atom_min = 0;
+  num_atom_max  = 0;
+  num_config_sum = 0;  
 }
 
 void FitPOD::datastruct::copydatainfo(datastruct &data) const
@@ -114,25 +120,50 @@ void FitPOD::command(int narg, char **arg)
   else
     coeff_file = "";
 
-  fastpodptr = new EAPOD(lmp, pod_file, coeff_file);
+  descriptorform = query_pod(pod_file);
+  if (comm->me == 0) {
+    if (descriptorform == 0) utils::logmesg(lmp, "Internal coordinate descriptors are used for this POD potential.\n");
+    if (descriptorform == 1) utils::logmesg(lmp, "Atom density descriptors are used for this POD potential.\n");
+  }
+  
+  if (descriptorform == 0) {
+    podptr = new MLPOD(lmp, pod_file, coeff_file);
+    desc.nCoeffAll = podptr->pod.nd;
+    //desc.nClusters = podptr->nClusters;
+    
+    read_data_files(data_file, podptr->pod.species);
+    
+    estimate_memory_neighborstruct(traindata, podptr->pod.pbc, podptr->pod.rcut, podptr->pod.nelements);
+    if (emptytestdata==0) estimate_memory_neighborstruct(testdata, podptr->pod.pbc, podptr->pod.rcut, podptr->pod.nelements);
+    allocate_memory_neighborstruct();
+    estimate_memory_descriptorstruct(traindata);
+    if (emptytestdata==0) estimate_memory_descriptorstruct(testdata);    
+    allocate_memory_descriptorstruct(podptr->pod.nd, podptr->pod.nd, podptr->nClusters);
+    if (coeff_file != "") podArrayCopy(desc.c, podptr->pod.coeff, podptr->pod.nd);
+  }
+  
+  if (descriptorform == 1) {
+    fastpodptr = new EAPOD(lmp, pod_file, coeff_file);
 
-  desc.nCoeffAll = fastpodptr->nCoeffAll;
-  desc.nClusters = fastpodptr->nClusters;
-  read_data_files(data_file, fastpodptr->species);
-
-  estimate_memory_neighborstruct(traindata, fastpodptr->pbc, fastpodptr->rcut,
-                                 fastpodptr->nelements);
-  estimate_memory_neighborstruct(testdata, fastpodptr->pbc, fastpodptr->rcut,
-                                 fastpodptr->nelements);
-  if (desc.nClusters > 1)
-    estimate_memory_neighborstruct(envdata, fastpodptr->pbc, fastpodptr->rcut,
+    desc.nCoeffAll = fastpodptr->nCoeffAll;
+    desc.nClusters = fastpodptr->nClusters;
+    read_data_files(data_file, fastpodptr->species);
+            
+    estimate_memory_neighborstruct(traindata, fastpodptr->pbc, fastpodptr->rcut,
                                    fastpodptr->nelements);
-  allocate_memory_neighborstruct();
-  estimate_memory_fastpod(traindata);
-  estimate_memory_fastpod(testdata);
-  allocate_memory_descriptorstruct(fastpodptr->nCoeffAll);
-
-  if (coeff_file != "") podArrayCopy(desc.c, fastpodptr->coeff, fastpodptr->nCoeffAll);
+    if (emptytestdata==0)
+      estimate_memory_neighborstruct(testdata, fastpodptr->pbc, fastpodptr->rcut,
+                                   fastpodptr->nelements);
+    if (desc.nClusters > 1)
+      estimate_memory_neighborstruct(envdata, fastpodptr->pbc, fastpodptr->rcut,
+                                     fastpodptr->nelements);
+    allocate_memory_neighborstruct();
+    estimate_memory_fastpod(traindata);
+    if (emptytestdata==0) estimate_memory_fastpod(testdata);
+    allocate_memory_descriptorstruct(fastpodptr->nCoeffAll);
+        
+    if (coeff_file != "") podArrayCopy(desc.c, fastpodptr->coeff, fastpodptr->nCoeffAll);
+  }
 
   if (((int) envdata.data_path.size() > 1) && (desc.nClusters > 1)) {
     environment_cluster_calculation(envdata);
@@ -145,7 +176,7 @@ void FitPOD::command(int narg, char **arg)
     memory->destroy(envdata.we);
     memory->destroy(envdata.wf);
   }
-
+    
   if (compute_descriptors == 0) {
 
     // compute POD coefficients using least-squares method
@@ -153,27 +184,40 @@ void FitPOD::command(int narg, char **arg)
       least_squares_fit(traindata);
 
       if (comm->me == 0) {    // save coefficients into a text file
-        std::string filename = traindata.filenametag + "_coefficients" + ".pod";
-        FILE *fp = fopen(filename.c_str(), "w");
+        if (descriptorform == 0) {
+          std::string filename = traindata.filenametag + "_coefficients"  + ".pod";
+          FILE *fp = fopen(filename.c_str(), "w");
 
-        int nCoeffAll = desc.nCoeffAll;
-        int n1 = 0, n2 = 0;
-        if (((int) envdata.data_path.size() > 1) && (desc.nClusters > 1)) {
-          n1 = fastpodptr->nComponents * fastpodptr->Mdesc * fastpodptr->nelements;
-          n2 = fastpodptr->nComponents * fastpodptr->nClusters * fastpodptr->nelements;
+          fmt::print(fp, "model_coefficients: {}\n", podptr->pod.nd);
+          for (int count = 0; count < podptr->pod.nd; count++) {
+            fmt::print(fp, "{:<10.{}f}\n",  desc.c[count], traindata.precision);
+          }
+          fclose(fp);          
         }
+        
+        if (descriptorform == 1) {
+          std::string filename = traindata.filenametag + "_coefficients" + ".pod";
+          FILE *fp = fopen(filename.c_str(), "w");
 
-        fmt::print(fp, "model_coefficients: {} {} {}\n", nCoeffAll, n1, n2);
-        for (int count = 0; count < nCoeffAll; count++) {
-          fmt::print(fp, "{:<10.{}f}\n", desc.c[count], traindata.precision);
+          int nCoeffAll = desc.nCoeffAll;
+          int n1 = 0, n2 = 0;
+          if (((int) envdata.data_path.size() > 1) && (desc.nClusters > 1)) {
+            n1 = fastpodptr->nComponents * fastpodptr->Mdesc * fastpodptr->nelements;
+            n2 = fastpodptr->nComponents * fastpodptr->nClusters * fastpodptr->nelements;
+          }
+
+          fmt::print(fp, "model_coefficients: {} {} {}\n", nCoeffAll, n1, n2);
+          for (int count = 0; count < nCoeffAll; count++) {
+            fmt::print(fp, "{:<10.{}f}\n", desc.c[count], traindata.precision);
+          }
+          for (int count = 0; count < n1; count++) {
+            fmt::print(fp, "{:<10.{}f}\n", fastpodptr->Proj[count], 14);
+          }
+          for (int count = 0; count < n2; count++) {
+            fmt::print(fp, "{:<10.{}f}\n", fastpodptr->Centroids[count], 14);
+          }
+          fclose(fp);
         }
-        for (int count = 0; count < n1; count++) {
-          fmt::print(fp, "{:<10.{}f}\n", fastpodptr->Proj[count], 14);
-        }
-        for (int count = 0; count < n2; count++) {
-          fmt::print(fp, "{:<10.{}f}\n", fastpodptr->Centroids[count], 14);
-        }
-        fclose(fp);
       }
     }
 
@@ -183,7 +227,7 @@ void FitPOD::command(int narg, char **arg)
       error_analysis(traindata, desc.c);
 
     //error->all(FLERR, "stop after error_analysis");
-
+        
     // calculate energy and force for the training data set
 
     if ((traindata.training_calculation) && ((int) traindata.data_path.size() > 1))
@@ -208,6 +252,7 @@ void FitPOD::command(int narg, char **arg)
 
       if ((int) testdata.data_path.size() > 1 && (testdata.test_analysis) &&
           (testdata.fraction > 0)) {
+        
         memory->destroy(testdata.lattice);
         memory->destroy(testdata.energy);
         memory->destroy(testdata.stress);
@@ -259,15 +304,79 @@ void FitPOD::command(int narg, char **arg)
   memory->destroy(desc.pd);
   memory->destroy(desc.gd);
   memory->destroy(desc.gdd);
+  if (descriptorform == 0) memory->destroy(desc.tmpint);
 
   // // deallocate neighbor data
   memory->destroy(nb.alist);
   memory->destroy(nb.pairnum);
   memory->destroy(nb.pairnum_cumsum);
   memory->destroy(nb.pairlist);
-  memory->destroy(nb.y);
+  memory->destroy(nb.y);  
+  
+  // delete podptr;  
+  if (descriptorform == 0) delete podptr;  
+  if (descriptorform == 1) delete fastpodptr;  
+}
 
-  delete fastpodptr;
+int FitPOD::query_pod(std::string pod_file)
+{
+  int fastpod = 0;
+
+  std::string podfilename = pod_file;
+  FILE *fppod;
+  if (comm->me == 0) {
+
+    fppod = utils::open_potential(podfilename,lmp,nullptr);
+    if (fppod == nullptr)
+      error->one(FLERR,"Cannot open POD coefficient file {}: ",
+                                   podfilename, utils::getsyserror());
+  }
+
+  // loop through lines of POD file and parse keywords
+
+  char line[MAXLINE],*ptr;
+  int eof = 0;
+
+  while (true) {
+    if (comm->me == 0) {
+      ptr = fgets(line,MAXLINE,fppod);
+      if (ptr == nullptr) {
+        eof = 1;
+        fclose(fppod);
+      }
+    }
+    MPI_Bcast(&eof,1,MPI_INT,0,world);
+    if (eof) break;
+    MPI_Bcast(line,MAXLINE,MPI_CHAR,0,world);
+
+    // words = ptrs to all words in line
+    // strip single and double quotes from words
+
+    std::vector<std::string> words;
+    try {
+      words = Tokenizer(utils::trim_comment(line),"\"' \t\n\r\f").as_vector();
+    } catch (TokenizerException &) {
+      // ignore
+    }
+
+    if (words.size() == 0) continue;
+
+    auto keywd = words[0];
+
+    if ((keywd != "#") && (keywd != "species") && (keywd != "pbc")) {
+
+      if (words.size() != 2)
+        error->one(FLERR,"Improper POD file.", utils::getsyserror());
+
+      if (keywd == "threebody_angular_degree") fastpod = 1;
+      if (keywd == "fourbody_angular_degree") fastpod = 1;
+      if (keywd == "fivebody_angular_degree") fastpod = 1;
+      if (keywd == "sixbody_angular_degree") fastpod = 1;
+      if (keywd == "sevenbody_angular_degree") fastpod = 1;
+    }
+  }
+
+  return fastpod;
 }
 
 int FitPOD::read_data_file(double *fitting_weights, std::string &file_format,
@@ -1068,9 +1177,10 @@ void FitPOD::read_data_files(const std::string &data_file, const std::vector<std
     compute_descriptors = tmp;
   }
 
+  emptytestdata = 1;
   if ((testdata.data_path == traindata.data_path) && (testdata.fraction == 1.0) &&
       (traindata.fraction == 1.0)) {
-    testdata.data_path = traindata.data_path;
+    testdata.data_path = traindata.data_path;   
   } else if (((int) testdata.data_path.size() > 1) && (testdata.fraction > 0) &&
              (testdata.test_analysis)) {
     testdata.training = 0;
@@ -1080,7 +1190,8 @@ void FitPOD::read_data_files(const std::string &data_file, const std::vector<std
     testdata.training_calculation = traindata.training_calculation;
     testdata.test_calculation = traindata.test_calculation;
     testdata.randomize = (int) traindata.fitting_weights[10];
-
+    emptytestdata = 0;
+    
     if (testdata.fraction >= 1.0) {
       if (comm->me == 0)
         utils::logmesg(lmp, "**************** Begin of Test Data Set ****************\n");
@@ -1265,6 +1376,83 @@ void FitPOD::allocate_memory_descriptorstruct(int nCoeffAll)
   }
 }
 
+void FitPOD::allocate_memory_descriptorstruct(int nCoeffAll, int Mdesc, int nClusters)
+{
+  memory->create(desc.bd, nb.natom_max * Mdesc, "fitpod:desc_ld");
+  memory->create(desc.pd, nb.natom_max * nClusters, "fitpod:desc_ld");
+  memory->create(desc.gd, nCoeffAll, "fitpod:desc_gd");
+  memory->create(desc.A, nCoeffAll * nCoeffAll, "fitpod:desc_A");
+  memory->create(desc.b, nCoeffAll, "fitpod:desc_b");
+  memory->create(desc.c, nCoeffAll, "fitpod:desc_c");
+  memory->create(desc.gdd, desc.szd, "fitpod:desc_gdd");
+  memory->create(desc.tmpint, desc.szi, "fitpod:desc_tmpint");
+  podArraySetValue(desc.A, 0.0, nCoeffAll * nCoeffAll);
+  podArraySetValue(desc.b, 0.0, nCoeffAll);
+  podArraySetValue(desc.c, 0.0, nCoeffAll);
+  
+  if (comm->me == 0) {
+    utils::logmesg(lmp, "**************** Begin of Memory Allocation ****************\n");
+    utils::logmesg(lmp, "maximum number of atoms in periodic domain: {}\n", nb.natom_max);
+    utils::logmesg(lmp, "maximum number of atoms in extended domain: {}\n", nb.sza);
+    utils::logmesg(lmp, "maximum number of neighbors in extended domain: {}\n", nb.szp);
+    utils::logmesg(lmp, "size of double memory: {}\n", desc.szd);
+    utils::logmesg(lmp, "size of int memory: {}\n", desc.szi);
+    utils::logmesg(lmp, "size of descriptor matrix: {} x {}\n", nCoeffAll, nCoeffAll);
+    utils::logmesg(lmp, "**************** End of Memory Allocation ****************\n");
+  }
+}
+
+void FitPOD::estimate_memory_descriptorstruct(const datastruct &data)
+{
+  int nd = podptr->pod.nd;
+  int dim = 3;
+  int natom_max = data.num_atom_max;
+  int nd1 = podptr->pod.nd1;
+  int nd2 = podptr->pod.nd2;
+  int nd3 = podptr->pod.nd3;
+  int nd4 = podptr->pod.nd4;
+  int nelements = podptr->pod.nelements;
+  int nbesselpars = podptr->pod.nbesselpars;
+  int nrbf2 = podptr->pod.nbf2;
+  int nabf3 = podptr->pod.nabf3;
+  int nrbf3 = podptr->pod.nrbf3;
+  int *pdegree2 = podptr->pod.twobody;
+  int *pdegree3 = podptr->pod.threebody;
+  int *pbc = podptr->pod.pbc;
+  double rcut = podptr->pod.rcut;
+
+  int Nj=0, Nij=0, Nijmax=0;
+  int szd = 0, szi=0, szsnap=0;
+  for (int ci=0; ci<(int) data.num_atom.size(); ci++)
+  {
+    int natom = data.num_atom[ci];
+    int natom_cumsum = data.num_atom_cumsum[ci];
+    double *x = &data.position[dim*natom_cumsum];
+    double *lattice = &data.lattice[9*ci];
+    double *a1 = &lattice[0];
+    double *a2 = &lattice[3];
+    double *a3 = &lattice[6];
+
+    Nij = podfullneighborlist(nb.y, nb.alist, nb.pairlist, nb.pairnum, nb.pairnum_cumsum, x, a1, a2, a3, rcut, pbc, natom);
+    Nijmax = MAX(Nijmax, Nij);
+
+    int ns2 = pdegree2[0]*nbesselpars + pdegree2[1];
+    int ns3 = pdegree3[0]*nbesselpars + pdegree3[1];
+
+    int szd1 = 3*Nij+ (1+dim)*Nij*MAX(nrbf2+ns2,nrbf3+ns3) + (nabf3+1)*7;
+    int szi1 = 6*Nij + 2*natom+1 + (Nj-1)*Nj;
+    szd = MAX(szd, szd1);
+    szi = MAX(szi, szi1);
+  }
+
+  szd = MAX(szsnap, szd);
+  szd = MAX(natom_max*(nd1+nd2+nd3+nd4) + szd, dim*natom_max*(nd-nd1-nd2-nd3-nd4));
+  szd = dim*natom_max*(nd1+nd2+nd3+nd4) + szd;
+
+  desc.szd = MAX(desc.szd, szd);
+  desc.szi = MAX(desc.szi, szi);
+}
+
 void FitPOD::estimate_memory_fastpod(const datastruct &data)
 {
   int dim = 3;
@@ -1288,6 +1476,117 @@ void FitPOD::estimate_memory_fastpod(const datastruct &data)
 
   desc.szd = MAX(desc.szd, 3 * Nijmax * fastpodptr->nCoeffAll);
 }
+
+void FitPOD::linear_descriptors(const datastruct &data, int ci)
+{
+  int dim = 3;
+  int nd1 = podptr->pod.nd1;
+  int nd2 = podptr->pod.nd2;
+  int nd3 = podptr->pod.nd3;
+  int nd4 = podptr->pod.nd4;
+  int nd1234 = nd1+nd2+nd3+nd4;
+  int *pbc = podptr->pod.pbc;
+  double rcut = podptr->pod.rcut;
+
+  int natom = data.num_atom[ci];
+  int natom_cumsum = data.num_atom_cumsum[ci];
+  int *atomtype = &data.atomtype[natom_cumsum];
+  double *position = &data.position[dim*natom_cumsum];
+  double *lattice = &data.lattice[9*ci];
+  double *a1 = &lattice[0];
+  double *a2 = &lattice[3];
+  double *a3 = &lattice[6];
+
+  // neighbor list
+  int Nij = podfullneighborlist(nb.y, nb.alist, nb.pairlist, nb.pairnum, nb.pairnum_cumsum,
+        position, a1, a2, a3, rcut, pbc, natom);
+
+  int *tmpint = &desc.tmpint[0];
+  double *tmpmem = &desc.gdd[dim*natom*nd1234+natom*nd1234];
+  podptr->linear_descriptors(desc.gd, desc.gdd, nb.y, tmpmem, atomtype, nb.alist,
+      nb.pairlist, nb.pairnum, nb.pairnum_cumsum, tmpint, natom, Nij);
+}
+
+// void FitPOD::quadratic_descriptors(const datastruct &data, int ci)
+// {
+//   int dim = 3;
+//   int natom = data.num_atom[ci];
+//   int nd1 = podptr->pod.nd1;
+//   int nd2 = podptr->pod.nd2;
+//   int nd3 = podptr->pod.nd3;
+//   int nd4 = podptr->pod.nd4;
+//   int nd22 = podptr->pod.nd22;
+//   int nd23 = podptr->pod.nd23;
+//   int nd24 = podptr->pod.nd24;
+//   int nd33 = podptr->pod.nd33;
+//   int nd34 = podptr->pod.nd34;
+//   int nd44 = podptr->pod.nd44;
+//   int nd123 = nd1+nd2+nd3;
+//   int nd1234 = nd1+nd2+nd3+nd4;
+// 
+//   double *fatom2 = &desc.gdd[dim*natom*(nd1)];
+//   double *fatom3 = &desc.gdd[dim*natom*(nd1+nd2)];
+//   double *fatom4 = &desc.gdd[dim*natom*(nd123)];
+// 
+//   // global descriptors for four-body quadratic22 potential
+// 
+//   if (nd22 > 0) {
+//     int nq2 = podptr->pod.quadratic22[0]*podptr->pod.nc2;
+//     podptr->quadratic_descriptors(&desc.gd[nd1234], &desc.gdd[dim*natom*nd1234],
+//         &desc.gd[nd1], fatom2, nq2, dim*natom);
+//   }
+// 
+//   // global descriptors for four-body quadratic23 potential
+// 
+//   if (nd23 > 0) {
+//     int nq2 = podptr->pod.quadratic23[0]*podptr->pod.nc2;
+//     int nq3 = podptr->pod.quadratic23[1]*podptr->pod.nc3;
+//     podptr->quadratic_descriptors(&desc.gd[nd1234+nd22], &desc.gdd[dim*natom*(nd1234+nd22)],
+//         &desc.gd[nd1], &desc.gd[nd1+nd2], fatom2, fatom3, nq2, nq3, dim*natom);
+//   }
+// 
+//   // global descriptors for five-body quadratic24 potential
+// 
+//   if (nd24 > 0) {
+//     int nq2 = podptr->pod.quadratic24[0]*podptr->pod.nc2;
+//     int nq4 = podptr->pod.quadratic24[1]*podptr->pod.nc4;
+//     podptr->quadratic_descriptors(&desc.gd[nd1234+nd22+nd23], &desc.gdd[dim*natom*(nd1234+nd22+nd23)],
+//         &desc.gd[nd1], &desc.gd[nd1+nd2+nd3], fatom2, fatom4, nq2, nq4, dim*natom);
+//   }
+// 
+//   // global descriptors for five-body quadratic33 potential
+// 
+//   if (nd33 > 0) {
+//     int nq3 = podptr->pod.quadratic33[0]*podptr->pod.nc3;
+//     podptr->quadratic_descriptors(&desc.gd[nd1234+nd22+nd23+nd24], &desc.gdd[dim*natom*(nd1234+nd22+nd23+nd24)],
+//         &desc.gd[nd1+nd2], fatom3, nq3, dim*natom);
+//   }
+// 
+//   // global descriptors for six-body quadratic34 potential
+// 
+//   if (nd34 > 0) {
+//     int nq3 = podptr->pod.quadratic34[0]*podptr->pod.nc3;
+//     int nq4 = podptr->pod.quadratic34[1]*podptr->pod.nc4;
+//     podptr->quadratic_descriptors(&desc.gd[nd1234+nd22+nd23+nd24+nd33], &desc.gdd[dim*natom*(nd1234+nd22+nd23+nd24+nd33)],
+//         &desc.gd[nd1+nd2], &desc.gd[nd1+nd2+nd3], fatom3, fatom4, nq3, nq4, dim*natom);
+//   }
+// 
+//   // global descriptors for seven-body quadratic44 potential
+// 
+//   if (nd44 > 0) {
+//     int nq4 = podptr->pod.quadratic44[0]*podptr->pod.nc4;
+//     podptr->quadratic_descriptors(&desc.gd[nd1234+nd22+nd23+nd24+nd33+nd34], &desc.gdd[dim*natom*(nd1234+nd22+nd23+nd24+nd33+nd34)],
+//         &desc.gd[nd1+nd2+nd3], fatom4, nq4, dim*natom);
+//   }
+// 
+//   // normalize quadratic descriptors
+// 
+//   for (int i=0; i<(nd22+nd23+nd24+nd33+nd34+nd44); i++)
+//     desc.gd[nd1234+i] = desc.gd[nd1234+i]/(natom);
+// 
+//   for (int i=0; i<dim*natom*(nd22+nd23+nd24+nd33+nd34+nd44); i++)
+//     desc.gdd[dim*natom*nd1234+i] = desc.gdd[dim*natom*nd1234+i]/(natom);
+// }
 
 void FitPOD::local_descriptors_fastpod(const datastruct &data, int ci)
 {
@@ -1687,9 +1986,17 @@ void FitPOD::least_squares_fit(const datastruct &data)
 
     if ((ci % comm->nprocs) == comm->me) {
 
-      // compute linear POD descriptors
-      local_descriptors_fastpod(data, ci);
+      if (descriptorform==0) {
+        linear_descriptors(data, ci);
 
+        // compute quadratic POD descriptors
+        // quadratic_descriptors(data, ci);
+      }
+      else if (descriptorform==1) {
+        // compute linear POD descriptors
+        local_descriptors_fastpod(data, ci);
+      }
+      
       if (save_descriptors > 0) {
         std::string filename =
             data.data_path + "/descriptors_config" + std::to_string(ci + 1) + ".bin";
@@ -1744,7 +2051,7 @@ void FitPOD::least_squares_fit(const datastruct &data)
   MPI_Bcast(desc.c, nCoeffAll, MPI_DOUBLE, 0, world);
 
   // update coefficients in POD class to compute energy and force
-  fastpodptr->mknewcoeff(desc.c, nCoeffAll);
+  if (descriptorform==1) fastpodptr->mknewcoeff(desc.c, nCoeffAll);
 }
 
 double latticevolume(double *lattice)
@@ -1759,6 +2066,45 @@ double latticevolume(double *lattice)
 
   return (b0 * v3[0] + b1 * v3[1] + b2 * v3[2]);
 }
+
+double FitPOD::energyforce_calculation(double *force, double *coeff, const datastruct &data, int ci)
+{
+  int dim = 3;
+  int *pbc = podptr->pod.pbc;
+  double rcut = podptr->pod.rcut;
+  int nd1234 = podptr->pod.nd1 + podptr->pod.nd2 + podptr->pod.nd3 + podptr->pod.nd4;
+
+  int natom = data.num_atom[ci];
+  int natom_cumsum2 = data.num_atom_cumsum[ci];
+  int *atomtype = &data.atomtype[natom_cumsum2];
+  double *position = &data.position[dim*natom_cumsum2];
+  double *lattice = &data.lattice[9*ci];
+  double *a1 = &lattice[0];
+  double *a2 = &lattice[3];
+  double *a3 = &lattice[6];
+
+  int Nij = podfullneighborlist(nb.y, nb.alist, nb.pairlist, nb.pairnum, nb.pairnum_cumsum,
+        position, a1, a2, a3, rcut, pbc, natom);
+
+  double *tmpmem = &desc.gdd[0];
+  int *tmpint = &desc.tmpint[0];
+  double *rij = &tmpmem[0]; // 3*Nij
+  int *ai = &tmpint[0];   // Nij
+  int *aj = &tmpint[Nij];   // Nij
+  int *ti = &tmpint[2*Nij]; // Nij
+  int *tj = &tmpint[3*Nij]; // Nij
+  int *idxi = &tmpint[4*Nij]; // Nij
+  podptr->podNeighPairs(rij, nb.y, idxi, ai, aj, ti, tj, nb.pairnum_cumsum, atomtype, nb.pairlist, nb.alist, natom);
+
+  double *effectivecoeff = &tmpmem[3*Nij]; // 3*Nij
+  podArraySetValue(effectivecoeff, 0.0, nd1234);
+
+  double energy = podptr->energyforce_calculation(force, coeff, effectivecoeff, desc.gd, rij,
+    &tmpmem[3*Nij+nd1234], nb.pairnum_cumsum, atomtype, idxi, ai, aj, ti, tj, natom, Nij);
+
+  return energy;
+}
+
 
 double FitPOD::energyforce_calculation_fastpod(double *force, const datastruct &data, int ci)
 {
@@ -1908,8 +2254,26 @@ void FitPOD::error_analysis(const datastruct &data, double *coeff)
       if ((ci % comm->nprocs) == comm->me) {
         int natom = data.num_atom[ci];
         int nforce = dim * natom;
+        
+        if (descriptorform==0) {
+          int nd1 = podptr->pod.nd1;
+          int nd2 = podptr->pod.nd2;
+          int nd3 = podptr->pod.nd3;
+          int nd4 = podptr->pod.nd4;
+          int nd22 = podptr->pod.nd22;
+          int nd23 = podptr->pod.nd23;
+          int nd24 = podptr->pod.nd24;
+          int nd33 = podptr->pod.nd33;
+          int nd34 = podptr->pod.nd34;
+          int nd44 = podptr->pod.nd44;
+          int nd1234 = nd1+nd2+nd3+nd4;
 
-        energy = energyforce_calculation_fastpod(force.data(), data, ci);
+          for (int j=nd1234; j<nCoeffAll; j++)
+            newcoeff[j] = coeff[j]/(natom);
+
+          energy = energyforce_calculation(force.data(), newcoeff.data(), data, ci);          
+        }        
+        else if (descriptorform==1) energy = energyforce_calculation_fastpod(force.data(), data, ci);
 
         double DFTenergy = data.energy[ci];
         int natom_cumsum = data.num_atom_cumsum[ci];

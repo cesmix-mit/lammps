@@ -129,8 +129,7 @@ class EAPOD : protected Pointers {
   double *bd;           // base descriptors
   double *bdd;          // derivatives of the base descriptors with respect to the atomic positions
   double *pd;           //  multi-environment descriptors
-  double *
-      pdd;    // derivative of the multi-environment descriptors with respect to the atomic positions
+  double *pdd;    // derivative of the multi-environment descriptors with respect to the atomic positions
 
   int nproj;         // number of elements in projection matrix (nComponents * Mdesc * nelements)
   int ncentroids;    // number of centroids (nComponents * nClusters * nelements)
@@ -167,6 +166,8 @@ class EAPOD : protected Pointers {
   int nld33, nld34, nld44, ngd33, ngd34, ngd44;
   int *ind33l, *ind33r, *ind34l, *ind34r, *ind44l, *ind44r;
 
+  class RBPOD *rbpodptr;
+  
   EAPOD(LAMMPS *, const std::string &pod_file, const std::string &coeff_file);
 
   EAPOD(LAMMPS *lmp) : Pointers(lmp){};

@@ -35,6 +35,8 @@ class PairPOD : public Pair {
   void init_style() override;
   double init_one(int, int) override;
   double memory_usage() override;
+  
+  int query_pod(std::string pod_file);
 
   void lammpsNeighborList(double *rij1, int *ai1, int *aj1, int *ti1, int *tj1, double **x,
                           int **firstneigh, int *atomtype, int *map, int *numneigh, double rcutsq,
@@ -43,7 +45,7 @@ class PairPOD : public Pair {
                      int i1);
   void NeighborList(double **x, int **firstneigh, int *atomtype, int *map, int *ilist,
                     int *numneigh, double rcutsq, int i1);
-  void tallyenergy(double *ei, int istart, int Ni);
+  void tallyenergy(double *ei, int *ilist, int istart, int Ni);  
   void tallystress(double *fij, double *rij, int *ai, int *aj, int nlocal, int N);
   void tallyforce(double **force, double *fij, int *ai, int *aj, int N);
   void divideInterval(int *intervals, int N, int M);

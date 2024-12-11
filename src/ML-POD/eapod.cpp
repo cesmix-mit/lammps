@@ -29,6 +29,7 @@
 
 // header file. Moved down here to avoid polluting other headers with its defines
 #include "eapod.h"
+#include "rbpod.h"
 
 using namespace LAMMPS_NS;
 using MathConst::MY_PI;
@@ -92,6 +93,8 @@ EAPOD::EAPOD(LAMMPS *_lmp, const std::string &pod_file, const std::string &coeff
   // read pod input file to podstruct
   read_pod_file(pod_file);
 
+  rbpodptr = new RBPOD(lmp, pod_file);
+  
   if (coeff_file != "") {
     read_model_coeff_file(coeff_file);
   }
@@ -131,6 +134,8 @@ EAPOD::~EAPOD()
   memory->destroy(ind33r);
   memory->destroy(ind34r);
   memory->destroy(ind44r);
+  
+  delete rbpodptr;
 }
 
 void EAPOD::read_pod_file(std::string pod_file)
@@ -903,23 +908,26 @@ void EAPOD::peratombase_descriptors(double *bd1, double *bdd1, double *rij, doub
   double *rbfy = &temp[4*n1 + n5 + 2*n2]; // Nj*nrbf2
   double *rbfz = &temp[4*n1 + n5 + 3*n2]; // Nj*nrbf2
 
-  double *rbft = &temp[4*n1 + n5 + 4*n2]; // Nj*ns
-  double *rbfxt = &temp[4*n1 + n5 + 4*n2 + n3]; // Nj*ns
-  double *rbfyt = &temp[4*n1 + n5 + 4*n2 + 2*n3]; // Nj*ns
-  double *rbfzt = &temp[4*n1 + n5 + 4*n2 + 3*n3]; // Nj*ns
+//   double *rbft = &temp[4*n1 + n5 + 4*n2]; // Nj*ns
+//   double *rbfxt = &temp[4*n1 + n5 + 4*n2 + n3]; // Nj*ns
+//   double *rbfyt = &temp[4*n1 + n5 + 4*n2 + 2*n3]; // Nj*ns
+//   double *rbfzt = &temp[4*n1 + n5 + 4*n2 + 3*n3]; // Nj*ns
+// 
+//   if (ngaussianfuncs==0)
+//     radialbasis(rbft, rbfxt, rbfyt, rbfzt, rij, besselparams, rin, rcut-rin, pdegree[0], pdegree[1], nbesselpars, Nj);
+//   else
+//     gaussianbasis(rbft, rbfxt, rbfyt, rbfzt, rij, gaussianexponents, polydegrees, rin, rcut-rin, ngaussianfuncs, Nj);
+//     
+//   char chn = 'N';
+//   double alpha = 1.0, beta = 0.0;
+//   DGEMM(&chn, &chn, &Nj, &nrbfmax, &ns, &alpha, rbft, &Nj, Phi, &ns, &beta, rbf, &Nj);
+//   DGEMM(&chn, &chn, &Nj, &nrbfmax, &ns, &alpha, rbfxt, &Nj, Phi, &ns, &beta, rbfx, &Nj);
+//   DGEMM(&chn, &chn, &Nj, &nrbfmax, &ns, &alpha, rbfyt, &Nj, Phi, &ns, &beta, rbfy, &Nj);
+//   DGEMM(&chn, &chn, &Nj, &nrbfmax, &ns, &alpha, rbfzt, &Nj, Phi, &ns, &beta, rbfz, &Nj);
 
-  if (ngaussianfuncs==0)
-    radialbasis(rbft, rbfxt, rbfyt, rbfzt, rij, besselparams, rin, rcut-rin, pdegree[0], pdegree[1], nbesselpars, Nj);
-  else
-    gaussianbasis(rbft, rbfxt, rbfyt, rbfzt, rij, gaussianexponents, polydegrees, rin, rcut-rin, ngaussianfuncs, Nj);
-    
-  char chn = 'N';
-  double alpha = 1.0, beta = 0.0;
-  DGEMM(&chn, &chn, &Nj, &nrbfmax, &ns, &alpha, rbft, &Nj, Phi, &ns, &beta, rbf, &Nj);
-  DGEMM(&chn, &chn, &Nj, &nrbfmax, &ns, &alpha, rbfxt, &Nj, Phi, &ns, &beta, rbfx, &Nj);
-  DGEMM(&chn, &chn, &Nj, &nrbfmax, &ns, &alpha, rbfyt, &Nj, Phi, &ns, &beta, rbfy, &Nj);
-  DGEMM(&chn, &chn, &Nj, &nrbfmax, &ns, &alpha, rbfzt, &Nj, Phi, &ns, &beta, rbfz, &Nj);
-
+  //rbpodptr->podradialbasis(rbf, rbfx, rbfy, rbfz, rij, &temp[4*n1 + n5 + 4*n2], Nj);
+  rbpodptr->femradialbasis(rbf, rbfx, rbfy, rbfz, rij, Nj);
+  
   if ((nl2>0) && (Nj>0)) {
     twobodydescderiv(d2, dd2, rbf, rbfx, rbfy, rbfz, tj, Nj);
   }
@@ -1297,19 +1305,20 @@ double EAPOD::peratomenergyforce2(double *fij, double *rij, double *temp,
   double *rbfyt = &temp[4*n1 + n5 + 4*n2 + 2*n3]; // Nj*ns
   double *rbfzt = &temp[4*n1 + n5 + 4*n2 + 3*n3]; // Nj*ns
 
-  //radialbasis(rbft, rbfxt, rbfyt, rbfzt, rij, besselparams, rin, rcut-rin, pdegree[0], pdegree[1], nbesselpars, Nj);
-  if (ngaussianfuncs==0)
-    radialbasis(rbft, rbfxt, rbfyt, rbfzt, rij, besselparams, rin, rcut-rin, pdegree[0], pdegree[1], nbesselpars, Nj);
-  else
-    gaussianbasis(rbft, rbfxt, rbfyt, rbfzt, rij, gaussianexponents, polydegrees, rin, rcut-rin, ngaussianfuncs, Nj);
+//   if (ngaussianfuncs==0)
+//     radialbasis(rbft, rbfxt, rbfyt, rbfzt, rij, besselparams, rin, rcut-rin, pdegree[0], pdegree[1], nbesselpars, Nj);
+//   else
+//     gaussianbasis(rbft, rbfxt, rbfyt, rbfzt, rij, gaussianexponents, polydegrees, rin, rcut-rin, ngaussianfuncs, Nj);
+// 
+//   char chn = 'N';
+//   double alpha = 1.0, beta = 0.0;
+//   DGEMM(&chn, &chn, &Nj, &nrbfmax, &ns, &alpha, rbft, &Nj, Phi, &ns, &beta, rbf, &Nj);
+//   DGEMM(&chn, &chn, &Nj, &nrbfmax, &ns, &alpha, rbfxt, &Nj, Phi, &ns, &beta, rbfx, &Nj);
+//   DGEMM(&chn, &chn, &Nj, &nrbfmax, &ns, &alpha, rbfyt, &Nj, Phi, &ns, &beta, rbfy, &Nj);
+//   DGEMM(&chn, &chn, &Nj, &nrbfmax, &ns, &alpha, rbfzt, &Nj, Phi, &ns, &beta, rbfz, &Nj);
 
-  char chn = 'N';
-  double alpha = 1.0, beta = 0.0;
-  DGEMM(&chn, &chn, &Nj, &nrbfmax, &ns, &alpha, rbft, &Nj, Phi, &ns, &beta, rbf, &Nj);
-  DGEMM(&chn, &chn, &Nj, &nrbfmax, &ns, &alpha, rbfxt, &Nj, Phi, &ns, &beta, rbfx, &Nj);
-  DGEMM(&chn, &chn, &Nj, &nrbfmax, &ns, &alpha, rbfyt, &Nj, Phi, &ns, &beta, rbfy, &Nj);
-  DGEMM(&chn, &chn, &Nj, &nrbfmax, &ns, &alpha, rbfzt, &Nj, Phi, &ns, &beta, rbfz, &Nj);
-
+  rbpodptr->femradialbasis(rbf, rbfx, rbfy, rbfz, rij, Nj);
+  
   if ((nl2>0) && (Nj>0)) {
     twobodydesc(d2, rbf, tj, Nj);
   }

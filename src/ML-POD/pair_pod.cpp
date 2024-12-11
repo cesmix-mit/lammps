@@ -251,7 +251,7 @@ void PairPOD::compute(int eflag, int vflag)
     blockatomenergyforce(ei, fij, ni, nij);
 
     // tally atomic energy to global energy
-    tallyenergy(ei, gi1, ni);
+    tallyenergy(ei, ilist, gi1, ni);
 
     // tally atomic force to global force
     tallyforce(f, fij, ai, aj, nij);
@@ -264,6 +264,67 @@ void PairPOD::compute(int eflag, int vflag)
   }
 
   if (vflag_fdotr) virial_fdotr_compute();
+}
+
+int PairPOD::query_pod(std::string pod_file)
+{
+  int fastpod = 0;
+
+  std::string podfilename = pod_file;
+  FILE *fppod;
+  if (comm->me == 0) {
+
+    fppod = utils::open_potential(podfilename,lmp,nullptr);
+    if (fppod == nullptr)
+      error->one(FLERR,"Cannot open POD coefficient file {}: ",
+                                   podfilename, utils::getsyserror());
+  }
+
+  // loop through lines of POD file and parse keywords
+
+  char line[MAXLINE],*ptr;
+  int eof = 0;
+
+  while (true) {
+    if (comm->me == 0) {
+      ptr = fgets(line,MAXLINE,fppod);
+      if (ptr == nullptr) {
+        eof = 1;
+        fclose(fppod);
+      }
+    }
+    MPI_Bcast(&eof,1,MPI_INT,0,world);
+    if (eof) break;
+    MPI_Bcast(line,MAXLINE,MPI_CHAR,0,world);
+
+    // words = ptrs to all words in line
+    // strip single and double quotes from words
+
+    std::vector<std::string> words;
+    try {
+      words = Tokenizer(utils::trim_comment(line),"\"' \t\n\r\f").as_vector();
+    } catch (TokenizerException &) {
+      // ignore
+    }
+
+    if (words.size() == 0) continue;
+
+    auto keywd = words[0];
+
+    if ((keywd != "#") && (keywd != "species") && (keywd != "pbc")) {
+
+      if (words.size() != 2)
+        error->one(FLERR,"Improper POD file.", utils::getsyserror());
+
+      if (keywd == "threebody_angular_degree") fastpod = 1;
+      if (keywd == "fourbody_angular_degree") fastpod = 1;
+      if (keywd == "fivebody_angular_degree") fastpod = 1;
+      if (keywd == "sixbody_angular_degree") fastpod = 1;
+      if (keywd == "sevenbody_angular_degree") fastpod = 1;
+    }
+  }
+
+  return fastpod;
 }
 
 /* ----------------------------------------------------------------------
@@ -462,13 +523,13 @@ void PairPOD::tallyforce(double **force, double *fij,  int *ai, int *aj, int N)
   }
 }
 
-void PairPOD::tallyenergy(double *ei, int istart, int Ni)
+void PairPOD::tallyenergy(double *ei, int *ilist, int istart, int Ni)
 {
   if (eflag_global)
     for (int k = 0; k < Ni; k++) eng_vdwl += ei[k];
 
   if (eflag_atom)
-    for (int k = 0; k < Ni; k++) eatom[istart+k] += ei[k];
+    for (int k = 0; k < Ni; k++) eatom[ilist[istart+k]] += ei[k];
 }
 
 /* ----------------------------------------------------------------------

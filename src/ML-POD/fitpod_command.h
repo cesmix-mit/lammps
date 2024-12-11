@@ -107,11 +107,15 @@ class FitPOD : public Command {
     double *A;      // least-square matrix for all descriptors
     double *b;      // least-square vector for all descriptors
     double *c;      // coefficents of descriptors
-    int szd;
+    int *tmpint=nullptr;
+    int szi;
+    int szd;    
     int nCoeffAll;    // number of global descriptors
     int nClusters;    // number of environment clusters
   };
 
+  int descriptorform;
+  int emptytestdata;
   int save_descriptors;
   int compute_descriptors;
   datastruct traindata;
@@ -119,6 +123,7 @@ class FitPOD : public Command {
   datastruct envdata;
   descriptorstruct desc;
   neighborstruct nb;
+  class MLPOD *podptr;
   class EAPOD *fastpodptr;
 
   // functions for collecting/collating arrays
@@ -153,7 +158,7 @@ class FitPOD : public Command {
   void saveintmatrix2binfile(std::string filename, int *A, int nrows, int ncols);
 
   // functions for reading input files and fitting
-
+  int query_pod(std::string pod_file);
   int read_data_file(double *fitting_weights, std::string &file_format, std::string &file_extension,
                      std::string &env_path, std::string &test_path, std::string &training_path,
                      std::string &filenametag, const std::string &data_file,
@@ -184,15 +189,20 @@ class FitPOD : public Command {
   void estimate_memory_neighborstruct(const datastruct &data, int *pbc, double rcut, int nelements);
   void allocate_memory_neighborstruct();
   void allocate_memory_descriptorstruct(int nd);
+  void allocate_memory_descriptorstruct(int nCoeffAll, int Mdesc, int nClusters);
+  void estimate_memory_descriptorstruct(const datastruct &data);
   void estimate_memory_fastpod(const datastruct &data);
+  void linear_descriptors(const datastruct &data, int ci);
+  void quadratic_descriptors(const datastruct &data, int ci);
   void local_descriptors_fastpod(const datastruct &data, int ci);
   void base_descriptors_fastpod(const datastruct &data, int ci);
   void least_squares_matrix(const datastruct &data, int ci);
   void least_squares_fit(const datastruct &data);
   void descriptors_calculation(const datastruct &data);
   void environment_cluster_calculation(const datastruct &data);
-  void print_analysis(const datastruct &data, double *outarray, double *errors);
+  void print_analysis(const datastruct &data, double *outarray, double *errors);  
   void error_analysis(const datastruct &data, double *coeff);
+  double energyforce_calculation(double *force, double *coeff, const datastruct &data, int ci);
   double energyforce_calculation_fastpod(double *force, const datastruct &data, int ci);
   void energyforce_calculation(const datastruct &data);
   double fmcutoff(double fm, double fmax);
