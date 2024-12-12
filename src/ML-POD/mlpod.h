@@ -115,7 +115,15 @@ class MLPOD : protected Pointers {
                       int ijnum, int ncoeff, int ntype);
   void pod4body_force(double **force, double *rij, double *coeff4, double *tmpmem, int *atomtype,
                       int *idxi, int *ai, int *aj, int *ti, int *tj, int natom, int Nij);
+ 
+  double pod2body_energyforce(double *fij, double *ei, double *rij, double *rbf, double *drbfdr, 
+                      double *coeff2, double *tmpmem, int *elemindex, int *pairnumsum, int *ti, 
+                      int *tj, int nelements, int nrbf, int natom, int Nij);   
 
+  double pod3body_energyforce(double *fij, double *ei, double *rij, double *rbf, double *drbfdr, 
+                      double *coeff3, double *tmpmem, int *elemindex, int *pairnumsum, int *ti, 
+                      int *tj, int nelements, int nrbf, int nabf, int natom, int Nij);
+  
  public:
   MLPOD(LAMMPS *, const std::string &pod_file, const std::string &coeff_file);
 
@@ -205,9 +213,10 @@ class MLPOD : protected Pointers {
   void cubic_descriptors(double *d333, double *Dd333, double *d3, double *Dd3, int M3, int N);
   double calculate_energyforce(double *force, double *gd, double *gdd, double *coeff, double *tmp,
                                int natom);
-  double energyforce_calculation(double *f, double *gd, double *gdd, double *coeff, double *y,
-                                 int *atomtype, int *alist, int *pairlist, int *pairnum,
-                                 int *pairnumsum, int *tmpint, int natom, int Nij);
+  
+//   double energyforce_calculation(double *f, double *gd, double *gdd, double *coeff, double *y,
+//                                  int *atomtype, int *alist, int *pairlist, int *pairnum,
+//                                  int *pairnumsum, int *tmpint, int natom, int Nij);
 
   // functions for calculating energies and forces
 
@@ -232,6 +241,14 @@ class MLPOD : protected Pointers {
                                  double *gd, double *rij, double *tmpmem, int *pairnumsum,
                                  int *atomtype, int *idxi, int *ai, int *aj, int *ti, int *tj,
                                  int natom, int Nij);
+  
+  double pod123body_energyforce(double *fij, double *ei, double *rij, double *podcoeff, 
+                       double *tmpmem, int *pairnumsum, int *typeai, int *ti, int *tj, int natom, int Nij);   
+
+  void tallyforce(double *force, double *fij, int *ai, int *aj, int N);
+  
+  double energyforce_calculation(double *force, double *fij, double *rij, double *podcoeff, double *tmpmem, 
+        int *pairnumsum, int *typeai, int *ai, int *aj, int *ti, int *tj, int natom, int Nij); 
 
 };
 

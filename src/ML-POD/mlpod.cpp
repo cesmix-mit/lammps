@@ -827,18 +827,19 @@ void MLPOD::pod3body(double *eatom, double *yij, double *e2ij, double *tmpmem,
         for (int p = 0; p < nabf1; p++) abf[p] = cos(p * theta);
         for (int p = 1; p < nabf1; p++) abf[nabf + p] = sin(p * theta);
                   
-        for (int m = 0; m < nrbf; m++) 
-        for (int q = 0; q < nrbf; q++) {
-          uj = e2ij[lj + s + Nij * m];
-          uk = e2ij[lk + s + Nij * q];
-          rbf = uj * uk;
-          for (int p = 0; p < nabf2; p++) {
-            n = p + (nabf2)*q + nabf2*nrbf*m;
-            nijk = (elemindex[typej + typek * nelements] - 1) +
-                   nelements2 * typei + nelements2 * nelements * n;
-            etm[nijk] += rbf * abf[p];
+        for (int m = 0; m < nrbf; m++) {
+          for (int q = 0; q < nrbf; q++) {
+            uj = e2ij[lj + s + Nij * m];
+            uk = e2ij[lk + s + Nij * q];
+            rbf = uj * uk;
+            for (int p = 0; p < nabf2; p++) {
+              n = p + (nabf2)*q + nabf2*nrbf*m;
+              nijk = (elemindex[typej + typek * nelements] - 1) +
+                     nelements2 * typei + nelements2 * nelements * n;
+              etm[nijk] += rbf * abf[p];              
+            }
           }
-        }
+        }                
       }
     }
     for (int m = 0; m < pod.nd3; m++)
@@ -1152,7 +1153,11 @@ double MLPOD::energyforce_calculation(double *force, double *podcoeff,
                         atomtype, idxi, ti, tj, natom, Nij);
 
   double energy = calculate_energy(effectivecoeff, gd, podcoeff);
-
+  
+//   for (int i=pod.nd1+pod.nd2; i<pod.nd; i++)
+//     printf("\%g ", gd[i]); 
+//   printf("\n");
+  
   podArraySetValue(force, 0.0, 3 * natom);
 
   calculate_force(force, effectivecoeff, rij, tmpmem, pairnumsum, atomtype,
@@ -1160,3 +1165,271 @@ double MLPOD::energyforce_calculation(double *force, double *podcoeff,
 
   return energy;
 }
+
+// double MLPOD::pod2body_energyforce(double *fij, double *ei, double *rij, double *rbf, 
+//                         double *drbfdr, double *coeff2, int *idxi, int *ti, int *tj, 
+//                         int *elemindex, int nelements, int nbf, int N) {    
+//   int energy = 0.0;
+//   int nelements2 = nelements * (nelements + 1) / 2;
+//   for (int n = 0; n < N; n++) {
+//     int typei = ti[n] - 1;
+//     int typej = tj[n] - 1;    
+//     double en = 0.0;
+//     double fn = 0.0;    
+//     for (int m = 0; m < nbf; m++) {      
+//       int nm = n + N * m;
+//       int km = (elemindex[typei + typej * nelements] - 1) + nelements2 * m;
+//       double ce = coeff2[km];
+//       en += ce * rbf[nm];
+//       fn += ce * drbfdr[nm];      
+//     }
+//     
+//     ei[idxi[n]] += en;
+//     energy += en;
+//         
+//     double xij1 = rij[0+3*n];
+//     double xij2 = rij[1+3*n];
+//     double xij3 = rij[2+3*n];
+//     double dij = sqrt(xij1 * xij1 + xij2 * xij2 + xij3 * xij3);
+//     double tn = fn/dij;
+//     fij[0+3*n] += tn*xij1;
+//     fij[1+3*n] += tn*xij2;
+//     fij[2+3*n] += tn*xij3;                
+//   }
+//   return energy;
+// }
+
+double MLPOD::pod2body_energyforce(double *fij, double *ei, double *rij, double *rbf, double *drbfdr, 
+                    double *coeff2, double *tmpmem, int *elemindex, int *pairnumsum, int *ti, int *tj, 
+                    int nelements, int nrbf, int natom, int Nij) {    
+  double energy = 0.0;
+  int nelements2 = nelements * (nelements + 1) / 2;
+  
+  for (int ii = 0; ii < natom; ii++) {
+    int numneigh = pairnumsum[ii + 1] - pairnumsum[ii];
+    int s = pairnumsum[ii];
+    double en = 0.0;
+    for (int lj = 0; lj < numneigh; lj++) {
+      int n = lj + s;
+      int typei = ti[n] - 1;
+      int typej = tj[n] - 1;          
+      double fn = 0.0;    
+      for (int m = 0; m < nrbf; m++) {      
+        int nm = n + Nij * m;
+        int km = (elemindex[typei + typej * nelements] - 1) + nelements2 * m;
+        double ce = coeff2[km];
+        en += ce * rbf[nm];
+        fn += ce * drbfdr[nm];      
+      }
+
+      double xij1 = rij[0+3*n];
+      double xij2 = rij[1+3*n];
+      double xij3 = rij[2+3*n];
+      double dij = sqrt(xij1 * xij1 + xij2 * xij2 + xij3 * xij3);
+      double tn = fn/dij;
+      fij[0+3*n] += tn*xij1;
+      fij[1+3*n] += tn*xij2;
+      fij[2+3*n] += tn*xij3;                      
+    }
+    ei[ii] += en;
+    energy += en;
+  }
+  
+  return energy;
+}
+
+
+double MLPOD::pod3body_energyforce(double *fij, double *ei, double *rij, double *rbf, double *drbfdr, 
+                    double *coeff3, double *tmpmem, int *elemindex, int *pairnumsum, int *ti, int *tj, 
+                    int nelements, int nrbf, int nabf, int natom, int Nij) {
+  int dim = 3;
+  int nelements2 = nelements * (nelements + 1) / 2;
+  int n, c, typei, typej, typek, ij, ik;
+
+  double xij1, xij2, xij3, xik1, xik2, xik3;
+  double xdot, dijsq, diksq, dij, dik;
+  double costhe, sinthe, theta, dtheta;
+  double tm, tm1, tm2, dct1, dct2, dct3, dct4, dct5, dct6;
+
+  int nabf1 = nabf + 1;
+  int nabf2 = 2*nabf + 1;
+  double *abf = &tmpmem[0];
+  double *dabf = &tmpmem[nabf2];
+  
+  double energy = 0.0;
+  for (int ii = 0; ii < natom; ii++) {
+    int numneigh = pairnumsum[ii + 1] - pairnumsum[ii];
+    int s = pairnumsum[ii];    
+    for (int lj = 0; lj < numneigh; lj++) {
+      ij = lj + s;
+      typei = ti[ij] - 1;
+      typej = tj[ij] - 1;
+      xij1 = rij[0 + dim * ij];
+      xij2 = rij[1 + dim * ij];
+      xij3 = rij[2 + dim * ij];
+      dijsq = xij1 * xij1 + xij2 * xij2 + xij3 * xij3;
+      dij = sqrt(dijsq);
+      
+      double en = 0.0, fjx = 0.0, fjy = 0.0, fjz = 0.0;
+      for (int lk = lj + 1; lk < numneigh; lk++) {
+        ik = lk + s;
+        typek = tj[ik] - 1;
+        xik1 = rij[0 + dim * ik];
+        xik2 = rij[1 + dim * ik];
+        xik3 = rij[2 + dim * ik];
+        diksq = xik1 * xik1 + xik2 * xik2 + xik3 * xik3;
+        dik = sqrt(diksq);
+
+        xdot = xij1 * xik1 + xij2 * xik2 + xij3 * xik3;
+        tm = dij * dik;
+        costhe = xdot / tm;
+        costhe = costhe > 1.0 ? 1.0 : costhe;
+        costhe = costhe < -1.0 ? -1.0 : costhe;
+        xdot = costhe * (dij * dik);
+
+        sinthe = sqrt(1.0 - costhe * costhe);
+        sinthe = sinthe > 1e-12 ? sinthe : 1e-12;
+        theta = acos(costhe);
+        dtheta = -1.0 / sinthe;
+
+        tm1 = 1.0 / (dijsq * tm);
+        tm2 = 1.0 / (diksq * tm);
+        dct1 = (xik1 * dijsq - xij1 * xdot) * tm1;
+        dct2 = (xik2 * dijsq - xij2 * xdot) * tm1;
+        dct3 = (xik3 * dijsq - xij3 * xdot) * tm1;
+        dct4 = (xij1 * diksq - xik1 * xdot) * tm2;
+        dct5 = (xij2 * diksq - xik2 * xdot) * tm2;
+        dct6 = (xij3 * diksq - xik3 * xdot) * tm2;
+
+        for (int p = 0; p < nabf1; p++) {
+          abf[p] = cos(p * theta);
+          dabf[p] = -p * sin(p * theta) * dtheta;          
+        }
+        
+        for (int p = 1; p < nabf1; p++) {
+          int np = nabf+p;
+          abf[np] = sin(p * theta);
+          dabf[np] = p * cos(p * theta) * dtheta;
+        }
+        
+        double fn = 0.0, fm = 0.0, fq = 0.0, fp = 0.0;
+        for (int m = 0; m < nrbf; m++) {
+          for (int q = 0; q < nrbf; q++) {
+            double uj = rbf[ij + Nij * m];
+            double uk = rbf[ik + Nij * q];
+            double ujk = uj * uk;
+            double dujkdrj = drbfdr[ij + Nij * m] * uk;
+            double dujkdrk = drbfdr[ik + Nij * q] * uj;
+
+            for (int p = 0; p < nabf2; p++) {
+              n = p + (nabf2)*q + nabf2*nrbf*m;
+              c = (elemindex[typej + typek * nelements] - 1) +
+                  nelements2 * typei + nelements2 * nelements * n;            
+              tm1 = coeff3[c];            
+              tm = abf[p];          
+
+              fn += tm1 * ujk * tm;
+              fm += tm1 * dujkdrj * tm;
+              fq += tm1 * dujkdrk * tm;
+              fp += tm1 * ujk * dabf[p];            
+            }
+          }
+        }
+        
+        en += fn;
+        tm1 = fm/dij;
+        tm2 = fq/dik;        
+        fjx += (tm1*xij1 + fp * dct1);
+        fjy += (tm1*xij2 + fp * dct2);
+        fjz += (tm1*xij3 + fp * dct3);                                
+        fij[0+3*ik] += (tm2*xik1 + fp * dct4);
+        fij[1+3*ik] += (tm2*xik2 + fp * dct5);
+        fij[2+3*ik] += (tm2*xik3 + fp * dct6);                                        
+      }      
+      energy += en;
+      ei[ii] += en;
+      fij[0+3*ij] += fjx;
+      fij[1+3*ij] += fjy;
+      fij[2+3*ij] += fjz;                                      
+    }        
+  }
+    
+  return energy;
+}
+
+
+double MLPOD::pod123body_energyforce(double *fij, double *ei, double *rij, double *podcoeff, 
+                       double *tmpmem, int *pairnumsum, int *typeai, int *ti, int *tj, int natom, int Nij) 
+{
+  int nelements = pod.nelements;
+  int nrbf2 = pod.nbf2;
+  int nabf3 = pod.nabf3;
+  int nrbf3 = pod.nrbf3;
+  int nd1 = pod.nd1;
+  int nd2 = pod.nd2;
+  int nd3 = pod.nd3;
+  int *elemindex = pod.elemindex;
+
+  double *coeff1 = &podcoeff[0];
+  double *coeff2 = &podcoeff[nd1];
+  double *coeff3 = &podcoeff[nd1 + nd2];
+
+  double *rbf = &tmpmem[0];
+  double *drbfdr = &tmpmem[Nij * nrbf2];
+  double *tmp = &tmpmem[2 * Nij * nrbf2];
+  
+  double energy = 0.0;  
+  podArraySetValue(fij, 0.0, 3 * Nij);
+  
+  for (int i = 0; i < natom; i++)
+    for (int m = 1; m <= nelements; m++) {   
+      double e = coeff1[m-1] * ((typeai[i] == m) ? 1.0 : 0.0);
+      ei[i] = e;
+      energy += e;
+    }
+    
+  rbpodptr->femdrbfdr(rbf, drbfdr, rij, Nij);
+  
+  energy += pod2body_energyforce(fij, ei, rij, rbf, drbfdr, coeff2, tmp, elemindex, 
+                                 pairnumsum, ti, tj, nelements, nrbf2, natom, Nij);
+
+  energy += pod3body_energyforce(fij, ei, rij, rbf, drbfdr, coeff3, tmp, elemindex, 
+                                 pairnumsum, ti, tj, nelements, nrbf3, nabf3, natom, Nij);
+    
+  return energy;
+}
+
+void MLPOD::tallyforce(double *force, double *fij, int *ai, int *aj, int N)
+{
+  for (int n=0; n<N; n++) {
+    int im =  ai[n];
+    int jm =  aj[n];
+    int nm = 3*n;
+    force[0 + 3*im] += fij[0 + nm];
+    force[1 + 3*im] += fij[1 + nm];
+    force[2 + 3*im] += fij[2 + nm];
+    force[0 + 3*jm] -= fij[0 + nm];
+    force[1 + 3*jm] -= fij[1 + nm];
+    force[2 + 3*jm] -= fij[2 + nm];
+  }
+}
+
+
+double MLPOD::energyforce_calculation(double *force, double *fij, double *rij, double *podcoeff, double *tmpmem, 
+        int *pairnumsum, int *typeai, int *ai, int *aj, int *ti, int *tj, int natom, int Nij) 
+{
+  
+  double energy = 0.0;
+    
+  double *ei = &tmpmem[0];
+  double *tmp = &tmpmem[natom];
+  
+  energy = pod123body_energyforce(fij, ei, rij, podcoeff, tmp, pairnumsum, typeai, ti, tj, natom, Nij);
+  
+  podArraySetValue(force, 0.0, 3 * natom);
+  tallyforce(force, fij, ai, aj, Nij);
+  
+  return energy;
+}
+
+

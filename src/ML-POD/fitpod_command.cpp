@@ -2099,9 +2099,13 @@ double FitPOD::energyforce_calculation(double *force, double *coeff, const datas
   double *effectivecoeff = &tmpmem[3*Nij]; // 3*Nij
   podArraySetValue(effectivecoeff, 0.0, nd1234);
 
-  double energy = podptr->energyforce_calculation(force, coeff, effectivecoeff, desc.gd, rij,
-    &tmpmem[3*Nij+nd1234], nb.pairnum_cumsum, atomtype, idxi, ai, aj, ti, tj, natom, Nij);
+//   double energy = podptr->energyforce_calculation(force, coeff, effectivecoeff, desc.gd, rij,
+//     &tmpmem[3*Nij+nd1234], nb.pairnum_cumsum, atomtype, idxi, ai, aj, ti, tj, natom, Nij);
 
+  double *fij = &tmpmem[3*Nij]; // 3*Nij
+  double energy = podptr->energyforce_calculation(force, fij, rij, coeff, &tmpmem[2*3*Nij], 
+          nb.pairnum_cumsum, atomtype, ai, aj, ti, tj, natom, Nij);
+  
   return energy;
 }
 

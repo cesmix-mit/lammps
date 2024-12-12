@@ -93,6 +93,7 @@ class RBPOD : protected Pointers {
   void femradialbasis(double *rbf, double *rbfx, double *rbfy, double *rbfz, double *rij, int N);
   void femradialbasis(double *rbf, double *drbfx, double *rij, int N);
   void femradialbasis(double *rbf, double *rij, int N);
+  void femdrbfdr(double *rbf, double *drbfdr, double *rij, int N);
   
   ~RBPOD() override;
 };

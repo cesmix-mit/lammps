@@ -1328,3 +1328,34 @@ void RBPOD::femradialbasis(double *rbf, double *rij, int N)
     }    
   }
 }
+
+void RBPOD::femdrbfdr(double *rbf, double *drbfdr, double *rij, int N)
+{
+  int p1 = nfemdegree + 1;
+  double dr = (rcut-rin-1e-3)/nfemelem;
+  
+  for (int n=0; n<N; n++) {
+    double xij1 = rij[0+3*n];
+    double xij2 = rij[1+3*n];
+    double xij3 = rij[2+3*n];
+    double dij = sqrt(xij1*xij1 + xij2*xij2 + xij3*xij3);
+    int i = (dij-rin-1e-3)/dr;        
+    if (i > (nfemelem-1)) i = nfemelem-1;        
+                
+    double ymin = relem[i];
+    double ymax = relem[i+1];                
+    double dy = 2.0/(ymax - ymin);  
+    double xi = dy * (dij  - ymin) - 1;    
+    double xi1 = xi*xi;
+    double xi2 = 1.5*xi1 - 0.5;
+    double xi3 = (2.5*xi1 - 1.5)*xi;
+            
+    double *c = &crbf[p1*nrbfmax*i];    
+    double *d = &drbf[p1*nrbfmax*i];                
+    for (int j=0; j<nrbfmax; j++) {
+      int m = p1*j;
+      rbf[n + N*j] = c[0+m] + c[1+m]*xi + c[2+m]*xi2 + c[3+m]*xi3;
+      drbfdr[n + N*j] = d[0+m] + d[1+m]*xi + d[2+m]*xi2 + d[3+m]*xi3;
+    }            
+  }
+}
