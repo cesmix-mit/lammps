@@ -1717,7 +1717,7 @@ void MLPOD::femevaluation3body(double *phi, double *cphi, double *x, double *tmp
   int np = n*n*n;
   
   char chn = 'N';  
-  double alpha = 1.0, beta = 0.0;
+  double alpha = 1.0, beta = 0.0, tm;
   
   double dr = (rcut-rin-1e-3)/nelemr;
   double fr = 2.0/dr;    
@@ -1751,21 +1751,39 @@ void MLPOD::femevaluation3body(double *phi, double *cphi, double *x, double *tmp
     double xi2 = xi[1]*xi[1];
     xi[2] = 1.5*xi2 - 0.5;
     xi[3] = (2.5*xi2 - 1.5)*xi[1];                  
-    DGEMM(&chn, &chn, &one, &nsq4, &n, &alpha, xi, &one, c, &n, &beta, c1, &one);     
+    //DGEMM(&chn, &chn, &one, &nsq4, &n, &alpha, xi, &one, c, &n, &beta, c1, &one);     
+    for (int i=0; i<nsq4; i++) {
+      tm = 0;
+      for (int j=0; j<n; j++)
+        tm += xi[j]*c[j + n*i];
+      c1[i] = tm;
+    }
     
     double yk = rin+1e-3 + e2*dr;    
     xi[1] = fr * (rk  - yk) - 1;   
     xi2 = xi[1]*xi[1];
     xi[2] = 1.5*xi2 - 0.5;
     xi[3] = (2.5*xi2 - 1.5)*xi[1];                          
-    DGEMM(&chn, &chn, &one, &n4, &n, &alpha, xi, &one, c1, &n, &beta, c2, &one);   
+    //DGEMM(&chn, &chn, &one, &n4, &n, &alpha, xi, &one, c1, &n, &beta, c2, &one);   
+    for (int i=0; i<n4; i++) {
+      tm = 0;
+      for (int j=0; j<n; j++)
+        tm += xi[j]*c1[j + n*i];
+      c2[i] = tm;
+    }
     
     double yj = rin+1e-3 + e1*dr;        
     xi[1] = fr * (rj  - yj) - 1;       
     xi2 = xi[1]*xi[1];
     xi[2] = 1.5*xi2 - 0.5;
     xi[3] = (2.5*xi2 - 1.5)*xi[1];                              
-    DGEMM(&chn, &chn, &one, &four, &n, &alpha, xi, &one, c2, &n, &beta, &phi[four*n], &one);          
+    //DGEMM(&chn, &chn, &one, &four, &n, &alpha, xi, &one, c2, &n, &beta, &phi[four*n], &one);          
+    for (int i=0; i<four; i++) {
+      tm = 0;
+      for (int j=0; j<n; j++)
+        tm += xi[j]*c2[j + n*i];
+      phi[i + four*n] = tm;
+    }
   }    
 }
 
