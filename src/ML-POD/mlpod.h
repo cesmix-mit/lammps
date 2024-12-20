@@ -249,9 +249,24 @@ class MLPOD : protected Pointers {
   
   double energyforce_calculation(double *force, double *fij, double *rij, double *podcoeff, double *tmpmem, 
         int *pairnumsum, int *typeai, int *ai, int *aj, int *ti, int *tj, int natom, int Nij); 
-
+  
+  void femrbf(double *rbf, double *drbfdr, double rin, double rcut, int nrbf, int nelem, int p);
+  
+  void femabf(double *abf, double *dabf, int nabf, int nelem, int p);
+  
+  void femgrid3body(double *phi, double *dphi1, double *dphi2, double *dphi3, double *coeff3, 
+        int *elemindex, double rin, double rcut, int nrbf, int nelemr, int nabf, int nelema, int p, 
+        int nelements, int typei, int typej, int typek);
+  
+  void femapproximation3body(double *cphi, double *coeff3, int *elemindex, double rin, 
+        double rcut, int nrbf, int nelemr, int nabf, int nelema, int p, 
+        int nelements, int typei, int typej, int typek);
+  
+  void femevaluation3body(double *phi, double *cphi, double *x, double *tmp,
+        double rin, double rcut, int nelemr, int nelema, int p, int N);
 };
 
 }    // namespace LAMMPS_NS
 
 #endif
+

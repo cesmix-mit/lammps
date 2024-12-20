@@ -50,14 +50,7 @@ class RBPOD : protected Pointers {
   void gaussianbasis(double *rbf, double *rbfx, double *rbfy, double *rbfz, double *rij, int N);  
   void radialbasis(double *rbf, double *drbf, double *rij, int N);      
   void gaussianbasis(double *rbf, double *drbf, double *rij, int N);  
-  void podradialbasis(double *rbf, double *drbf, double *rij, double *temp, int N);  
-  
-  void xchenodes(double* xi, int p); 
-  void ref2dom(double* y, double* xi, double ymin, double ymax, int n); 
-  void dom2ref(double* xi, double* y, double ymin, double ymax, int n); 
-  void legendrepolynomials(double* poly, double* xi, int p, int n);
-  int tensorpolyfit(double* c, double* xi, double* A, double* y, double* f, int* ipiv, double ymin, double ymax, int p, int n, int nrhs);
-  void tensorpolyeval(double* f, double* c, double* xi, double* A, double* y, double ymin, double ymax, int p, int n, int nrhs);
+  void podradialbasis(double *rbf, double *drbf, double *rij, double *temp, int N);    
   void femapproximation(int nelem, int p);
   
  public:
@@ -94,7 +87,16 @@ class RBPOD : protected Pointers {
   void femradialbasis(double *rbf, double *drbfx, double *rij, int N);
   void femradialbasis(double *rbf, double *rij, int N);
   void femdrbfdr(double *rbf, double *drbfdr, double *rij, int N);
+  void fem1drbf(double *rbf, double *drbfdr, double *x, int N);
   
+  void xchenodes(double* xi, int p); 
+  void ref2dom(double* y, double* xi, double ymin, double ymax, int n); 
+  void dom2ref(double* xi, double* y, double ymin, double ymax, int n); 
+  void legendrepolynomials(double* poly, double* xi, int p, int n);
+  void tensorpolynomials(double* A, double* x, int p, int n, int dim);
+  int tensorpolyfit(double* c, double* xi, double* A, double* y, double* f, int* ipiv, double ymin, double ymax, int p, int n, int nrhs);
+  void tensorpolyeval(double* f, double* c, double* xi, double* A, double* y, double ymin, double ymax, int p, int n, int nrhs);
+    
   ~RBPOD() override;
 };
 

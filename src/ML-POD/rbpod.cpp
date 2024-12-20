@@ -69,6 +69,7 @@ RBPOD::~RBPOD()
 {
   memory->destroy(Phi);
   memory->destroy(Lambda);
+  memory->destroy(relem);
   memory->destroy(crbf);
   memory->destroy(drbf);  
 }
@@ -1186,7 +1187,7 @@ void RBPOD::femapproximation(int nelem, int p)
   // Print the results
   printf("Time taken by podradialbasis: %f seconds\n", time_pod);
   printf("Time taken by femradialbasis: %f seconds\n", time_fem);
-    
+      
   memory->destroy(xi);
   memory->destroy(y);
   memory->destroy(A);
@@ -1359,3 +1360,114 @@ void RBPOD::femdrbfdr(double *rbf, double *drbfdr, double *rij, int N)
     }            
   }
 }
+
+void RBPOD::fem1drbf(double *rbf, double *drbfdr, double *x, int N)
+{
+  int p1 = nfemdegree + 1;
+  double dr = (rcut-rin-1e-3)/nfemelem;
+  
+  for (int n=0; n<N; n++) {    
+    double dij = x[n];
+    int i = (dij-rin-1e-3)/dr;        
+    if (i > (nfemelem-1)) i = nfemelem-1;        
+                
+    double ymin = relem[i];
+    double ymax = relem[i+1];                
+    double dy = 2.0/(ymax - ymin);  
+    double xi = dy * (dij  - ymin) - 1;    
+    double xi1 = xi*xi;
+    double xi2 = 1.5*xi1 - 0.5;
+    double xi3 = (2.5*xi1 - 1.5)*xi;
+            
+    double *c = &crbf[p1*nrbfmax*i];    
+    double *d = &drbf[p1*nrbfmax*i];                
+    for (int j=0; j<nrbfmax; j++) {
+      int m = p1*j;
+      rbf[n + N*j] = c[0+m] + c[1+m]*xi + c[2+m]*xi2 + c[3+m]*xi3;
+      drbfdr[n + N*j] = d[0+m] + d[1+m]*xi + d[2+m]*xi2 + d[3+m]*xi3;
+    }            
+  }
+}
+
+void RBPOD::tensorpolynomials(double* A, double* x, int p, int n, int dim) 
+{        
+    if (dim == 1) {
+      legendrepolynomials(A, x, p, n); 
+      return;
+    }
+    
+    int p1 = p+1;        
+    double *B;
+    memory->create(B, n*p1*dim, "rbpod:A1");     
+    for (int d=0; d<dim; d++)
+      legendrepolynomials(&B[n*p1*d], &x[n*d], p, n);    
+    
+    if (dim == 2) {        
+      double *A1 = &B[0];
+      double *A2 = &B[n*p1];
+      for (int k = 0; k < p1; k++) 
+        for (int j = 0; j < p1; j++)          
+          for (int i = 0; i < n; i++) 
+            A[i + n*j + n*p1*k] = A1[i + n*j] * A2[i + n*k];
+                
+    } else if (dim == 3) {        
+      double *A1 = &B[0];
+      double *A2 = &B[n*p1];
+      double *A3 = &B[2*n*p1];
+      for (int l = 0; l < p1; l++) 
+        for (int k = 0; k < p1; k++) 
+          for (int j = 0; j < p1; j++) {          
+            int index = n*j + n*p1*k + n*p1*p1*l;
+            for (int i = 0; i < n; i++) 
+              A[i + index] = A1[i + n*j] * A2[i + n*k] * A3[i + n*l];            
+          }
+    } else if (dim == 4) {
+      double *A1 = &B[0];
+      double *A2 = &B[n*p1];
+      double *A3 = &B[2*n*p1];
+      double *A4 = &B[3*n*p1];
+      for (int m = 0; m < p1; m++) 
+        for (int l = 0; l < p1; l++) 
+          for (int k = 0; k < p1; k++) 
+            for (int j = 0; j < p1; j++)  {          
+              int index = n*j + n*p1*k + n*p1*p1*l + n*p1*p1*p1*m;
+              for (int i = 0; i < n; i++) 
+                A[i + index] = A1[i + n*j] * A2[i + n*k] * A3[i + n*l] * A4[i + n*m];                  
+            }      
+    } else if (dim == 5) {
+      double *A1 = &B[0];
+      double *A2 = &B[n*p1];
+      double *A3 = &B[2*n*p1];
+      double *A4 = &B[3*n*p1];
+      double *A5 = &B[4*n*p1];
+      for (int q = 0; q < p1; q++) 
+        for (int m = 0; m < p1; m++) 
+          for (int l = 0; l < p1; l++) 
+            for (int k = 0; k < p1; k++) 
+              for (int j = 0; j < p1; j++)  {          
+                int index = n*j + n*p1*k + n*p1*p1*l + n*p1*p1*p1*m + n*p1*p1*p1*p1*q;
+                for (int i = 0; i < n; i++) 
+                  A[i + index] = A1[i + n*j] * A2[i + n*k] * A3[i + n*l] * A4[i + n*m] * A5[i + n*q];                  
+              }
+    } else if (dim == 6) {
+      double *A1 = &B[0];
+      double *A2 = &B[n*p1];
+      double *A3 = &B[2*n*p1];
+      double *A4 = &B[3*n*p1];
+      double *A5 = &B[4*n*p1];
+      double *A6 = &B[5*n*p1];
+      for (int r = 0; r < p1; r++) 
+        for (int q = 0; q < p1; q++) 
+          for (int m = 0; m < p1; m++) 
+            for (int l = 0; l < p1; l++) 
+              for (int k = 0; k < p1; k++) 
+                for (int j = 0; j < p1; j++)  {          
+                  int index = n*j + n*p1*k + n*p1*p1*l + n*p1*p1*p1*m + n*p1*p1*p1*p1*q + n*p1*p1*p1*p1*p1*r;
+                  for (int i = 0; i < n; i++) 
+                    A[i + index] = A1[i + n*j] * A2[i + n*k] * A3[i + n*l] * A4[i + n*m] * A5[i + n*q] * A6[i + n*r];                  
+                }  
+    }
+    
+    memory->destroy(B);  
+}
+
