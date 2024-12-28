@@ -1689,6 +1689,8 @@ void PairPODKokkos<DeviceType>::tallyforce(t_pod_1d l_fij, t_pod_1i l_ai, t_pod_
 template<class DeviceType>
 void PairPODKokkos<DeviceType>::tallyenergy(t_pod_1d l_ei, int istart, int Ni)
 {
+  // create local shadow views for KOKKOS_LAMBDA to pass them into parallel_for
+  auto l_ilist = d_ilist;
   auto l_eatom = d_eatom;
 
   // For global energy tally
@@ -1704,8 +1706,8 @@ void PairPODKokkos<DeviceType>::tallyenergy(t_pod_1d l_ei, int istart, int Ni)
 
   // For per-atom energy tally
   if (eflag_atom) {
-    Kokkos::parallel_for("PerAtomEnergyTally", Ni, KOKKOS_LAMBDA(int k) {
-      l_eatom(istart + k) += l_ei(k);
+    Kokkos::parallel_for("PerAtomEnergyTally", Ni, KOKKOS_LAMBDA(int k) {      
+      l_eatom(l_ilist(istart + k)) += l_ei(k);
     });
   }
 }

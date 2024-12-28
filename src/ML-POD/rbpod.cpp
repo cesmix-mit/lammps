@@ -61,7 +61,17 @@ RBPOD::RBPOD(LAMMPS *_lmp, const std::string &pod_file) :
   
   nfemelem = 1000;
   nfemdegree = 3;  
-  femapproximation(nfemelem, nfemdegree);
+    
+  int n = (nfemdegree+1)*nrbfmax*nfemelem;
+  memory->create(crbf, n, "rbpod:crbf");
+  memory->create(drbf, n, "rbpod:drbf");  
+  memory->create(relem, nfemelem+1, "rbpod:relem");  
+  
+  if (comm->me == 0) femapproximation(nfemelem, nfemdegree);
+  
+  MPI_Bcast(crbf, n, MPI_DOUBLE, 0, world);    
+  MPI_Bcast(drbf, n, MPI_DOUBLE, 0, world);    
+  MPI_Bcast(relem, nfemelem+1, MPI_DOUBLE, 0, world);    
 }
 
 // destructor
@@ -76,7 +86,7 @@ RBPOD::~RBPOD()
 
 void RBPOD::read_pod_file(std::string pod_file)
 {
-  int nrbf2, nrbf3, nrbf4, nrbf33, nrbf34, nrbf44;
+  int nrbf2=0, nrbf3=0, nrbf4=0, nrbf33=0, nrbf34=0, nrbf44=0;
   
   std::string podfilename = pod_file;
   FILE *fppod;
@@ -132,8 +142,9 @@ void RBPOD::read_pod_file(std::string pod_file)
         polydegrees[i] = utils::inumeric(FLERR,words[i+1],false,lmp);      
     }
     
-    if ((keywd != "#") && (keywd != "species") && (keywd != "pbc") && (keywd != "gaussian_exponents") && (keywd != "polynomial_degrees")) {
-
+    if ((keywd != "#") && (keywd != "species") && (keywd != "pbc") && (keywd != "gaussian_exponents") 
+        && (keywd != "polynomial_degrees") && (keywd != "fem_approximation_threebody")) {      
+              
       if (words.size() != 2)
         error->one(FLERR,"Improper POD file.", utils::getsyserror());      
               
@@ -987,16 +998,6 @@ void RBPOD::podradialbasis(double *rbf, double *drbfdr, double *rij, double *tem
   DGEMM(&chn, &chn, &N, &nrbfmax, &ns, &alpha, drbft, &N, Phi, &ns, &beta, drbfdr, &N);  
 }
 
-double maxerror(double *a, double *b, int n)
-{
-  double e = 0.0;
-  for (int i=0; i<n; i++) {
-    double d = fabs(a[i] - b[i]);
-    e = (e > d) ? e : d;
-  }
-  return e;
-}
-
 void RBPOD::femapproximation(int nelem, int p)
 {    
   int n = p + 1;
@@ -1015,20 +1016,10 @@ void RBPOD::femapproximation(int nelem, int p)
   double *rbf;
   double *drbfdr;  
   double *temp;  
-  double *xitest;
-  double *ytest;
-  double *Atest;  
-  double *rbftest;
-  double *drbfdrtest;  
-  double *temptest;    
-  
-  memory->create(crbf, n*nrbfmax*nelem, "rbpod:crbf");
-  memory->create(drbf, n*nrbfmax*nelem, "rbpod:drbf");  
-    
+      
   memory->create(A, n*n, "rbpod:A");
   memory->create(Ainv, n*n, "rbpod:Ainv");
-  memory->create(work, n*n, "rbpod:work");
-  memory->create(relem, nelem+1, "rbpod:elem");  
+  memory->create(work, n*n, "rbpod:work");  
   
   memory->create(xi, n, "rbpod:xi");
   memory->create(y, n, "rbpod:y");  
@@ -1036,158 +1027,24 @@ void RBPOD::femapproximation(int nelem, int p)
   memory->create(drbfdr, n*nrbfmax, "rbpod:rbfx");  
   memory->create(temp, 2*n*ns, "rbpod:rbfz");  
   
-  memory->create(xitest, ntest, "rbpod:xi");
-  memory->create(ytest, ntest, "rbpod:y");
-  memory->create(Atest, ntest*n, "rbpod:A");
-  memory->create(rbftest, ntest*nrbfmax, "rbpod:rbf");
-  memory->create(drbfdrtest, ntest*nrbfmax, "rbpod:rbfx");  
-  memory->create(temptest, 2*ntest*ns, "rbpod:rbfz");  
-  
   xchenodes(xi, p);
   legendrepolynomials(A, xi, p, n); 
   for (int i=0; i<n*n; i++) Ainv[i] = A[i];
       
   DGETRF(&n,&n,Ainv,&n,ipiv,&info);
   DGETRI(&n,Ainv,&n,ipiv,work,&lwork,&info);
-    
-  xchenodes(xitest, ntest-1);
-  legendrepolynomials(Atest, xitest, p, ntest);   
-  
-//   for (int i=0; i<n; i++) {
-//     for (int j=0; j<n; j++)
-//       printf("%g ", A[i + n*j]);
-//     printf("\n");    
-//   }
-//   
-//   for (int i=0; i<n; i++) {
-//     for (int j=0; j<n; j++)
-//       printf("%g ", Ainv[i + n*j]);
-//     printf("\n");    
-//   }
   
   for (int i=0; i<nelem+1; i++)
     relem[i] = rin+1e-3 + (rcut-rin-1e-3)*(i*1.0/nelem);
-  
-//   double a = rin+1e-3; 
-//   double b = rcut;
-//   double c = 1.0;
-//   for (int i=0; i<nelem+1; i++)
-//     relem[i] = a + (b-a)*(exp(c*(relem[i]-a)/(b-a))-1)/(exp(c)-1);
   
   double err[2] = {0, 0};
   for (int i=0; i<nelem; i++) {
     ref2dom(y, xi, relem[i], relem[i+1], n); 
     podradialbasis(rbf, drbfdr, y, temp, n);        
     DGEMM(&chn, &chn, &n, &nrbfmax, &n, &alpha, Ainv, &n, rbf, &n, &beta, &crbf[n*nrbfmax*i], &n);    
-    DGEMM(&chn, &chn, &n, &nrbfmax, &n, &alpha, Ainv, &n, drbfdr, &n, &beta, &drbf[n*nrbfmax*i], &n);        
-    
-    ref2dom(ytest, xitest, relem[i], relem[i+1], ntest); 
-    podradialbasis(rbftest, drbfdrtest, ytest, temptest, ntest);            
-    DGEMM(&chn, &chn, &ntest, &nrbfmax, &n, &alpha, Atest, &ntest, &crbf[n*nrbfmax*i], &n, &beta, temptest, &ntest);        
-    DGEMM(&chn, &chn, &ntest, &nrbfmax, &n, &alpha, Atest, &ntest, &drbf[n*nrbfmax*i], &n, &beta, &temptest[ntest*nrbfmax], &ntest);        
-    
-//     if (i==nelem-1) {
-//       printf("Element: %d, [%g  %g] \n", i, relem[i], relem[i+1]); 
-//       for (int k=0; k<ntest; k++) {
-//         for (int j=0; j<nrbfmax; j++)
-//           printf("%g ", rbftest[k + ntest*j]);
-//         printf("\n");    
-//       } 
-//       
-//       printf("\n");          
-//       for (int k=0; k<n; k++) {
-//         for (int j=0; j<nrbfmax; j++)
-//           printf("%g ", crbf[k + n*j + n*nrbfmax*i]);
-//         printf("\n");    
-//       } 
-//     }
- 
-    double e0 = 0, e1 = 0;
-    for (int j=0; j<ntest*nrbfmax; j++) {
-      double de = fabs(temptest[j] - rbftest[j]);
-      double fe = fabs(temptest[ntest*nrbfmax+j] - drbfdrtest[j]);
-      e0 = (e0 > de) ? e0 : de;
-      e1 = (e1 > fe) ? e1 : fe;
-    }    
-    err[0] = (err[0] > e0) ? err[0] : e0;
-    err[1] = (err[1] > e1) ? err[1] : e1;
-    
-//    printf("Element: %d, [%g  %g], %g,  %g \n", i, relem[i], relem[i+1], e0, e1); 
-//     for (int k=0; k<ntest; k++) {
-//       for (int j=0; j<nrbfmax; j++)
-//         printf("%g ", drbfdrtest[k + ntest*j]);
-//       printf("\n");    
-//     }
-//     for (int k=0; k<ntest; k++) {
-//       for (int j=0; j<nrbfmax; j++)
-//         printf("%g ", temptest[ntest*nrbfmax + k + ntest*j]);
-//       printf("\n");    
-//     }    
+    DGEMM(&chn, &chn, &n, &nrbfmax, &n, &alpha, Ainv, &n, drbfdr, &n, &beta, &drbf[n*nrbfmax*i], &n);           
   }  
-  printf("Maximum absolute errors: |rbf - rbffem|_infty = %g,   |drbfdr - drbfdrfem|_infty = %g\n", err[0], err[1]);
-    
-  int K = 10000;
-  int N = K*nrbfmax;
-  double *rij;
-  double *rbf1;
-  double *rbfx1;
-  double *rbfy1;
-  double *rbfz1;
-  double *rbf2;
-  double *rbfx2;
-  double *rbfy2;
-  double *rbfz2;
-  double *tmp;
   
-  memory->create(rij, 3*K, "rbpod:rij");
-  memory->create(rbf1, N, "rbpod:rbf1");
-  memory->create(rbfx1, N, "rbpod:rbfx1");
-  memory->create(rbfy1, N, "rbpod:rbfy1");
-  memory->create(rbfz1, N, "rbpod:rbfz1");
-  memory->create(rbf2, N, "rbpod:rbf2");
-  memory->create(rbfx2, N, "rbpod:rbfx2");
-  memory->create(rbfy2, N, "rbpod:rbfy2");
-  memory->create(rbfz2, N, "rbpod:rbfz2");  
-  memory->create(tmp, 4*K*ns, "rbpod:tmp");
-  
-  for(int i=0; i<K; i++) {    
-    // Generate random values for the vector components
-    double x = -1.0 + (2.0) * ((double)rand() / RAND_MAX);
-    double y = -1.0 + (2.0) * ((double)rand() / RAND_MAX);
-    double z = -1.0 + (2.0) * ((double)rand() / RAND_MAX);
-    double norm = sqrt(x * x + y * y + z * z);
-    double target_norm = rin+1e-3 + (rcut-rin-1e-3) * ((double)rand() / RAND_MAX);
-    rij[0 + 3*i] = x * (target_norm / norm);
-    rij[1 + 3*i] = y * (target_norm / norm);
-    rij[2 + 3*i] = z * (target_norm / norm);    
-//     double normrij = sqrt(rij[0 + 3*i]*rij[0 + 3*i] + rij[1 + 3*i]*rij[1 + 3*i] + rij[2 + 3*i]*rij[2 + 3*i]);
-//     if (i<100) printf("%d :    %g    %g    %g    %g\n", i, rij[0 + 3*i], rij[1 + 3*i], rij[2 + 3*i], normrij);
-  }
-  
-  clock_t start, end;
-  double time_pod, time_fem;
-    
-//  podradialbasis(rbf1, rbfx1, rbfy1, rbfz1, rij, tmp, K);  
-//  femradialbasis(rbf2, rbfx2, rbfy2, rbfz2, rij, K);
-  start = clock();
-  podradialbasis(rbf1, rbfx1, rbfy1, rbfz1, rij, tmp, K);
-  end = clock();
-  time_pod = ((double)(end - start)) / CLOCKS_PER_SEC;
-    
-  start = clock();
-  femradialbasis(rbf2, rbfx2, rbfy2, rbfz2, rij, K);
-  end = clock();
-  time_fem = ((double)(end - start)) / CLOCKS_PER_SEC;
-    
-  printf("Maximum absolute error: |rbf - rbffem|_infty = %g\n", maxerror(rbf1, rbf2, K*nrbfmax));
-  printf("Maximum absolute error: |rbfx - rbfxfem|_infty = %g\n", maxerror(rbfx1, rbfx2, K*nrbfmax));
-  printf("Maximum absolute error: |rbfy - rbfyfem|_infty = %g\n", maxerror(rbfy1, rbfy2, K*nrbfmax));
-  printf("Maximum absolute error: |rbfz - rbfzfem|_infty = %g\n", maxerror(rbfz1, rbfz2, K*nrbfmax));
-  
-  // Print the results
-  printf("Time taken by podradialbasis: %f seconds\n", time_pod);
-  printf("Time taken by femradialbasis: %f seconds\n", time_fem);
-      
   memory->destroy(xi);
   memory->destroy(y);
   memory->destroy(A);
@@ -1195,24 +1052,7 @@ void RBPOD::femapproximation(int nelem, int p)
   memory->destroy(work);
   memory->destroy(rbf);
   memory->destroy(drbfdr);  
-  memory->destroy(temp);
-  
-  memory->destroy(xitest);
-  memory->destroy(ytest);
-  memory->destroy(Atest);
-  memory->destroy(rbftest);
-  memory->destroy(drbfdrtest);  
-  memory->destroy(temptest);
-  
-  memory->destroy(rij);
-  memory->destroy(rbf1);
-  memory->destroy(rbfx1);
-  memory->destroy(rbfy1);
-  memory->destroy(rbfz1);  
-  memory->destroy(rbfx2);
-  memory->destroy(rbfy2);
-  memory->destroy(rbfz2);  
-  memory->destroy(tmp);
+  memory->destroy(temp); 
 }
 
 void RBPOD::femradialbasis(double *rbf, double *rbfx, double *rbfy, double *rbfz, double *rij, int N)
@@ -1289,9 +1129,6 @@ void RBPOD::femradialbasis(double *rbf, double *drbfx, double *rij, int N)
       drbfx[0 + 3*n + 3*N*j] = drbfdr*dr1;
       drbfx[1 + 3*n + 3*N*j] = drbfdr*dr2;
       drbfx[2 + 3*n + 3*N*j] = drbfdr*dr3;      
-//       if (fabs(dij-rcut)<1e-6) {
-//         printf("%d   %g    %g    %g    %g    %g    %g    %g    %g\n", i, xij1, xij2, xij3, c[0+m], c[2+m], c[2+m], c[3+m], rbf[n + N*j]);
-//       }    
     }            
   }
 }
@@ -1361,7 +1198,7 @@ void RBPOD::femdrbfdr(double *rbf, double *drbfdr, double *rij, int N)
   }
 }
 
-void RBPOD::fem1drbf(double *rbf, double *drbfdr, double *x, int N)
+void RBPOD::fem1drbf(double *rbf, double *drbfdr, double *x, int nrbf, int N)
 {
   int p1 = nfemdegree + 1;
   double dr = (rcut-rin-1e-3)/nfemelem;
@@ -1381,7 +1218,7 @@ void RBPOD::fem1drbf(double *rbf, double *drbfdr, double *x, int N)
             
     double *c = &crbf[p1*nrbfmax*i];    
     double *d = &drbf[p1*nrbfmax*i];                
-    for (int j=0; j<nrbfmax; j++) {
+    for (int j=0; j<nrbf; j++) {
       int m = p1*j;
       rbf[n + N*j] = c[0+m] + c[1+m]*xi + c[2+m]*xi2 + c[3+m]*xi3;
       drbfdr[n + N*j] = d[0+m] + d[1+m]*xi + d[2+m]*xi2 + d[3+m]*xi3;
@@ -1471,3 +1308,230 @@ void RBPOD::tensorpolynomials(double* A, double* x, int p, int n, int dim)
     memory->destroy(B);  
 }
 
+// double maxerror(double *a, double *b, int n)
+// {
+//   double e = 0.0;
+//   for (int i=0; i<n; i++) {
+//     double d = fabs(a[i] - b[i]);
+//     e = (e > d) ? e : d;
+//   }
+//   return e;
+// }
+
+// void RBPOD::femapproximation(int nelem, int p)
+// {    
+//   int n = p + 1;
+//   int ntest = 2*n;  
+//   int info;
+//   int lwork = n*n;
+//   char chn = 'N';  
+//   double alpha = 1.0, beta = 0.0;
+//     
+//   int ipiv[10];  
+//   double *Ainv;
+//   double *work;
+//   double *xi;
+//   double *y;
+//   double *A;  
+//   double *rbf;
+//   double *drbfdr;  
+//   double *temp;  
+//   double *xitest;
+//   double *ytest;
+//   double *Atest;  
+//   double *rbftest;
+//   double *drbfdrtest;  
+//   double *temptest;    
+//   
+//   memory->create(crbf, n*nrbfmax*nelem, "rbpod:crbf");
+//   memory->create(drbf, n*nrbfmax*nelem, "rbpod:drbf");  
+//     
+//   memory->create(A, n*n, "rbpod:A");
+//   memory->create(Ainv, n*n, "rbpod:Ainv");
+//   memory->create(work, n*n, "rbpod:work");
+//   memory->create(relem, nelem+1, "rbpod:elem");  
+//   
+//   memory->create(xi, n, "rbpod:xi");
+//   memory->create(y, n, "rbpod:y");  
+//   memory->create(rbf, n*nrbfmax, "rbpod:rbf");
+//   memory->create(drbfdr, n*nrbfmax, "rbpod:rbfx");  
+//   memory->create(temp, 2*n*ns, "rbpod:rbfz");  
+//   
+//   memory->create(xitest, ntest, "rbpod:xi");
+//   memory->create(ytest, ntest, "rbpod:y");
+//   memory->create(Atest, ntest*n, "rbpod:A");
+//   memory->create(rbftest, ntest*nrbfmax, "rbpod:rbf");
+//   memory->create(drbfdrtest, ntest*nrbfmax, "rbpod:rbfx");  
+//   memory->create(temptest, 2*ntest*ns, "rbpod:rbfz");  
+//   
+//   xchenodes(xi, p);
+//   legendrepolynomials(A, xi, p, n); 
+//   for (int i=0; i<n*n; i++) Ainv[i] = A[i];
+//       
+//   DGETRF(&n,&n,Ainv,&n,ipiv,&info);
+//   DGETRI(&n,Ainv,&n,ipiv,work,&lwork,&info);
+//     
+//   xchenodes(xitest, ntest-1);
+//   legendrepolynomials(Atest, xitest, p, ntest);   
+//   
+// //   for (int i=0; i<n; i++) {
+// //     for (int j=0; j<n; j++)
+// //       printf("%g ", A[i + n*j]);
+// //     printf("\n");    
+// //   }
+// //   
+// //   for (int i=0; i<n; i++) {
+// //     for (int j=0; j<n; j++)
+// //       printf("%g ", Ainv[i + n*j]);
+// //     printf("\n");    
+// //   }
+//   
+//   for (int i=0; i<nelem+1; i++)
+//     relem[i] = rin+1e-3 + (rcut-rin-1e-3)*(i*1.0/nelem);
+//   
+// //   double a = rin+1e-3; 
+// //   double b = rcut;
+// //   double c = 1.0;
+// //   for (int i=0; i<nelem+1; i++)
+// //     relem[i] = a + (b-a)*(exp(c*(relem[i]-a)/(b-a))-1)/(exp(c)-1);
+//   
+//   double err[2] = {0, 0};
+//   for (int i=0; i<nelem; i++) {
+//     ref2dom(y, xi, relem[i], relem[i+1], n); 
+//     podradialbasis(rbf, drbfdr, y, temp, n);        
+//     DGEMM(&chn, &chn, &n, &nrbfmax, &n, &alpha, Ainv, &n, rbf, &n, &beta, &crbf[n*nrbfmax*i], &n);    
+//     DGEMM(&chn, &chn, &n, &nrbfmax, &n, &alpha, Ainv, &n, drbfdr, &n, &beta, &drbf[n*nrbfmax*i], &n);        
+//     
+//     ref2dom(ytest, xitest, relem[i], relem[i+1], ntest); 
+//     podradialbasis(rbftest, drbfdrtest, ytest, temptest, ntest);            
+//     DGEMM(&chn, &chn, &ntest, &nrbfmax, &n, &alpha, Atest, &ntest, &crbf[n*nrbfmax*i], &n, &beta, temptest, &ntest);        
+//     DGEMM(&chn, &chn, &ntest, &nrbfmax, &n, &alpha, Atest, &ntest, &drbf[n*nrbfmax*i], &n, &beta, &temptest[ntest*nrbfmax], &ntest);        
+//     
+// //     if (i==nelem-1) {
+// //       printf("Element: %d, [%g  %g] \n", i, relem[i], relem[i+1]); 
+// //       for (int k=0; k<ntest; k++) {
+// //         for (int j=0; j<nrbfmax; j++)
+// //           printf("%g ", rbftest[k + ntest*j]);
+// //         printf("\n");    
+// //       } 
+// //       
+// //       printf("\n");          
+// //       for (int k=0; k<n; k++) {
+// //         for (int j=0; j<nrbfmax; j++)
+// //           printf("%g ", crbf[k + n*j + n*nrbfmax*i]);
+// //         printf("\n");    
+// //       } 
+// //     }
+//  
+//     double e0 = 0, e1 = 0;
+//     for (int j=0; j<ntest*nrbfmax; j++) {
+//       double de = fabs(temptest[j] - rbftest[j]);
+//       double fe = fabs(temptest[ntest*nrbfmax+j] - drbfdrtest[j]);
+//       e0 = (e0 > de) ? e0 : de;
+//       e1 = (e1 > fe) ? e1 : fe;
+//     }    
+//     err[0] = (err[0] > e0) ? err[0] : e0;
+//     err[1] = (err[1] > e1) ? err[1] : e1;
+//     
+// //    printf("Element: %d, [%g  %g], %g,  %g \n", i, relem[i], relem[i+1], e0, e1); 
+// //     for (int k=0; k<ntest; k++) {
+// //       for (int j=0; j<nrbfmax; j++)
+// //         printf("%g ", drbfdrtest[k + ntest*j]);
+// //       printf("\n");    
+// //     }
+// //     for (int k=0; k<ntest; k++) {
+// //       for (int j=0; j<nrbfmax; j++)
+// //         printf("%g ", temptest[ntest*nrbfmax + k + ntest*j]);
+// //       printf("\n");    
+// //     }    
+//   }  
+//   printf("Maximum absolute errors: |rbf - rbffem|_infty = %g,   |drbfdr - drbfdrfem|_infty = %g\n", err[0], err[1]);
+//     
+//   int K = 10000;
+//   int N = K*nrbfmax;
+//   double *rij;
+//   double *rbf1;
+//   double *rbfx1;
+//   double *rbfy1;
+//   double *rbfz1;
+//   double *rbf2;
+//   double *rbfx2;
+//   double *rbfy2;
+//   double *rbfz2;
+//   double *tmp;
+//   
+//   memory->create(rij, 3*K, "rbpod:rij");
+//   memory->create(rbf1, N, "rbpod:rbf1");
+//   memory->create(rbfx1, N, "rbpod:rbfx1");
+//   memory->create(rbfy1, N, "rbpod:rbfy1");
+//   memory->create(rbfz1, N, "rbpod:rbfz1");
+//   memory->create(rbf2, N, "rbpod:rbf2");
+//   memory->create(rbfx2, N, "rbpod:rbfx2");
+//   memory->create(rbfy2, N, "rbpod:rbfy2");
+//   memory->create(rbfz2, N, "rbpod:rbfz2");  
+//   memory->create(tmp, 4*K*ns, "rbpod:tmp");
+//   
+//   for(int i=0; i<K; i++) {    
+//     // Generate random values for the vector components
+//     double x = -1.0 + (2.0) * ((double)rand() / RAND_MAX);
+//     double y = -1.0 + (2.0) * ((double)rand() / RAND_MAX);
+//     double z = -1.0 + (2.0) * ((double)rand() / RAND_MAX);
+//     double norm = sqrt(x * x + y * y + z * z);
+//     double target_norm = rin+1e-3 + (rcut-rin-1e-3) * ((double)rand() / RAND_MAX);
+//     rij[0 + 3*i] = x * (target_norm / norm);
+//     rij[1 + 3*i] = y * (target_norm / norm);
+//     rij[2 + 3*i] = z * (target_norm / norm);    
+// //     double normrij = sqrt(rij[0 + 3*i]*rij[0 + 3*i] + rij[1 + 3*i]*rij[1 + 3*i] + rij[2 + 3*i]*rij[2 + 3*i]);
+// //     if (i<100) printf("%d :    %g    %g    %g    %g\n", i, rij[0 + 3*i], rij[1 + 3*i], rij[2 + 3*i], normrij);
+//   }
+//   
+//   clock_t start, end;
+//   double time_pod, time_fem;
+//     
+// //  podradialbasis(rbf1, rbfx1, rbfy1, rbfz1, rij, tmp, K);  
+// //  femradialbasis(rbf2, rbfx2, rbfy2, rbfz2, rij, K);
+//   start = clock();
+//   podradialbasis(rbf1, rbfx1, rbfy1, rbfz1, rij, tmp, K);
+//   end = clock();
+//   time_pod = ((double)(end - start)) / CLOCKS_PER_SEC;
+//     
+//   start = clock();
+//   femradialbasis(rbf2, rbfx2, rbfy2, rbfz2, rij, K);
+//   end = clock();
+//   time_fem = ((double)(end - start)) / CLOCKS_PER_SEC;
+//     
+//   printf("Maximum absolute error: |rbf - rbffem|_infty = %g\n", maxerror(rbf1, rbf2, K*nrbfmax));
+//   printf("Maximum absolute error: |rbfx - rbfxfem|_infty = %g\n", maxerror(rbfx1, rbfx2, K*nrbfmax));
+//   printf("Maximum absolute error: |rbfy - rbfyfem|_infty = %g\n", maxerror(rbfy1, rbfy2, K*nrbfmax));
+//   printf("Maximum absolute error: |rbfz - rbfzfem|_infty = %g\n", maxerror(rbfz1, rbfz2, K*nrbfmax));
+//   
+//   // Print the results
+//   printf("Time taken by podradialbasis: %f seconds\n", time_pod);
+//   printf("Time taken by femradialbasis: %f seconds\n", time_fem);
+//       
+//   memory->destroy(xi);
+//   memory->destroy(y);
+//   memory->destroy(A);
+//   memory->destroy(Ainv);
+//   memory->destroy(work);
+//   memory->destroy(rbf);
+//   memory->destroy(drbfdr);  
+//   memory->destroy(temp);
+//   
+//   memory->destroy(xitest);
+//   memory->destroy(ytest);
+//   memory->destroy(Atest);
+//   memory->destroy(rbftest);
+//   memory->destroy(drbfdrtest);  
+//   memory->destroy(temptest);
+//   
+//   memory->destroy(rij);
+//   memory->destroy(rbf1);
+//   memory->destroy(rbfx1);
+//   memory->destroy(rbfy1);
+//   memory->destroy(rbfz1);  
+//   memory->destroy(rbfx2);
+//   memory->destroy(rbfy2);
+//   memory->destroy(rbfz2);  
+//   memory->destroy(tmp);
+// }

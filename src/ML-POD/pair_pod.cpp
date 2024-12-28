@@ -33,6 +33,7 @@
 #include <chrono>
 
 #include "eapod.h"
+#include "mlpod.h"
 
 using namespace LAMMPS_NS;
 using MathConst::MY_PI;
@@ -42,7 +43,7 @@ using MathSpecial::powint;
 
 /* ---------------------------------------------------------------------- */
 
-PairPOD::PairPOD(LAMMPS *lmp) : Pair(lmp), fastpodptr(nullptr)
+PairPOD::PairPOD(LAMMPS *lmp) : Pair(lmp), fastpodptr(nullptr), podptr(nullptr)
 {
   single_enable = 0;
   restartinfo = 0;
@@ -98,6 +99,7 @@ PairPOD::PairPOD(LAMMPS *lmp) : Pair(lmp), fastpodptr(nullptr)
   ind34r = nullptr;
   ind44l = nullptr;
   ind44r = nullptr;
+  temp = nullptr;
   elemindex = nullptr;
 }
 
@@ -146,8 +148,10 @@ PairPOD::~PairPOD()
   memory->destroy(ind44l);
   memory->destroy(ind44r);
   memory->destroy(elemindex);
-
+  memory->destroy(temp);
+  
   delete fastpodptr;
+  delete podptr;
 
   if (allocated) {
     memory->destroy(setflag);
@@ -156,7 +160,7 @@ PairPOD::~PairPOD()
 }
 
 void PairPOD::compute(int eflag, int vflag)
-{
+{  
   ev_init(eflag, vflag);
 
 //   // we must enforce using F dot r, since we have no energy or stress tally calls.
@@ -179,10 +183,10 @@ void PairPOD::compute(int eflag, int vflag)
   int newton_pair = force->newton_pair;
 
   double rcutsq = rcut*rcut;
-  double evdwl = 0.0;
-
+  double evdwl = 0.0;  
+  
   int blockMode = 0;
-  if (blockMode==0) {
+  if ((blockMode==0) && (descriptorform == 1)) {
   for (int ii = 0; ii < inum; ii++) {
     int i = ilist[ii];
     int jnum = numneigh[i];
@@ -222,7 +226,7 @@ void PairPOD::compute(int eflag, int vflag)
     }
   }
   }
-  else if (blockMode == 1) {
+  else {      
  // determine the number of atom blocks and divide atoms into blocks
   nAtomBlocks = calculateNumberOfIntervals(inum, atomBlockSize);
   if (nAtomBlocks > 100) nAtomBlocks = 100;
@@ -313,9 +317,6 @@ int PairPOD::query_pod(std::string pod_file)
 
     if ((keywd != "#") && (keywd != "species") && (keywd != "pbc")) {
 
-      if (words.size() != 2)
-        error->one(FLERR,"Improper POD file.", utils::getsyserror());
-
       if (keywd == "threebody_angular_degree") fastpod = 1;
       if (keywd == "fourbody_angular_degree") fastpod = 1;
       if (keywd == "fivebody_angular_degree") fastpod = 1;
@@ -356,18 +357,35 @@ void PairPOD::coeff(int narg, char **arg)
   std::string pod_file = std::string(arg[2]);      // pod input file
   std::string coeff_file = std::string(arg[3]);    // coefficient input file
   map_element2type(narg - 4, arg + 4);
+  
+  descriptorform = query_pod(pod_file);
+  
+  if (descriptorform == 1) {
+    delete fastpodptr;
+    fastpodptr = new EAPOD(lmp, pod_file, coeff_file);
 
-  delete fastpodptr;
-  fastpodptr = new EAPOD(lmp, pod_file, coeff_file);
+    copy_data_from_pod_class();
+    rcut = fastpodptr->rcut;
 
-  copy_data_from_pod_class();
-  rcut = fastpodptr->rcut;
+    memory->destroy(fastpodptr->tmpmem);
+    memory->destroy(fastpodptr->tmpint);
 
-  memory->destroy(fastpodptr->tmpmem);
-  memory->destroy(fastpodptr->tmpint);
-
-  for (int ii = 0; ii < np1; ii++)
-    for (int jj = 0; jj < np1; jj++) cutsq[ii][jj] = fastpodptr->rcut * fastpodptr->rcut;
+    for (int ii = 0; ii < np1; ii++)
+      for (int jj = 0; jj < np1; jj++) cutsq[ii][jj] = fastpodptr->rcut * fastpodptr->rcut;
+  }
+  else if (descriptorform == 0) {
+    delete podptr;
+    podptr = new MLPOD(lmp, pod_file, coeff_file);
+        
+    nelements = podptr->pod.nelements; // number of elements
+    memory->create(coefficients, podptr->pod.nd, "pair_pod:coefficients");
+    for (int i=0; i<podptr->pod.nd; i++)
+      coefficients[i] = podptr->podcoeffs[i];
+    
+    rcut = podptr->pod.rcut;    
+    for (int ii = 0; ii < np1; ii++)
+      for (int jj = 0; jj < np1; jj++) cutsq[ii][jj] = rcut * rcut;
+  }  
 }
 
 /* ----------------------------------------------------------------------
@@ -394,10 +412,14 @@ double PairPOD::init_one(int i, int j)
 {
   if (setflag[i][j] == 0) error->all(FLERR, "All pair coeffs are not set");
 
-  double rcut = 0.0;
-  rcut = fastpodptr->rcut;
+  double rcutoff = 0.0;
+  
+  if (descriptorform==1) 
+    rcutoff = fastpodptr->rcut;
+  else  
+    rcutoff = podptr->pod.rcut;
 
-  return rcut;
+  return rcutoff;
 }
 
 void PairPOD::allocate()
@@ -684,22 +706,26 @@ void PairPOD::grow_atoms(int Ni)
     memory->destroy(ei);
     memory->destroy(typeai);
     memory->destroy(numij);
-    memory->destroy(sumU);
-    memory->destroy(forcecoeff);
-    memory->destroy(bd);
-    memory->destroy(cb);
-    memory->destroy(pd);
+    if (descriptorform==1) {
+      memory->destroy(sumU);
+      memory->destroy(forcecoeff);
+      memory->destroy(bd);
+      memory->destroy(cb);
+      memory->destroy(pd);
+    }
     nimax = Ni;
     memory->create(ei, nimax, "pair_pod:ei");
     memory->create(typeai, nimax, "pair_pod:typeai");
     memory->create(numij, nimax+1, "pair_pod:typeai");
-    int n = nimax * nelements * K3 * nrbfmax;
-    memory->create(sumU, n , "pair_pod:sumU");
-    memory->create(forcecoeff, n , "pair_pod:forcecoeff");
-    memory->create(bd, nimax * Mdesc, "pair_pod:bd");
-    memory->create(cb, nimax * Mdesc, "pair_pod:bd");
-    if (nClusters > 1) memory->create(pd, nimax * (1 + nComponents + 3*nClusters), "pair_pod:pd");
-
+    if (descriptorform==1) {
+      int n = nimax * nelements * K3 * nrbfmax;
+      memory->create(sumU, n , "pair_pod:sumU");
+      memory->create(forcecoeff, n , "pair_pod:forcecoeff");
+      memory->create(bd, nimax * Mdesc, "pair_pod:bd");
+      memory->create(cb, nimax * Mdesc, "pair_pod:bd");
+      if (nClusters > 1) memory->create(pd, nimax * (1 + nComponents + 3*nClusters), "pair_pod:pd");
+    }
+    
     for (int i=0; i<=nimax; i++) numij[i] = 0;
   }
 }
@@ -714,15 +740,21 @@ void PairPOD::grow_pairs(int Nij)
     memory->destroy(aj);
     memory->destroy(ti);
     memory->destroy(tj);
-    memory->destroy(rbf);
-    memory->destroy(rbfx);
-    memory->destroy(rbfy);
-    memory->destroy(rbfz);
-    memory->destroy(abf);
-    memory->destroy(abfx);
-    memory->destroy(abfy);
-    memory->destroy(abfz);
-    nijmax = Nij;
+    if (descriptorform==1) {
+      memory->destroy(rbf);
+      memory->destroy(rbfx);
+      memory->destroy(rbfy);
+      memory->destroy(rbfz);
+      memory->destroy(abf);
+      memory->destroy(abfx);
+      memory->destroy(abfy);
+      memory->destroy(abfz);
+    }
+    else if (descriptorform==0) {
+      memory->destroy(temp);
+    }
+    
+    nijmax = Nij;    
     memory->create(rij, 3 * nijmax,  "pair_pod:r_ij");
     memory->create(fij, 3 * nijmax,  "pair_pod:f_ij");
     memory->create(idxi, nijmax, "pair_pod:idxi");
@@ -730,15 +762,22 @@ void PairPOD::grow_pairs(int Nij)
     memory->create(aj, nijmax, "pair_pod:aj");
     memory->create(ti, nijmax, "pair_pod:ti");
     memory->create(tj, nijmax, "pair_pod:tj");
-    memory->create(rbf, nijmax * nrbfmax, "pair_pod:rbf");
-    memory->create(rbfx, nijmax * nrbfmax, "pair_pod:rbfx");
-    memory->create(rbfy, nijmax * nrbfmax, "pair_pod:rbfy");
-    memory->create(rbfz, nijmax * nrbfmax, "pair_pod:rbfz");
-    int kmax = (K3 > ns) ? K3 : ns;
-    memory->create(abf, nijmax * kmax, "pair_pod:abf");
-    memory->create(abfx, nijmax * kmax, "pair_pod:abfx");
-    memory->create(abfy, nijmax * kmax, "pair_pod:abfy");
-    memory->create(abfz, nijmax * kmax, "pair_pod:abfz");
+    if (descriptorform==1) {
+      memory->create(rbf, nijmax * nrbfmax, "pair_pod:rbf");
+      memory->create(rbfx, nijmax * nrbfmax, "pair_pod:rbfx");
+      memory->create(rbfy, nijmax * nrbfmax, "pair_pod:rbfy");
+      memory->create(rbfz, nijmax * nrbfmax, "pair_pod:rbfz");
+      int kmax = (K3 > ns) ? K3 : ns;
+      memory->create(abf, nijmax * kmax, "pair_pod:abf");
+      memory->create(abfx, nijmax * kmax, "pair_pod:abfx");
+      memory->create(abfy, nijmax * kmax, "pair_pod:abfy");
+      memory->create(abfz, nijmax * kmax, "pair_pod:abfz");
+    }
+    else if (descriptorform==0) {
+      int p1 = podptr->femdegree + 1;
+      int n = 2 * (nijmax * podptr->pod.nbf2 + 2 * (podptr->pod.nabf3 + 1) + p1*p1*4);
+      memory->create(temp, n, "pair_pod:temp");
+    }
   }
 }
 
@@ -2165,7 +2204,11 @@ void PairPOD::blockatom_energyforce(double *ei, double *fij, int Ni, int Nij)
 
 void PairPOD::blockatomenergyforce(double *ei, double *fij, int Ni, int Nij)
 {
-  blockatom_energyforce(ei, fij, Ni, Nij);
+  if (descriptorform==1) blockatom_energyforce(ei, fij, Ni, Nij);
+  else if (descriptorform==0) {
+    podptr->fempod_energyforce(fij, ei, rij, podptr->podcoeffs, temp, 
+            idxi, numij, typeai, ti, tj, Ni, Nij);
+  }  
 }
 
 void PairPOD::savematrix2binfile(std::string filename, double *A, int nrows, int ncols)

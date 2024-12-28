@@ -94,11 +94,13 @@ class PairPOD : public Pair {
   void savedatafordebugging();
 
  protected:
+  class MLPOD *podptr;
   class EAPOD *fastpodptr;
   virtual void allocate();
   void grow_atoms(int Ni);
   void grow_pairs(int Nij);
 
+  int descriptorform;
   int atomBlockSize;      // size of each atom block
   int nAtomBlocks;        // number of atoms blocks
   int atomBlocks[101];    // atom blocks
@@ -129,9 +131,10 @@ class PairPOD : public Pair {
   double rcut;    // outer cut-off radius
   double rmax;    // rcut - rin
 
+  double *temp;   // temperatory memory
   double *rij;    // (xj - xi) for all pairs (I, J)
   double *fij;    // force for all pairs (I, J)
-  double *ei;     // energy for each atom I
+  double *ei;     // energy for each atom I  
   int *typeai;    // types of atoms I only
   int *numij;     // number of pairs (I, J) for each atom I
   int *idxi;      // storing linear indices of atom I for all pairs (I, J)

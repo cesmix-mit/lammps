@@ -139,7 +139,7 @@ void FitPOD::command(int narg, char **arg)
     estimate_memory_descriptorstruct(traindata);
     if (emptytestdata==0) estimate_memory_descriptorstruct(testdata);    
     allocate_memory_descriptorstruct(podptr->pod.nd, podptr->pod.nd, podptr->nClusters);
-    if (coeff_file != "") podArrayCopy(desc.c, podptr->pod.coeff, podptr->pod.nd);
+    if (coeff_file != "") podArrayCopy(desc.c, podptr->podcoeffs, podptr->npodcoeffs);
   }
   
   if (descriptorform == 1) {
@@ -181,7 +181,7 @@ void FitPOD::command(int narg, char **arg)
 
     // compute POD coefficients using least-squares method
     if (coeff_file == "") {
-      least_squares_fit(traindata);
+      least_squares_fit(traindata);            
 
       if (comm->me == 0) {    // save coefficients into a text file
         if (descriptorform == 0) {
@@ -193,6 +193,8 @@ void FitPOD::command(int narg, char **arg)
             fmt::print(fp, "{:<10.{}f}\n",  desc.c[count], traindata.precision);
           }
           fclose(fp);          
+          
+          //podptr->polyfit3body(&desc.c[podptr->pod.nd1 + podptr->pod.nd2], 1);
         }
         
         if (descriptorform == 1) {
@@ -221,10 +223,19 @@ void FitPOD::command(int narg, char **arg)
       }
     }
 
+    clock_t start, end;
+    double time_fem;
+    start = clock();   
+  
     // calculate errors for the training data set
-
     if ((traindata.training_analysis) && ((int) traindata.data_path.size() > 1))
       error_analysis(traindata, desc.c);
+
+    end = clock();
+    time_fem = ((double)(end - start)) / CLOCKS_PER_SEC;
+
+    // Print the results
+    printf("Time taken by error_analysis: %f seconds\n", time_fem);
 
     //error->all(FLERR, "stop after error_analysis");
         
@@ -364,9 +375,6 @@ int FitPOD::query_pod(std::string pod_file)
     auto keywd = words[0];
 
     if ((keywd != "#") && (keywd != "species") && (keywd != "pbc")) {
-
-      if (words.size() != 2)
-        error->one(FLERR,"Improper POD file.", utils::getsyserror());
 
       if (keywd == "threebody_angular_degree") fastpod = 1;
       if (keywd == "fourbody_angular_degree") fastpod = 1;
@@ -2264,12 +2272,6 @@ void FitPOD::error_analysis(const datastruct &data, double *coeff)
           int nd2 = podptr->pod.nd2;
           int nd3 = podptr->pod.nd3;
           int nd4 = podptr->pod.nd4;
-          int nd22 = podptr->pod.nd22;
-          int nd23 = podptr->pod.nd23;
-          int nd24 = podptr->pod.nd24;
-          int nd33 = podptr->pod.nd33;
-          int nd34 = podptr->pod.nd34;
-          int nd44 = podptr->pod.nd44;
           int nd1234 = nd1+nd2+nd3+nd4;
 
           for (int j=nd1234; j<nCoeffAll; j++)

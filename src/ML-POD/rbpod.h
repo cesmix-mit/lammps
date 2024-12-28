@@ -87,7 +87,7 @@ class RBPOD : protected Pointers {
   void femradialbasis(double *rbf, double *drbfx, double *rij, int N);
   void femradialbasis(double *rbf, double *rij, int N);
   void femdrbfdr(double *rbf, double *drbfdr, double *rij, int N);
-  void fem1drbf(double *rbf, double *drbfdr, double *x, int N);
+  void fem1drbf(double *rbf, double *drbfdr, double *x, int nrbf, int N);
   
   void xchenodes(double* xi, int p); 
   void ref2dom(double* y, double* xi, double ymin, double ymax, int n); 
