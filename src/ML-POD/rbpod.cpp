@@ -194,288 +194,6 @@ void RBPOD::read_pod_file(std::string pod_file)
 }
 
 /**
- * @brief Calculates the radial basis functions and their derivatives.
- *
- * @param rbf           Pointer to the array of radial basis functions.
- * @param rbfx          Pointer to the array of derivatives of radial basis functions with respect to x.
- * @param rbfy          Pointer to the array of derivatives of radial basis functions with respect to y.
- * @param rbfz          Pointer to the array of derivatives of radial basis functions with respect to z.
- * @param rij           Pointer to the relative positions of neighboring atoms and atom i.
- * @param besselparams  Pointer to the array of Bessel function parameters.
- * @param rin           Minimum distance for radial basis functions.
- * @param rmax          Maximum distance for radial basis functions.
- * @param besseldegree  Degree of Bessel functions.
- * @param inversedegree Degree of inverse distance functions.
- * @param nbesselpars   Number of Bessel function parameters.
- * @param N             Number of neighboring atoms.
- */
-void RBPOD::radialbasis(double *rbf, double *rbfx, double *rbfy, double *rbfz, double *rij, int N)
-{
-  // Loop over all neighboring atoms
-  for (int n=0; n<N; n++) {
-    double xij1 = rij[0+3*n];
-    double xij2 = rij[1+3*n];
-    double xij3 = rij[2+3*n];
-
-    double dij = sqrt(xij1*xij1 + xij2*xij2 + xij3*xij3);
-    double dr1 = xij1/dij;
-    double dr2 = xij2/dij;
-    double dr3 = xij3/dij;
-
-    double r = dij - rin;
-    double y = r/rmax;
-    double y2 = y*y;
-
-    double fcut, dfcut;
-    if (cutofftype==0) {
-      fcut = 1;
-      dfcut = 0;
-    }
-    else if (cutofftype==1) {
-      double y3 = 1.0 - y2*y;
-      double y4 = y3*y3 + 1e-6;
-      double y5 = sqrt(y4);
-      double y6 = exp(-1.0/y5);
-      double y7 = y4*sqrt(y4);
-
-      // Calculate the final cutoff function as y6/exp(-1)
-      fcut = y6/exp(-1.0);
-
-      // Calculate the derivative of the final cutoff function
-      dfcut = ((3.0/(rmax*exp(-1.0)))*(y2)*y6*(y*y2 - 1.0))/y7;
-    }
-    else if (cutofftype==2) {
-      fcut = 0.5*cos(MY_PI*y) + 0.5;
-      dfcut = -0.5*(MY_PI*sin(MY_PI*y));
-    }
-    else if (cutofftype==3) {    
-      double y3 = y2*y;
-      double y4 = y2*y2;
-      fcut = (y*(y*(20*y - 70) + 84) - 35)*y4 + 1;
-      dfcut = 140*y3*(y - 1)*(y - 1)*(y - 1)/rmax;
-    }
-    else if (cutofftype==4) {    
-      double y4 = y2*y2;
-      double y5 = y*y4;
-      double y6 = (y - 1)*(y - 1);  
-      fcut = (y*(y*((315 - 70*y)*y - 540) + 420) - 126)*y5 + 1;
-      dfcut = -630*y4*y6*y6/rmax;    
-    }
-    
-    // Calculate fcut/r, fcut/r^2, and dfcut/r
-    double f1 = fcut/r;
-    double f2 = f1/r;
-    double df1 = dfcut/r;
-
-    double alpha = besselparams[0];
-    double t1 = (1.0-exp(-alpha));
-    double t2 = exp(-alpha*r/rmax);
-    double x0 =  (1.0 - t2)/t1;
-    double dx0 = (alpha/rmax)*t2/t1;
-
-    if (nbesselpars==1) {
-      for (int i=0; i<besseldegree; i++) {
-        double a = (i+1)*MY_PI;
-        double b = (sqrt(2.0/(rmax))/(i+1));
-        double af1 = a*f1;
-
-        double sinax = sin(a*x0);
-        int nij = n + N*i;
-
-        rbf[nij] = b*f1*sinax;
-
-        double drbfdr = b*(df1*sinax - f2*sinax + af1*cos(a*x0)*dx0);
-        rbfx[nij] = drbfdr*dr1;
-        rbfy[nij] = drbfdr*dr2;
-        rbfz[nij] = drbfdr*dr3;
-      }
-    }
-    else if (nbesselpars==2) {
-      alpha = besselparams[1];
-      t1 = (1.0-exp(-alpha));
-      t2 = exp(-alpha*r/rmax);
-      double x1 =  (1.0 - t2)/t1;
-      double dx1 = (alpha/rmax)*t2/t1;
-      for (int i=0; i<besseldegree; i++) {
-        double a = (i+1)*MY_PI;
-        double b = (sqrt(2.0/(rmax))/(i+1));
-        double af1 = a*f1;
-
-        double sinax = sin(a*x0);
-        int nij = n + N*i;
-
-        rbf[nij] = b*f1*sinax;
-
-        double drbfdr = b*(df1*sinax - f2*sinax + af1*cos(a*x0)*dx0);
-        rbfx[nij] = drbfdr*dr1;
-        rbfy[nij] = drbfdr*dr2;
-        rbfz[nij] = drbfdr*dr3;
-
-        sinax = sin(a*x1);
-        nij = n + N*i + N*besseldegree*1;
-        rbf[nij] = b*f1*sinax;
-
-        drbfdr = b*(df1*sinax - f2*sinax + af1*cos(a*x1)*dx1);
-        rbfx[nij] = drbfdr*dr1;
-        rbfy[nij] = drbfdr*dr2;
-        rbfz[nij] = drbfdr*dr3;
-      }
-    }
-    else if (nbesselpars==3) {
-      alpha = besselparams[1];
-      t1 = (1.0-exp(-alpha));
-      t2 = exp(-alpha*r/rmax);
-      double x1 =  (1.0 - t2)/t1;
-      double dx1 = (alpha/rmax)*t2/t1;
-
-      alpha = besselparams[2];
-      t1 = (1.0-exp(-alpha));
-      t2 = exp(-alpha*r/rmax);
-      double x2 =  (1.0 - t2)/t1;
-      double dx2 = (alpha/rmax)*t2/t1;
-      for (int i=0; i<besseldegree; i++) {
-        double a = (i+1)*MY_PI;
-        double b = (sqrt(2.0/(rmax))/(i+1));
-        double af1 = a*f1;
-
-        double sinax = sin(a*x0);
-        int nij = n + N*i;
-
-        rbf[nij] = b*f1*sinax;
-        double drbfdr = b*(df1*sinax - f2*sinax + af1*cos(a*x0)*dx0);
-        rbfx[nij] = drbfdr*dr1;
-        rbfy[nij] = drbfdr*dr2;
-        rbfz[nij] = drbfdr*dr3;
-
-        sinax = sin(a*x1);
-        nij = n + N*i + N*besseldegree*1;
-
-        rbf[nij] = b*f1*sinax;
-        drbfdr = b*(df1*sinax - f2*sinax + af1*cos(a*x1)*dx1);
-        rbfx[nij] = drbfdr*dr1;
-        rbfy[nij] = drbfdr*dr2;
-        rbfz[nij] = drbfdr*dr3;
-
-        sinax = sin(a*x2);
-        nij = n + N*i + N*besseldegree*2;
-        rbf[nij] = b*f1*sinax;
-        drbfdr = b*(df1*sinax - f2*sinax + af1*cos(a*x2)*dx2);
-        rbfx[nij] = drbfdr*dr1;
-        rbfy[nij] = drbfdr*dr2;
-        rbfz[nij] = drbfdr*dr3;
-      }
-    }
-
-    // Calculate fcut/dij and dfcut/dij
-    f1 = fcut/dij;
-    for (int i=0; i<inversedegree; i++) {
-      int p = besseldegree*nbesselpars + i;
-      int nij = n + N*p;
-      double a = powint(dij, i+1);
-
-      rbf[nij] = fcut/a;
-
-      double drbfdr = (dfcut - (i+1.0)*f1)/a;
-      rbfx[nij] = drbfdr*dr1;
-      rbfy[nij] = drbfdr*dr2;
-      rbfz[nij] = drbfdr*dr3;
-    }
-  }
-}
-
-void RBPOD::gaussianbasis(double *rbf, double *rbfx, double *rbfy, double *rbfz, double *rij, int N)
-{
-  // Loop over all neighboring atoms
-  for (int n=0; n<N; n++) {
-    double xij1 = rij[0+3*n];
-    double xij2 = rij[1+3*n];
-    double xij3 = rij[2+3*n];
-
-    double dij = sqrt(xij1*xij1 + xij2*xij2 + xij3*xij3);
-    double dr1 = xij1/dij;
-    double dr2 = xij2/dij;
-    double dr3 = xij3/dij;
-
-    double r = dij - rin;
-    double y = r/rmax;
-    double y2 = y*y;
-
-    double fcut, dfcut;
-    if (cutofftype==0) {
-      fcut = 1;
-      dfcut = 0;
-    }
-    else if (cutofftype==1) {
-      double y3 = 1.0 - y2*y;
-      double y4 = y3*y3 + 1e-6;
-      double y5 = sqrt(y4);
-      double y6 = exp(-1.0/y5);
-      double y7 = y4*sqrt(y4);
-
-      // Calculate the final cutoff function as y6/exp(-1)
-      fcut = y6/exp(-1.0);
-
-      // Calculate the derivative of the final cutoff function
-      dfcut = ((3.0/(rmax*exp(-1.0)))*(y2)*y6*(y*y2 - 1.0))/y7;
-    }
-    else if (cutofftype==2) {
-      fcut = 0.5*cos(MY_PI*y) + 0.5;
-      dfcut = -0.5*(MY_PI*sin(MY_PI*y));
-    }
-    else if (cutofftype==3) {    
-      double y3 = y2*y;
-      double y4 = y2*y2;
-      fcut = (y*(y*(20*y - 70) + 84) - 35)*y4 + 1;
-      dfcut = 140*y3*(y - 1)*(y - 1)*(y - 1)/rmax;
-    }
-    else if (cutofftype==4) {    
-      double y4 = y2*y2;
-      double y5 = y*y4;
-      double y6 = (y - 1)*(y - 1);  
-      fcut = (y*(y*((315 - 70*y)*y - 540) + 420) - 126)*y5 + 1;
-      dfcut = -630*y4*y6*y6/rmax;    
-    }
-    
-    for (int i=0; i<ngaussianfuncs; i++) {      
-      double alpha = gaussianexponents[i];  // gaussian exponents
-      int beta = polydegrees[i];       // polynomial degrees
-      
-      double a = powint(y, beta);       // a = y^beta      
-      double g = a * exp(-alpha * y2 ); // g = y^beta * exp(-alpha * y^2 );
-      // dg = y^beta*exp(-alpha*y^2)*(- 2*alpha*y + beta/y)
-      double dg = a*exp(-alpha*y2)*(- 2*alpha*y + beta/y); 
-
-      int nij = n + N*i;
-      rbf[nij] = fcut * g;
-      double drbfdr = (dfcut * g + fcut * dg);
-      rbfx[nij] = drbfdr*dr1;
-      rbfy[nij] = drbfdr*dr2;
-      rbfz[nij] = drbfdr*dr3;
-    }
-  }
-}
-
-void RBPOD::podradialbasis(double *rbf, double *rbfx, double *rbfy, double *rbfz, double *rij, double *temp, int N)
-{    
-  double *rbft = &temp[0]; // Nj*ns
-  double *rbfxt = &temp[N*ns]; // Nj*ns
-  double *rbfyt = &temp[2*N*ns]; // Nj*ns
-  double *rbfzt = &temp[3*N*ns]; // Nj*ns
- 
-  if (ngaussianfuncs==0)
-    radialbasis(rbft, rbfxt, rbfyt, rbfzt, rij, N);
-  else
-    gaussianbasis(rbft, rbfxt, rbfyt, rbfzt, rij, N);
-      
-  char chn = 'N';
-  double alpha = 1.0, beta = 0.0;
-  DGEMM(&chn, &chn, &N, &nrbfmax, &ns, &alpha, rbft, &N, Phi, &ns, &beta, rbf, &N);
-  DGEMM(&chn, &chn, &N, &nrbfmax, &ns, &alpha, rbfxt, &N, Phi, &ns, &beta, rbfx, &N);
-  DGEMM(&chn, &chn, &N, &nrbfmax, &ns, &alpha, rbfyt, &N, Phi, &ns, &beta, rbfy, &N);
-  DGEMM(&chn, &chn, &N, &nrbfmax, &ns, &alpha, rbfzt, &N, Phi, &ns, &beta, rbfz, &N);
-}
-
-/**
  * @brief Compute the radial basis function (RBF) for each atom.
  *
  * @param rbf Pointer to the output array for the RBF.
@@ -1133,40 +851,6 @@ void RBPOD::femradialbasis(double *rbf, double *drbfx, double *rij, int N)
   }
 }
 
-void RBPOD::femradialbasis(double *rbf, double *rij, int N)
-{
-  int p1 = nfemdegree + 1;
-  double dr = (rcut-rin-1e-3)/nfemelem;
-  
-  for (int n=0; n<N; n++) {
-    double xij1 = rij[0+3*n];
-    double xij2 = rij[1+3*n];
-    double xij3 = rij[2+3*n];
-
-    double dij = sqrt(xij1*xij1 + xij2*xij2 + xij3*xij3);
-    double dr1 = xij1/dij;
-    double dr2 = xij2/dij;
-    double dr3 = xij3/dij;
-
-    int i = (dij-rin-1e-3)/dr;        
-    if (i > (nfemelem-1)) i = nfemelem-1;        
-    
-    double ymin = relem[i];
-    double ymax = relem[i+1];                
-    double dy = 2.0/(ymax - ymin);  
-    double xi = dy * (dij  - ymin) - 1;    
-    double xi1 = xi*xi;
-    double xi2 = 1.5*xi1 - 0.5;
-    double xi3 = (2.5*xi1 - 1.5)*xi;
-            
-    double *c = &crbf[p1*nrbfmax*i];        
-    for (int j=0; j<nrbfmax; j++) {
-      int m = p1*j;
-      rbf[n + N*j] = c[0+m] + c[1+m]*xi + c[2+m]*xi2 + c[3+m]*xi3;      
-    }    
-  }
-}
-
 void RBPOD::femdrbfdr(double *rbf, double *drbfdr, double *rij, int N)
 {
   int p1 = nfemdegree + 1;
@@ -1307,6 +991,324 @@ void RBPOD::tensorpolynomials(double* A, double* x, int p, int n, int dim)
     
     memory->destroy(B);  
 }
+
+
+
+// void RBPOD::femradialbasis(double *rbf, double *rij, int N)
+// {
+//   int p1 = nfemdegree + 1;
+//   double dr = (rcut-rin-1e-3)/nfemelem;
+//   
+//   for (int n=0; n<N; n++) {
+//     double xij1 = rij[0+3*n];
+//     double xij2 = rij[1+3*n];
+//     double xij3 = rij[2+3*n];
+// 
+//     double dij = sqrt(xij1*xij1 + xij2*xij2 + xij3*xij3);
+//     double dr1 = xij1/dij;
+//     double dr2 = xij2/dij;
+//     double dr3 = xij3/dij;
+// 
+//     int i = (dij-rin-1e-3)/dr;        
+//     if (i > (nfemelem-1)) i = nfemelem-1;        
+//     
+//     double ymin = relem[i];
+//     double ymax = relem[i+1];                
+//     double dy = 2.0/(ymax - ymin);  
+//     double xi = dy * (dij  - ymin) - 1;    
+//     double xi1 = xi*xi;
+//     double xi2 = 1.5*xi1 - 0.5;
+//     double xi3 = (2.5*xi1 - 1.5)*xi;
+//             
+//     double *c = &crbf[p1*nrbfmax*i];        
+//     for (int j=0; j<nrbfmax; j++) {
+//       int m = p1*j;
+//       rbf[n + N*j] = c[0+m] + c[1+m]*xi + c[2+m]*xi2 + c[3+m]*xi3;      
+//     }    
+//   }
+// }
+
+/**
+ * @brief Calculates the radial basis functions and their derivatives.
+ *
+ * @param rbf           Pointer to the array of radial basis functions.
+ * @param rbfx          Pointer to the array of derivatives of radial basis functions with respect to x.
+ * @param rbfy          Pointer to the array of derivatives of radial basis functions with respect to y.
+ * @param rbfz          Pointer to the array of derivatives of radial basis functions with respect to z.
+ * @param rij           Pointer to the relative positions of neighboring atoms and atom i.
+ * @param besselparams  Pointer to the array of Bessel function parameters.
+ * @param rin           Minimum distance for radial basis functions.
+ * @param rmax          Maximum distance for radial basis functions.
+ * @param besseldegree  Degree of Bessel functions.
+ * @param inversedegree Degree of inverse distance functions.
+ * @param nbesselpars   Number of Bessel function parameters.
+ * @param N             Number of neighboring atoms.
+ */
+// void RBPOD::radialbasis(double *rbf, double *rbfx, double *rbfy, double *rbfz, double *rij, int N)
+// {
+//   // Loop over all neighboring atoms
+//   for (int n=0; n<N; n++) {
+//     double xij1 = rij[0+3*n];
+//     double xij2 = rij[1+3*n];
+//     double xij3 = rij[2+3*n];
+// 
+//     double dij = sqrt(xij1*xij1 + xij2*xij2 + xij3*xij3);
+//     double dr1 = xij1/dij;
+//     double dr2 = xij2/dij;
+//     double dr3 = xij3/dij;
+// 
+//     double r = dij - rin;
+//     double y = r/rmax;
+//     double y2 = y*y;
+// 
+//     double fcut, dfcut;
+//     if (cutofftype==0) {
+//       fcut = 1;
+//       dfcut = 0;
+//     }
+//     else if (cutofftype==1) {
+//       double y3 = 1.0 - y2*y;
+//       double y4 = y3*y3 + 1e-6;
+//       double y5 = sqrt(y4);
+//       double y6 = exp(-1.0/y5);
+//       double y7 = y4*sqrt(y4);
+// 
+//       // Calculate the final cutoff function as y6/exp(-1)
+//       fcut = y6/exp(-1.0);
+// 
+//       // Calculate the derivative of the final cutoff function
+//       dfcut = ((3.0/(rmax*exp(-1.0)))*(y2)*y6*(y*y2 - 1.0))/y7;
+//     }
+//     else if (cutofftype==2) {
+//       fcut = 0.5*cos(MY_PI*y) + 0.5;
+//       dfcut = -0.5*(MY_PI*sin(MY_PI*y));
+//     }
+//     else if (cutofftype==3) {    
+//       double y3 = y2*y;
+//       double y4 = y2*y2;
+//       fcut = (y*(y*(20*y - 70) + 84) - 35)*y4 + 1;
+//       dfcut = 140*y3*(y - 1)*(y - 1)*(y - 1)/rmax;
+//     }
+//     else if (cutofftype==4) {    
+//       double y4 = y2*y2;
+//       double y5 = y*y4;
+//       double y6 = (y - 1)*(y - 1);  
+//       fcut = (y*(y*((315 - 70*y)*y - 540) + 420) - 126)*y5 + 1;
+//       dfcut = -630*y4*y6*y6/rmax;    
+//     }
+//     
+//     // Calculate fcut/r, fcut/r^2, and dfcut/r
+//     double f1 = fcut/r;
+//     double f2 = f1/r;
+//     double df1 = dfcut/r;
+// 
+//     double alpha = besselparams[0];
+//     double t1 = (1.0-exp(-alpha));
+//     double t2 = exp(-alpha*r/rmax);
+//     double x0 =  (1.0 - t2)/t1;
+//     double dx0 = (alpha/rmax)*t2/t1;
+// 
+//     if (nbesselpars==1) {
+//       for (int i=0; i<besseldegree; i++) {
+//         double a = (i+1)*MY_PI;
+//         double b = (sqrt(2.0/(rmax))/(i+1));
+//         double af1 = a*f1;
+// 
+//         double sinax = sin(a*x0);
+//         int nij = n + N*i;
+// 
+//         rbf[nij] = b*f1*sinax;
+// 
+//         double drbfdr = b*(df1*sinax - f2*sinax + af1*cos(a*x0)*dx0);
+//         rbfx[nij] = drbfdr*dr1;
+//         rbfy[nij] = drbfdr*dr2;
+//         rbfz[nij] = drbfdr*dr3;
+//       }
+//     }
+//     else if (nbesselpars==2) {
+//       alpha = besselparams[1];
+//       t1 = (1.0-exp(-alpha));
+//       t2 = exp(-alpha*r/rmax);
+//       double x1 =  (1.0 - t2)/t1;
+//       double dx1 = (alpha/rmax)*t2/t1;
+//       for (int i=0; i<besseldegree; i++) {
+//         double a = (i+1)*MY_PI;
+//         double b = (sqrt(2.0/(rmax))/(i+1));
+//         double af1 = a*f1;
+// 
+//         double sinax = sin(a*x0);
+//         int nij = n + N*i;
+// 
+//         rbf[nij] = b*f1*sinax;
+// 
+//         double drbfdr = b*(df1*sinax - f2*sinax + af1*cos(a*x0)*dx0);
+//         rbfx[nij] = drbfdr*dr1;
+//         rbfy[nij] = drbfdr*dr2;
+//         rbfz[nij] = drbfdr*dr3;
+// 
+//         sinax = sin(a*x1);
+//         nij = n + N*i + N*besseldegree*1;
+//         rbf[nij] = b*f1*sinax;
+// 
+//         drbfdr = b*(df1*sinax - f2*sinax + af1*cos(a*x1)*dx1);
+//         rbfx[nij] = drbfdr*dr1;
+//         rbfy[nij] = drbfdr*dr2;
+//         rbfz[nij] = drbfdr*dr3;
+//       }
+//     }
+//     else if (nbesselpars==3) {
+//       alpha = besselparams[1];
+//       t1 = (1.0-exp(-alpha));
+//       t2 = exp(-alpha*r/rmax);
+//       double x1 =  (1.0 - t2)/t1;
+//       double dx1 = (alpha/rmax)*t2/t1;
+// 
+//       alpha = besselparams[2];
+//       t1 = (1.0-exp(-alpha));
+//       t2 = exp(-alpha*r/rmax);
+//       double x2 =  (1.0 - t2)/t1;
+//       double dx2 = (alpha/rmax)*t2/t1;
+//       for (int i=0; i<besseldegree; i++) {
+//         double a = (i+1)*MY_PI;
+//         double b = (sqrt(2.0/(rmax))/(i+1));
+//         double af1 = a*f1;
+// 
+//         double sinax = sin(a*x0);
+//         int nij = n + N*i;
+// 
+//         rbf[nij] = b*f1*sinax;
+//         double drbfdr = b*(df1*sinax - f2*sinax + af1*cos(a*x0)*dx0);
+//         rbfx[nij] = drbfdr*dr1;
+//         rbfy[nij] = drbfdr*dr2;
+//         rbfz[nij] = drbfdr*dr3;
+// 
+//         sinax = sin(a*x1);
+//         nij = n + N*i + N*besseldegree*1;
+// 
+//         rbf[nij] = b*f1*sinax;
+//         drbfdr = b*(df1*sinax - f2*sinax + af1*cos(a*x1)*dx1);
+//         rbfx[nij] = drbfdr*dr1;
+//         rbfy[nij] = drbfdr*dr2;
+//         rbfz[nij] = drbfdr*dr3;
+// 
+//         sinax = sin(a*x2);
+//         nij = n + N*i + N*besseldegree*2;
+//         rbf[nij] = b*f1*sinax;
+//         drbfdr = b*(df1*sinax - f2*sinax + af1*cos(a*x2)*dx2);
+//         rbfx[nij] = drbfdr*dr1;
+//         rbfy[nij] = drbfdr*dr2;
+//         rbfz[nij] = drbfdr*dr3;
+//       }
+//     }
+// 
+//     // Calculate fcut/dij and dfcut/dij
+//     f1 = fcut/dij;
+//     for (int i=0; i<inversedegree; i++) {
+//       int p = besseldegree*nbesselpars + i;
+//       int nij = n + N*p;
+//       double a = powint(dij, i+1);
+// 
+//       rbf[nij] = fcut/a;
+// 
+//       double drbfdr = (dfcut - (i+1.0)*f1)/a;
+//       rbfx[nij] = drbfdr*dr1;
+//       rbfy[nij] = drbfdr*dr2;
+//       rbfz[nij] = drbfdr*dr3;
+//     }
+//   }
+// }
+// 
+// void RBPOD::gaussianbasis(double *rbf, double *rbfx, double *rbfy, double *rbfz, double *rij, int N)
+// {
+//   // Loop over all neighboring atoms
+//   for (int n=0; n<N; n++) {
+//     double xij1 = rij[0+3*n];
+//     double xij2 = rij[1+3*n];
+//     double xij3 = rij[2+3*n];
+// 
+//     double dij = sqrt(xij1*xij1 + xij2*xij2 + xij3*xij3);
+//     double dr1 = xij1/dij;
+//     double dr2 = xij2/dij;
+//     double dr3 = xij3/dij;
+// 
+//     double r = dij - rin;
+//     double y = r/rmax;
+//     double y2 = y*y;
+// 
+//     double fcut, dfcut;
+//     if (cutofftype==0) {
+//       fcut = 1;
+//       dfcut = 0;
+//     }
+//     else if (cutofftype==1) {
+//       double y3 = 1.0 - y2*y;
+//       double y4 = y3*y3 + 1e-6;
+//       double y5 = sqrt(y4);
+//       double y6 = exp(-1.0/y5);
+//       double y7 = y4*sqrt(y4);
+// 
+//       // Calculate the final cutoff function as y6/exp(-1)
+//       fcut = y6/exp(-1.0);
+// 
+//       // Calculate the derivative of the final cutoff function
+//       dfcut = ((3.0/(rmax*exp(-1.0)))*(y2)*y6*(y*y2 - 1.0))/y7;
+//     }
+//     else if (cutofftype==2) {
+//       fcut = 0.5*cos(MY_PI*y) + 0.5;
+//       dfcut = -0.5*(MY_PI*sin(MY_PI*y));
+//     }
+//     else if (cutofftype==3) {    
+//       double y3 = y2*y;
+//       double y4 = y2*y2;
+//       fcut = (y*(y*(20*y - 70) + 84) - 35)*y4 + 1;
+//       dfcut = 140*y3*(y - 1)*(y - 1)*(y - 1)/rmax;
+//     }
+//     else if (cutofftype==4) {    
+//       double y4 = y2*y2;
+//       double y5 = y*y4;
+//       double y6 = (y - 1)*(y - 1);  
+//       fcut = (y*(y*((315 - 70*y)*y - 540) + 420) - 126)*y5 + 1;
+//       dfcut = -630*y4*y6*y6/rmax;    
+//     }
+//     
+//     for (int i=0; i<ngaussianfuncs; i++) {      
+//       double alpha = gaussianexponents[i];  // gaussian exponents
+//       int beta = polydegrees[i];       // polynomial degrees
+//       
+//       double a = powint(y, beta);       // a = y^beta      
+//       double g = a * exp(-alpha * y2 ); // g = y^beta * exp(-alpha * y^2 );
+//       // dg = y^beta*exp(-alpha*y^2)*(- 2*alpha*y + beta/y)
+//       double dg = a*exp(-alpha*y2)*(- 2*alpha*y + beta/y); 
+// 
+//       int nij = n + N*i;
+//       rbf[nij] = fcut * g;
+//       double drbfdr = (dfcut * g + fcut * dg);
+//       rbfx[nij] = drbfdr*dr1;
+//       rbfy[nij] = drbfdr*dr2;
+//       rbfz[nij] = drbfdr*dr3;
+//     }
+//   }
+// }
+// 
+// void RBPOD::podradialbasis(double *rbf, double *rbfx, double *rbfy, double *rbfz, double *rij, double *temp, int N)
+// {    
+//   double *rbft = &temp[0]; // Nj*ns
+//   double *rbfxt = &temp[N*ns]; // Nj*ns
+//   double *rbfyt = &temp[2*N*ns]; // Nj*ns
+//   double *rbfzt = &temp[3*N*ns]; // Nj*ns
+//  
+//   if (ngaussianfuncs==0)
+//     radialbasis(rbft, rbfxt, rbfyt, rbfzt, rij, N);
+//   else
+//     gaussianbasis(rbft, rbfxt, rbfyt, rbfzt, rij, N);
+//       
+//   char chn = 'N';
+//   double alpha = 1.0, beta = 0.0;
+//   DGEMM(&chn, &chn, &N, &nrbfmax, &ns, &alpha, rbft, &N, Phi, &ns, &beta, rbf, &N);
+//   DGEMM(&chn, &chn, &N, &nrbfmax, &ns, &alpha, rbfxt, &N, Phi, &ns, &beta, rbfx, &N);
+//   DGEMM(&chn, &chn, &N, &nrbfmax, &ns, &alpha, rbfyt, &N, Phi, &ns, &beta, rbfy, &N);
+//   DGEMM(&chn, &chn, &N, &nrbfmax, &ns, &alpha, rbfzt, &N, Phi, &ns, &beta, rbfz, &N);
+// }
 
 // double maxerror(double *a, double *b, int n)
 // {

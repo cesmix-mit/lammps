@@ -46,8 +46,6 @@ class RBPOD : protected Pointers {
   void eigenvaluedecomposition(int N);
   void snapshots(double *rbf, double *xij, int N);
   void gaussiansnapshots(double *rbf, double *rij, int N);  
-  void radialbasis(double *rbf, double *rbfx, double *rbfy, double *rbfz, double *rij, int N);      
-  void gaussianbasis(double *rbf, double *rbfx, double *rbfy, double *rbfz, double *rij, int N);  
   void radialbasis(double *rbf, double *drbf, double *rij, int N);      
   void gaussianbasis(double *rbf, double *drbf, double *rij, int N);  
   void podradialbasis(double *rbf, double *drbf, double *rij, double *temp, int N);    
@@ -82,10 +80,8 @@ class RBPOD : protected Pointers {
   RBPOD(LAMMPS *lmp) : Pointers(lmp){};
     
   void read_pod_file(std::string pod_file);
-  void podradialbasis(double *rbf, double *rbfx, double *rbfy, double *rbfz, double *rij, double *temp, int N);  
   void femradialbasis(double *rbf, double *rbfx, double *rbfy, double *rbfz, double *rij, int N);
   void femradialbasis(double *rbf, double *drbfx, double *rij, int N);
-  void femradialbasis(double *rbf, double *rij, int N);
   void femdrbfdr(double *rbf, double *drbfdr, double *rij, int N);
   void fem1drbf(double *rbf, double *drbfdr, double *x, int nrbf, int N);
   

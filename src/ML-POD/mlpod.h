@@ -48,8 +48,6 @@ class MLPOD : protected Pointers {
 
   // functions for calculating/collating POD descriptors/coefficients for energies
 
-  void podradialbasis(double *rbf, double *drbf, double *xij, double *besselparams, double rin,
-                      double rmax, int besseldegree, int inversedegree, int nbesselpars, int N);
   void pod1body(double *eatom, double *fatom, int *atomtype, int nelements, int natom);
   void podtally2b(double *eatom, double *fatom, double *eij, double *fij, int *ai, int *aj, int *ti,
                   int *tj, int *elemindex, int nelements, int nbf, int natom, int N);
@@ -61,61 +59,7 @@ class MLPOD : protected Pointers {
                double rin, double rcut, int *pairnumsum, int *atomtype, int *ai, int *aj, int *ti,
                int *tj, int *elemindex, int *pdegree, int nbesselpars, int nrbf2, int nrbf3,
                int nabf, int nelements, int Nij, int natom);
-  double quadratic_coefficients(double *c2, double *c3, double *d2, double *d3, double *coeff23,
-                                int *quadratic, int nc2, int nc3);
-  double quadratic_coefficients(double *c3, double *d3, double *coeff33, int *quadratic, int nc3);
-  double cubic_coefficients(double *c2, double *c3, double *c4, double *d2, double *d3, double *d4,
-                            double *coeff234, int *cubic, int nc2, int nc3, int nc4);
-  double cubic_coefficients(double *c3, double *d3, double *coeff333, int *cubic, int nc3);
-  double quadratic_coefficients(double *ce2, double *ce3, double *c2, double *c3, double *d2,
-                                double *d3, double *coeff23, int *quadratic, int nc2, int nc3);
-  double quadratic_coefficients(double *ce3, double *c3, double *d3, double *coeff33,
-                                int *quadratic, int nc3);
-  double cubic_coefficients(double *ce2, double *ce3, double *ce4, double *c2, double *c3,
-                            double *c4, double *d2, double *d3, double *d4, double *coeff234,
-                            int *cubic, int nc2, int nc3, int nc4);
-  double cubic_coefficients(double *ce3, double *c3, double *d3, double *coeff333, int *cubic,
-                            int nc3);
-
-  // functions for calculating/collating POD descriptors/coefficients for forces
-
-  void podradialbasis(double *rbf, double *xij, double *besselparams, double rin, double rmax,
-                      int besseldegree, int inversedegree, int nbesselpars, int N);
-  void pod1body(double *eatom, int *atomtype, int nelements, int natom);
-  void podtally2b(double *eatom, double *eij, int *ai, int *ti, int *tj, int *elemindex,
-                  int nelements, int nbf, int natom, int N);
-  void pod3body(double *eatom, double *yij, double *e2ij, double *tmpmem, int *elemindex,
-                int *pairnumsum, int *ai, int *ti, int *tj, int nrbf, int nabf, int nelements,
-                int natom, int Nij);
-  void poddesc_ij(double *eatom1, double *eatom2, double *eatom3, double *rij, 
-                  double *besselparams, double *tmpmem, double rin, double rcut, int *pairnumsum,
-                  int *atomtype, int *ai, int *ti, int *tj, int *elemindex, int *pdegree,
-                  int nbesselpars, int nrbf2, int nrbf3, int nabf, int nelements, int Nij,
-                  int natom);
-  void snapComputeUij(double *Sr, double *Si, double *rootpqarray, double *rij, double *wjelem,
-                      double *radelem, double rmin0, double rfac0, double rcutfac, int *idxu_block,
-                      int *ti, int *tj, int twojmax, int idxu_max, int ijnum, int switch_flag);
-  void snapdesc_ij(double *blist, double *rij, double *tmpmem, int *atomtype, int *ai, int *ti,
-                   int *tj, int natom, int Nij);
-  void pod2body_force(double *force, double *fij, double *coeff2, int *ai, int *aj, int *ti,
-                      int *tj, int *elemindex, int nelements, int nbf, int natom, int Nij);
-  void pod3body_force(double *force, double *yij, double *e2ij, double *f2ij, double *coeff3,
-                      double *tmpmem, int *elemindex, int *pairnumsum, int *ai, int *aj, int *ti,
-                      int *tj, int nrbf, int nabf, int nelements, int natom, int Nij);
-  void snapTallyForce(double *force, double *dbdr, double *coeff4, int *ai, int *aj, int *ti,
-                      int ijnum, int ncoeff, int ntype);
-  void pod4body_force(double *force, double *rij, double *coeff4, double *tmpmem, int *atomtype,
-                      int *idxi, int *ai, int *aj, int *ti, int *tj, int natom, int Nij);
-  void pod2body_force(double **force, double *fij, double *coeff2, int *ai, int *aj, int *ti,
-                      int *tj, int *elemindex, int nelements, int nbf, int natom, int Nij);
-  void pod3body_force(double **force, double *yij, double *e2ij, double *f2ij, double *coeff3,
-                      double *tmpmem, int *elemindex, int *pairnumsum, int *ai, int *aj, int *ti,
-                      int *tj, int nrbf, int nabf, int nelements, int natom, int Nij);
-  void snapTallyForce(double **force, double *dbdr, double *coeff4, int *ai, int *aj, int *ti,
-                      int ijnum, int ncoeff, int ntype);
-  void pod4body_force(double **force, double *rij, double *coeff4, double *tmpmem, int *atomtype,
-                      int *idxi, int *ai, int *aj, int *ti, int *tj, int natom, int Nij);
- 
+  
   double pod2body_energyforce(double *fij, double *ei, double *rij, double *rbf, double *drbfdr, 
                       double *coeff2, double *tmpmem, int *elemindex, int *pairnumsum, int *ti, 
                       int *tj, int nelements, int nrbf, int natom, int Nij);   
@@ -124,9 +68,6 @@ class MLPOD : protected Pointers {
                       double *coeff3, double *tmpmem, int *elemindex, int *pairnumsum, int *ti, 
                       int *tj, int nelements, int nrbf, int nabf, int natom, int Nij);
   
-  double fem3body_energyforce(double *fij, double *ei, double *rij, double *rbf, double *drbfdr, 
-                      double *coeff3, double *tmpmem, int *elemindex, int *pairnumsum, int *ti, 
-                      int *tj, int nelements, int nrbf, int nabf, int natom, int Nij);
  public:
   MLPOD(LAMMPS *, const std::string &pod_file, const std::string &coeff_file);
 
@@ -195,39 +136,16 @@ class MLPOD : protected Pointers {
   void linear_descriptors(double *gd, double *efatom, double *y, double *tmpmem, int *atomtype,
                           int *alist, int *pairlist, int *pairnum, int *pairnumsum, int *tmpint,
                           int natom, int Nij);
-  void quadratic_descriptors(double *d23, double *dd23, double *d2, double *d3, double *dd2,
-                             double *dd3, int M2, int M3, int N);
-  void quadratic_descriptors(double *d33, double *dd33, double *d3, double *dd3, int M3, int N);
-  void cubic_descriptors(double *d234, double *dd234, double *d2, double *d3, double *d4,
-                         double *dd2, double *dd3, double *dd4, int M2, int M3, int M4, int N);
-  void cubic_descriptors(double *d333, double *Dd333, double *d3, double *Dd3, int M3, int N);
-  double calculate_energyforce(double *force, double *gd, double *gdd, double *coeff, double *tmp,
-                               int natom);
   
   // functions for calculating energies and forces
 
   void podNeighPairs(double *rij, double *x, int *idxi, int *ai, int *aj, int *ti, int *tj,
                      int *pairnumsum, int *atomtype, int *jlist, int *alist, int inum);
-  int lammpsNeighPairs(double *rij, double **x, double rcutsq, int *idxi, int *ai, int *aj, int *ti,
-                       int *tj, int *pairnumsum, int *atomtype, int *numneigh, int *ilist,
-                       int **jlist, int inum);
+
   void linear_descriptors_ij(double *gd, double *eatom, double *rij, double *tmpmem,
                              int *pairnumsum, int *atomtype, int *ai, int *ti, int *tj, int natom,
                              int Nij);
-  double calculate_energy(double *effectivecoeff, double *gd, double *coeff);
-  double calculate_energy(double *energycoeff, double *forcecoeff, double *gd, double *gdall,
-                          double *coeff);
-  void calculate_force(double *force, double *effectivecoeff, double *rij, double *tmpmem,
-                       int *pairnumsum, int *atomtype, int *idxi, int *ai, int *aj, int *ti,
-                       int *tj, int natom, int Nij);
-  void calculate_force(double **force, double *effectivecoeff, double *rij, double *tmpmem,
-                       int *pairnumsum, int *atomtype, int *idxi, int *ai, int *aj, int *ti,
-                       int *tj, int natom, int Nij);
-  double energyforce_calculation(double *force, double *podcoeff, double *effectivecoeff,
-                                 double *gd, double *rij, double *tmpmem, int *pairnumsum,
-                                 int *atomtype, int *idxi, int *ai, int *aj, int *ti, int *tj,
-                                 int natom, int Nij);
-  
+
   double pod123body_energyforce(double *fij, double *ei, double *rij, double *podcoeff, 
                        double *tmpmem, int *pairnumsum, int *typeai, int *ti, int *tj, int natom, int Nij);   
 
@@ -246,15 +164,8 @@ class MLPOD : protected Pointers {
   
   void femabf(double *abf, double *dabf, int nabf, int nelem, int p);
   
-  void femgrid3body(double *phi, double *dphi1, double *dphi2, double *dphi3, double *coeff3, 
-        int *elemindex, double rin, double rcut, int nrbf, int nelemr, int nabf, int nelema, int p, 
-        int nelements, int typei, int typej, int typek);
-  
   void femapproximation3body(double *cphi, double *coeff, double rin, 
         double rcut, int nrbf, int nelemr, int nabf, int nelema, int p);
-  
-  void femevaluation3body(double *phi, double *cphi, double *x, double *tmp,
-        double rin, double rcut, int nelemr, int nelema, int p, int N);
   
   void polyfit3body(double *coeff3, int memoryallocate);  
 };
