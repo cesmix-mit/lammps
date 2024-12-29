@@ -1881,7 +1881,7 @@ void PairPODKokkos<DeviceType>::fempod_energyforce(t_pod_1d l_ei, t_pod_1d l_fij
       e3 = (e3 > (nelema-1)) ? (nelema-1) : e3;    
 
       int e = e3 + nelema*e2 + nelema*nelemr*e1;
-      int idxe = (l_elemindex[typej + typek * nelements] - 1) + nelements2 * typei;
+      int idxe = (l_elemindex[typej + typek * l_nelements] - 1) + nelements2 * typei;
       double *c = &l_femcoeffs[l_npelem*4*(e + l_nfemelem*idxe)];        
       
       double fn = 0.0, fm = 0.0, fq = 0.0, fp = 0.0;
