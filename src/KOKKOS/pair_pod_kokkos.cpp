@@ -1944,9 +1944,9 @@ void PairPODKokkos<DeviceType>::fempod_energyforce(t_pod_1d l_ei, t_pod_1d l_fij
       fjx += tm1*xij1 + fp * dct1;
       fjy += tm1*xij2 + fp * dct2;
       fjz += tm1*xij3 + fp * dct3;           
-      Kokkos::atomic_add(&fij[0+3*ik], tm2*xik1 + fp * dct4);
-      Kokkos::atomic_add(&fij[1+3*ik], tm2*xik2 + fp * dct5);
-      Kokkos::atomic_add(&fij[2+3*ik], tm2*xik3 + fp * dct6);
+      Kokkos::atomic_add(&l_fij[0+3*ik], tm2*xik1 + fp * dct4);
+      Kokkos::atomic_add(&l_fij[1+3*ik], tm2*xik2 + fp * dct5);
+      Kokkos::atomic_add(&l_fij[2+3*ik], tm2*xik3 + fp * dct6);
       //fij[0+3*ik] += (tm2*xik1 + fp * dct4);
       //fij[1+3*ik] += (tm2*xik2 + fp * dct5);
       //fij[2+3*ik] += (tm2*xik3 + fp * dct6);                                              
