@@ -493,6 +493,9 @@ void PairPODKokkos<DeviceType>::copy_from_mlpod_class(MLPOD *podptr)
   nelemrbpod = podptr->rbpodptr->nfemelem;
   orderrbpod = podptr->rbpodptr->nfemdegree;   
           
+  if ((femdegree<=1) || (femdegree>=4) || (nelemabf==0) || (nelemrbf==0))
+    error->all(FLERR,"illegal options in fem_approximation_threebody");
+  
   rin = podptr->pod.rin;
   rcut = podptr->pod.rcut;
   rmax = rcut - rin;
@@ -602,7 +605,7 @@ void PairPODKokkos<DeviceType>::grow_pairs(int Nij)
     else if (descriptorform==0) {
       int p1 = femdegree + 1;      
       int n = 2*p1*p1*4;
-      if ((femdegree==0) || (nfemelem==0)) n = 2 * (nijmax * nrbfmax + 2 * (nabf3 + 1) + p1*p1*4);  
+      //if ((femdegree==0) || (nfemelem==0)) n = 2 * (nijmax * nrbfmax + 2 * (nabf3 + 1) + p1*p1*4);  
       MemKK::realloc_kokkos(tempmem, "pair_pod:tempmem", n);
     }
   }
