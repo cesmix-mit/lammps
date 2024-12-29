@@ -893,7 +893,7 @@ void EAPOD::peratombase_descriptors(double *bd1, double *bdd1, double *rij, doub
 
   int n1 = Nj*K3*nrbf3;
   int n2 = Nj*nrbfmax;
-  int n3 = Nj*ns;
+  //int n3 = Nj*ns;
   int n4 = Nj*K3;
   int n5 = K3*nrbf3*nelements;
 
@@ -1300,10 +1300,10 @@ double EAPOD::peratomenergyforce2(double *fij, double *rij, double *temp,
   double *rbfy = &temp[4*n1 + n5 + 2*n2]; // Nj*nrbf2
   double *rbfz = &temp[4*n1 + n5 + 3*n2]; // Nj*nrbf2
 
-  double *rbft = &temp[4*n1 + n5 + 4*n2]; // Nj*ns
-  double *rbfxt = &temp[4*n1 + n5 + 4*n2 + n3]; // Nj*ns
-  double *rbfyt = &temp[4*n1 + n5 + 4*n2 + 2*n3]; // Nj*ns
-  double *rbfzt = &temp[4*n1 + n5 + 4*n2 + 3*n3]; // Nj*ns
+//   double *rbft = &temp[4*n1 + n5 + 4*n2]; // Nj*ns
+//   double *rbfxt = &temp[4*n1 + n5 + 4*n2 + n3]; // Nj*ns
+//   double *rbfyt = &temp[4*n1 + n5 + 4*n2 + 2*n3]; // Nj*ns
+//   double *rbfzt = &temp[4*n1 + n5 + 4*n2 + 3*n3]; // Nj*ns
 
 //   if (ngaussianfuncs==0)
 //     radialbasis(rbft, rbfxt, rbfyt, rbfzt, rij, besselparams, rin, rcut-rin, pdegree[0], pdegree[1], nbesselpars, Nj);

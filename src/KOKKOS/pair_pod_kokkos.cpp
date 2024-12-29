@@ -602,12 +602,6 @@ void PairPODKokkos<DeviceType>::grow_pairs(int Nij)
       MemKK::realloc_kokkos(abfy, "pair_pod:abfy", nijmax * kmax);
       MemKK::realloc_kokkos(abfz, "pair_pod:abfz", nijmax * kmax);
     }
-    else if (descriptorform==0) {
-      int p1 = femdegree + 1;      
-      int n = 2*p1*p1*4;
-      //if ((femdegree==0) || (nfemelem==0)) n = 2 * (nijmax * nrbfmax + 2 * (nabf3 + 1) + p1*p1*4);  
-      MemKK::realloc_kokkos(tempmem, "pair_pod:tempmem", n);
-    }
   }
 }
 
@@ -1777,7 +1771,6 @@ void PairPODKokkos<DeviceType>::fempod_energyforce(t_pod_1d l_ei, t_pod_1d l_fij
   int l_npelem = npelem;
   int l_nfemelem = nfemelem;
   int l_nrbf2 = nrbf2;
-  int l_nrbf3 = nrbf3;
   int nelemr = nelemrbf;
   int nelema = nelemabf;
   int p1 = femdegree + 1;
@@ -1785,7 +1778,6 @@ void PairPODKokkos<DeviceType>::fempod_energyforce(t_pod_1d l_ei, t_pod_1d l_fij
   int nsq4 = p1*p1*4;
   
   double l_rin = rin;
-  double l_rcut = rcut;  
   double dr = (rcut-rin-1e-3)/nelemrbf;
   double fr = 2.0/dr;    
   double dt = M_PI/nelemabf;
@@ -1796,8 +1788,6 @@ void PairPODKokkos<DeviceType>::fempod_energyforce(t_pod_1d l_ei, t_pod_1d l_fij
   auto coeff1 = Kokkos::subview(coefficients, std::make_pair(0, nd1));
   auto coeff2 = Kokkos::subview(coefficients, std::make_pair(nd1, nd1+nd2));
   auto coeff3 = Kokkos::subview(coefficients, std::make_pair(nd1+nd2, nd1+nd2+nd3));  
-  auto c1 = Kokkos::subview(tempmem, std::make_pair(0, nsq4)); 
-  auto c2 = Kokkos::subview(tempmem, std::make_pair(nsq4, 2*nsq4)); 
   
   Kokkos::parallel_for("atomic_energies", Ni, KOKKOS_LAMBDA(int n) {
     l_ei[n] = cefs[tyai[n]-1];    
@@ -1827,15 +1817,13 @@ void PairPODKokkos<DeviceType>::fempod_energyforce(t_pod_1d l_ei, t_pod_1d l_fij
     double x2 = 1.5*tm2 - 0.5;
     double x3 = (2.5*tm2 - 1.5)*x1;                          
     
-    double *crbf2 = &l_crbf[4*l_nrbf2*e1];    
-    double *drbf2 = &l_drbf[4*l_nrbf2*e1];                      
+    int ne1 = 4*l_nrbf2*e1;
     double en = 0.0, tn = 0.0;      
     for (int m = 0; m < l_nrbf2; m++) {      
-      int nm = n + Nij * m;
       int km = (l_elemindex[typei + typej * l_nelements] - 1) + nelements2 * m;        
-      int pm = 4*m;
-      en += coeff2[km] * (crbf2[0+pm] + crbf2[1+pm]*x1 + crbf2[2+pm]*x2 + crbf2[3+pm]*x3);
-      tn += coeff2[km] * (drbf2[0+pm] + drbf2[1+pm]*x1 + drbf2[2+pm]*x2 + drbf2[3+pm]*x3);
+      int pm = 4*m + ne1;
+      en += coeff2[km] * (l_crbf[0+pm] + l_crbf[1+pm]*x1 + l_crbf[2+pm]*x2 + l_crbf[3+pm]*x3);
+      tn += coeff2[km] * (l_drbf[0+pm] + l_drbf[1+pm]*x1 + l_drbf[2+pm]*x2 + l_drbf[3+pm]*x3);
     }          
     
     tn = tn/dij;     
@@ -1882,18 +1870,19 @@ void PairPODKokkos<DeviceType>::fempod_energyforce(t_pod_1d l_ei, t_pod_1d l_fij
 
       int e = e3 + nelema*e2 + nelema*nelemr*e1;
       int idxe = (l_elemindex[typej + typek * l_nelements] - 1) + nelements2 * typei;
-      double *c = &l_femcoeffs[l_npelem*4*(e + l_nfemelem*idxe)];        
+      ne1 = l_npelem*4*(e + l_nfemelem*idxe);
       
-      double fn = 0.0, fm = 0.0, fq = 0.0, fp = 0.0;
-      
+      double fn = 0.0, fm = 0.0, fq = 0.0, fp = 0.0;      
       if (l_femdegree==3) {
+        double c1[64];
+        double c2[16];
         tm1 = e3*dt;    
         x1 = ft * (theta  - tm1) - 1;   
         tm2 = x1*x1;
         x2 = 1.5*tm2 - 0.5;
         x3 = (2.5*tm2 - 1.5)*x1;                  
         for (int i=0; i<nsq4; i++)           
-          c1[i] = c[0 + p1*i] + x1*c[1 + p1*i] + x2*c[2 + p1*i] + x3*c[3 + p1*i];
+          c1[i] = l_femcoeffs[0 + p1*i + ne1] + x1*l_femcoeffs[1 + p1*i + ne1] + x2*l_femcoeffs[2 + p1*i + ne1] + x3*l_femcoeffs[3 + p1*i + ne1];
 
         tm1 = l_rin+1e-3 + e2*dr;    
         x1 = fr * (dik  - tm1) - 1;   
@@ -1914,12 +1903,14 @@ void PairPODKokkos<DeviceType>::fempod_energyforce(t_pod_1d l_ei, t_pod_1d l_fij
         fp = c2[0 + p1*3] + x1*c2[1 + p1*3] + x2*c2[2 + p1*3] + x3*c2[3 + p1*3];
       }
       else if (l_femdegree==2) {
+        double c1[36];
+        double c2[12];
         tm1 = e3*dt;    
         x1 = ft * (theta  - tm1) - 1;   
         tm2 = x1*x1;
         x2 = 1.5*tm2 - 0.5;
         for (int i=0; i<nsq4; i++)           
-          c1[i] = c[0 + p1*i] + x1*c[1 + p1*i] + x2*c[2 + p1*i];
+          c1[i] = l_femcoeffs[0 + p1*i + ne1] + x1*l_femcoeffs[1 + p1*i + ne1] + x2*l_femcoeffs[2 + p1*i + ne1];
 
         tm1 = l_rin+1e-3 + e2*dr;    
         x1 = fr * (dik  - tm1) - 1;   
@@ -1947,13 +1938,9 @@ void PairPODKokkos<DeviceType>::fempod_energyforce(t_pod_1d l_ei, t_pod_1d l_fij
       Kokkos::atomic_add(&l_fij[0+3*ik], tm2*xik1 + fp * dct4);
       Kokkos::atomic_add(&l_fij[1+3*ik], tm2*xik2 + fp * dct5);
       Kokkos::atomic_add(&l_fij[2+3*ik], tm2*xik3 + fp * dct6);
-      //fij[0+3*ik] += (tm2*xik1 + fp * dct4);
-      //fij[1+3*ik] += (tm2*xik2 + fp * dct5);
-      //fij[2+3*ik] += (tm2*xik3 + fp * dct6);                                              
     }
     
     Kokkos::atomic_add(&l_ei(ii), en);
-    //l_ei[ii] += en;
     l_fij[0+3*n] += fjx;
     l_fij[1+3*n] += fjy;
     l_fij[2+3*n] += fjz;                                                      

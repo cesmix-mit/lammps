@@ -1419,7 +1419,7 @@ void FitPOD::estimate_memory_descriptorstruct(const datastruct &data)
   int nd2 = podptr->pod.nd2;
   int nd3 = podptr->pod.nd3;
   int nd4 = podptr->pod.nd4;
-  int nelements = podptr->pod.nelements;
+  //int nelements = podptr->pod.nelements;
   int nbesselpars = podptr->pod.nbesselpars;
   int nrbf2 = podptr->pod.nbf2;
   int nabf3 = podptr->pod.nabf3;

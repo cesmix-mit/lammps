@@ -463,7 +463,7 @@ void RBPOD::dom2ref(double* xi, double* y, double ymin, double ymax, int n)
 
 void RBPOD::legendrepolynomials(double* poly, double* xi, int p, int n) 
 {
-  int p1 = p + 1;
+  //int p1 = p + 1;
   for (int j = 0; j < n; j++) {
     poly[j] = 1.0;        
     poly[j + n] = xi[j];        
@@ -719,7 +719,7 @@ void RBPOD::podradialbasis(double *rbf, double *drbfdr, double *rij, double *tem
 void RBPOD::femapproximation(int nelem, int p)
 {    
   int n = p + 1;
-  int ntest = 2*n;  
+  //int ntest = 2*n;  
   int info;
   int lwork = n*n;
   char chn = 'N';  
@@ -755,7 +755,7 @@ void RBPOD::femapproximation(int nelem, int p)
   for (int i=0; i<nelem+1; i++)
     relem[i] = rin+1e-3 + (rcut-rin-1e-3)*(i*1.0/nelem);
   
-  double err[2] = {0, 0};
+  //double err[2] = {0, 0};
   for (int i=0; i<nelem; i++) {
     ref2dom(y, xi, relem[i], relem[i+1], n); 
     podradialbasis(rbf, drbfdr, y, temp, n);        

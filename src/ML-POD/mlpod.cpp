@@ -441,11 +441,11 @@ void MLPOD::linear_descriptors(double *gd, double *efatom, double *y,
   double *fatom1 = &efatom[0];
   double *fatom2 = &efatom[dim * natom * (nd1)];
   double *fatom3 = &efatom[dim * natom * (nd1 + nd2)];
-  double *fatom4 = &efatom[dim * natom * (nd1 + nd2 + nd3)];
+  //double *fatom4 = &efatom[dim * natom * (nd1 + nd2 + nd3)];
   double *eatom1 = &efatom[dim * natom * (nd1 + nd2 + nd3 + nd4)];
   double *eatom2 = &efatom[dim * natom * (nd1 + nd2 + nd3 + nd4) + natom * nd1];
   double *eatom3 = &efatom[dim * natom * (nd1 + nd2 + nd3 + nd4) + natom * (nd1 + nd2)];
-  double *eatom4 = &efatom[dim * natom * (nd1 + nd2 + nd3 + nd4) + natom * (nd1 + nd2 + nd3)];
+  //double *eatom4 = &efatom[dim * natom * (nd1 + nd2 + nd3 + nd4) + natom * (nd1 + nd2 + nd3)];
 
   podArraySetValue(fatom1, 0.0, (1 + dim) * natom * (nd1 + nd2 + nd3 + nd4));
 
@@ -678,8 +678,8 @@ void MLPOD::poddesc(double *eatom1, double *fatom1, double *eatom2,
 
   double *e2ij = &tmpmem[0];
   double *f2ij = &tmpmem[Nij * nrbf];
-  double *e2ijt = &tmpmem[4 * Nij * nrbf];
-  double *f2ijt = &tmpmem[4 * Nij * nrbf + Nij * ns];
+  //double *e2ijt = &tmpmem[4 * Nij * nrbf];
+  //double *f2ijt = &tmpmem[4 * Nij * nrbf + Nij * ns];
 
   rbpodptr->femradialbasis(e2ij, f2ij, rij, Nij);
 
@@ -882,7 +882,7 @@ double MLPOD::pod123body_energyforce(double *fij, double *ei, double *rij, doubl
   int nrbf3 = pod.nrbf3;
   int nd1 = pod.nd1;
   int nd2 = pod.nd2;
-  int nd3 = pod.nd3;
+  //int nd3 = pod.nd3;
   int *elemindex = pod.elemindex;
 
   double *coeff1 = &podcoeff[0];
@@ -1239,7 +1239,7 @@ void MLPOD::fempod_energyforce(double *fij, double *ei, double *rij, double *pod
       double *drbf2 = &rbpodptr->drbf[4*nrbf2*e1];                      
       double en = 0.0, tn = 0.0;      
       for (int m = 0; m < nrbf2; m++) {      
-        int nm = n + Nij * m;
+        //int nm = n + Nij * m;
         int km = (elemindex[typei + typej * nelements] - 1) + nelements2 * m;        
         int pm = 4*m;
         en += coeff2[km] * (crbf2[0+pm] + crbf2[1+pm]*x1 + crbf2[2+pm]*x2 + crbf2[3+pm]*x3);

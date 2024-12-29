@@ -136,8 +136,7 @@ class PairPODKokkos : public PairPOD {
   t_pod_1i aj;             // IDs of atoms J for all pairs (I, J)
   t_pod_1i ti;             // types of atoms I for all pairs (I, J)
   t_pod_1i tj;             // types of atoms J for all pairs (I, J)
-
-  t_pod_1d tempmem;
+  
   t_pod_1d crbf;
   t_pod_1d drbf;  
   t_pod_1d femcoeffs; 
