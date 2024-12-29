@@ -71,7 +71,8 @@ class PairPODKokkos : public PairPOD {
   friend void pair_virial_fdotr_compute<PairPODKokkos>(PairPODKokkos*);
 
   void grow(int, int);
-  void copy_from_pod_class(EAPOD *podptr);
+  void copy_from_pod_class(EAPOD *fastpodptr);
+  void copy_from_mlpod_class(MLPOD *podptr);
   void divideInterval(int *intervals, int N, int M);
   int calculateNumberOfIntervals(int N, int intervalSize);
   void grow_atoms(int Ni);
@@ -96,19 +97,25 @@ class PairPODKokkos : public PairPOD {
   int nij;           // number of pairs (i,j) in the current atom block
   int nimax;         // maximum number of atoms i
   int nijmax;        // maximum number of pairs (i,j)
-
+  
+  int descriptorform;
   int nelements; // number of elements
   int onebody;   // one-body descriptors
   int besseldegree; // degree of Bessel functions
   int inversedegree; // degree of inverse functions
   int nbesselpars;  // number of Bessel parameters
   int nCoeffPerElement; // number of coefficients per element = (nl1 + Mdesc*nClusters)
+  int ncoeffs;     // number of POD coefficients for all elements
   int ns;      // number of snapshots for radial basis functions
   int nl1, nl2, nl3, nl4, nl23, nl33, nl34, nl44, nl;   // number of local descriptors
   int nrbf2, nrbf3, nrbf4, nrbfmax;            // number of radial basis functions
   int nabf3, nabf4;                            // number of angular basis functions
   int K3, K4, Q4;                                  // number of monomials
 
+  int nd1, nd2, nd3, nd4;  
+  int femdegree, npelem, nelemrbf, nelemabf, nfemelem, nfemcoeffs, nfemfuncs;
+  int nelemrbpod, orderrbpod;                  
+  
   // environmental variables
   int nClusters; // number of environment clusters
   int nComponents; // number of principal components
@@ -130,6 +137,11 @@ class PairPODKokkos : public PairPOD {
   t_pod_1i ti;             // types of atoms I for all pairs (I, J)
   t_pod_1i tj;             // types of atoms J for all pairs (I, J)
 
+  t_pod_1d tempmem;
+  t_pod_1d crbf;
+  t_pod_1d drbf;  
+  t_pod_1d femcoeffs; 
+  
   t_pod_1d besselparams;
   t_pod_1d Phi;  // eigenvectors matrix ns x ns
   t_pod_1d rbf;  // radial basis functions nij x nrbfmax
@@ -211,6 +223,7 @@ class PairPODKokkos : public PairPOD {
     t_pod_1d l_rbfy, t_pod_1d l_rbfz, t_pod_1d l_abf, t_pod_1d l_abfx, t_pod_1d l_abfy, t_pod_1d l_abfz,
     t_pod_1i l_idxi, t_pod_1i l_tj, int l_nelements, int l_nrbf3, int l_K3, int Nij);
 
+  void fempod_energyforce(t_pod_1d l_ei, t_pod_1d l_fij, int Ni, int Nij);
   void blockatom_energyforce(t_pod_1d l_ei, t_pod_1d l_fij, int Ni, int Nij);
   void tallyenergy(t_pod_1d l_ei, int istart, int Ni);
   void tallyforce(t_pod_1d l_fij, t_pod_1i l_ai, t_pod_1i l_aj, int Nij);

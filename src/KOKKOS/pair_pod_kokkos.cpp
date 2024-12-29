@@ -33,6 +33,8 @@
 #include <chrono>
 
 #include "eapod.h"
+#include "mlpod.h"
+#include "rbpod.h"
 
 using namespace LAMMPS_NS;
 using namespace MathConst;
@@ -57,7 +59,7 @@ PairPODKokkos<DeviceType>::PairPODKokkos(LAMMPS *lmp) : PairPOD(lmp)
   nimax = 0;
   nij = 0;
   nijmax = 0;
-  atomBlockSize = 2048;
+  atomBlockSize = 4096;
   nAtomBlocks = 0;
   timing = 0;
   for (int i=0; i<100; i++) comptime[i] = 0;
@@ -133,8 +135,14 @@ void PairPODKokkos<DeviceType>::coeff(int narg, char **arg)
 
   PairPOD::coeff(narg,arg); // create a PairPOD object
 
-  copy_from_pod_class(PairPOD::fastpodptr); // copy parameters and arrays from pod class
-
+  descriptorform = PairPOD::descriptorform;
+  if (descriptorform==1) {
+    copy_from_pod_class(PairPOD::fastpodptr); // copy parameters and arrays from pod class
+  }
+  else if (descriptorform==0) {
+    copy_from_mlpod_class(PairPOD::podptr); // copy parameters and arrays from pod class    
+  }
+  
   int n = atom->ntypes + 1;
   MemKK::realloc_kokkos(d_map, "pair_pod:map", n);
 
@@ -282,7 +290,10 @@ void PairPODKokkos<DeviceType>::compute(int eflag_in, int vflag_in)
 
     // compute atomic energy and force for the current atom block
     begin = std::chrono::high_resolution_clock::now();
-    blockatom_energyforce(ei, fij, ni, nij);
+    if (descriptorform==1)
+      blockatom_energyforce(ei, fij, ni, nij);
+    if (descriptorform==0)
+      fempod_energyforce(ei, fij, ni, nij);
     Kokkos::fence();
     end = std::chrono::high_resolution_clock::now();
     comptime[2] += std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count()/1e6;
@@ -323,72 +334,73 @@ void PairPODKokkos<DeviceType>::compute(int eflag_in, int vflag_in)
 }
 
 template<class DeviceType>
-void PairPODKokkos<DeviceType>::copy_from_pod_class(EAPOD *podptr)
+void PairPODKokkos<DeviceType>::copy_from_pod_class(EAPOD *fastpodptr)
 {
-  nelements = podptr->nelements; // number of elements
-  onebody = podptr->onebody;   // one-body descriptors
-  besseldegree = podptr->besseldegree; // degree of Bessel functions
-  inversedegree = podptr->inversedegree; // degree of inverse functions
-  nbesselpars = podptr->nbesselpars;  // number of Bessel parameters
-  nCoeffPerElement = podptr->nCoeffPerElement; // number of coefficients per element = (nl1 + Mdesc*nClusters)
-  ns = podptr->ns;      // number of snapshots for radial basis functions
-  nl1 = podptr->nl1;  // number of one-body descriptors
-  nl2 = podptr->nl2;  // number of two-body descriptors
-  nl3 = podptr->nl3;  // number of three-body descriptors
-  nl4 = podptr->nl4;  // number of four-body descriptors
-  nl23 = podptr->nl23; // number of two-body x three-body descriptors
-  nl33 = podptr->nl33; // number of three-body x three-body descriptors
-  nl34 = podptr->nl34; // number of three-body x four-body descriptors
-  nl44 = podptr->nl44; // number of four-body x four-body descriptors
-  nl = podptr->nl;   // number of local descriptors
-  nrbf2 = podptr->nrbf2;
-  nrbf3 = podptr->nrbf3;
-  nrbf4 = podptr->nrbf4;
-  nrbfmax = podptr->nrbfmax; // number of radial basis functions
-  nabf3 = podptr->nabf3;     // number of three-body angular basis functions
-  nabf4 = podptr->nabf4;     // number of four-body angular basis functions
-  K3 = podptr->K3;           // number of three-body monomials
-  K4 = podptr->K4;           // number of four-body monomials
-  Q4 = podptr->Q4;           // number of four-body monomial coefficients
-  nClusters = podptr->nClusters; // number of environment clusters
-  nComponents = podptr->nComponents; // number of principal components
-  Mdesc = podptr->Mdesc; // number of base descriptors
+  nelements = fastpodptr->nelements; // number of elements
+  onebody = fastpodptr->onebody;   // one-body descriptors
+  besseldegree = fastpodptr->besseldegree; // degree of Bessel functions
+  inversedegree = fastpodptr->inversedegree; // degree of inverse functions
+  nbesselpars = fastpodptr->nbesselpars;  // number of Bessel parameters
+  nCoeffPerElement = fastpodptr->nCoeffPerElement; // number of coefficients per element = (nl1 + Mdesc*nClusters)
+  ns = fastpodptr->ns;      // number of snapshots for radial basis functions
+  nl1 = fastpodptr->nl1;  // number of one-body descriptors
+  nl2 = fastpodptr->nl2;  // number of two-body descriptors
+  nl3 = fastpodptr->nl3;  // number of three-body descriptors
+  nl4 = fastpodptr->nl4;  // number of four-body descriptors
+  nl23 = fastpodptr->nl23; // number of two-body x three-body descriptors
+  nl33 = fastpodptr->nl33; // number of three-body x three-body descriptors
+  nl34 = fastpodptr->nl34; // number of three-body x four-body descriptors
+  nl44 = fastpodptr->nl44; // number of four-body x four-body descriptors
+  nl = fastpodptr->nl;   // number of local descriptors
+  nrbf2 = fastpodptr->nrbf2;
+  nrbf3 = fastpodptr->nrbf3;
+  nrbf4 = fastpodptr->nrbf4;
+  nrbfmax = fastpodptr->nrbfmax; // number of radial basis functions
+  nabf3 = fastpodptr->nabf3;     // number of three-body angular basis functions
+  nabf4 = fastpodptr->nabf4;     // number of four-body angular basis functions
+  K3 = fastpodptr->K3;           // number of three-body monomials
+  K4 = fastpodptr->K4;           // number of four-body monomials
+  Q4 = fastpodptr->Q4;           // number of four-body monomial coefficients
+  nClusters = fastpodptr->nClusters; // number of environment clusters
+  nComponents = fastpodptr->nComponents; // number of principal components
+  Mdesc = fastpodptr->Mdesc; // number of base descriptors
 
-  rin = podptr->rin;
-  rcut = podptr->rcut;
+  rin = fastpodptr->rin;
+  rcut = fastpodptr->rcut;
   rmax = rcut - rin;
+  rcutsq = rcut*rcut;
 
   MemKK::realloc_kokkos(besselparams, "pair_pod:besselparams", 3);
   auto h_besselparams = Kokkos::create_mirror_view(besselparams);
-  h_besselparams[0] = podptr->besselparams[0];
-  h_besselparams[1] = podptr->besselparams[1];
-  h_besselparams[2] = podptr->besselparams[2];
+  h_besselparams[0] = fastpodptr->besselparams[0];
+  h_besselparams[1] = fastpodptr->besselparams[1];
+  h_besselparams[2] = fastpodptr->besselparams[2];
   Kokkos::deep_copy(besselparams, h_besselparams);
 
   MemKK::realloc_kokkos(elemindex, "pair_pod:elemindex", nelements*nelements);
   auto h_elemindex = Kokkos::create_mirror_view(elemindex);
-  for (int i=0; i<nelements*nelements; i++) h_elemindex[i] = podptr->elemindex[i];
+  for (int i=0; i<nelements*nelements; i++) h_elemindex[i] = fastpodptr->elemindex[i];
   Kokkos::deep_copy(elemindex, h_elemindex);
 
   MemKK::realloc_kokkos(Phi, "pair_pod:Phi", ns*ns);
   auto h_Phi = Kokkos::create_mirror_view(Phi);
-  for (int i=0; i<ns*ns; i++) h_Phi[i] = podptr->Phi[i];
+  for (int i=0; i<ns*ns; i++) h_Phi[i] = fastpodptr->Phi[i];
   Kokkos::deep_copy(Phi, h_Phi);
 
   MemKK::realloc_kokkos(coefficients, "pair_pod:coefficients", nCoeffPerElement * nelements);
   auto h_coefficients = Kokkos::create_mirror_view(coefficients);
-  for (int i=0; i<nCoeffPerElement * nelements; i++) h_coefficients[i] = podptr->coeff[i];
+  for (int i=0; i<nCoeffPerElement * nelements; i++) h_coefficients[i] = fastpodptr->coeff[i];
   Kokkos::deep_copy(coefficients, h_coefficients);
 
   if (nClusters > 1) {
     MemKK::realloc_kokkos(Proj, "pair_pod:Proj",  Mdesc * nComponents * nelements);
     auto h_Proj = Kokkos::create_mirror_view(Proj);
-    for (int i=0; i<Mdesc * nComponents * nelements; i++) h_Proj[i] = podptr->Proj[i];
+    for (int i=0; i<Mdesc * nComponents * nelements; i++) h_Proj[i] = fastpodptr->Proj[i];
     Kokkos::deep_copy(Proj, h_Proj);
 
     MemKK::realloc_kokkos(Centroids, "pair_pod:Centroids",  nClusters * nComponents * nelements);
     auto h_Centroids = Kokkos::create_mirror_view(Centroids);
-    for (int i=0; i<nClusters * nComponents * nelements; i++) h_Centroids[i] = podptr->Centroids[i];
+    for (int i=0; i<nClusters * nComponents * nelements; i++) h_Centroids[i] = fastpodptr->Centroids[i];
     Kokkos::deep_copy(Centroids, h_Centroids);
   }
 
@@ -400,27 +412,27 @@ void PairPODKokkos<DeviceType>::copy_from_pod_class(EAPOD *podptr)
   MemKK::realloc_kokkos(pc4, "pair_pod:pc4", Q4);   // array of monomial coefficients needed for the computation of the four-body descriptors
 
   auto h_pn3 = Kokkos::create_mirror_view(pn3);
-  for (int i=0; i<nabf3+1; i++) h_pn3[i] = podptr->pn3[i];
+  for (int i=0; i<nabf3+1; i++) h_pn3[i] = fastpodptr->pn3[i];
   Kokkos::deep_copy(pn3, h_pn3);
 
   auto h_pq3 = Kokkos::create_mirror_view(pq3);
-  for (int i = 0; i < K3*2; i++) h_pq3[i] = podptr->pq3[i];
+  for (int i = 0; i < K3*2; i++) h_pq3[i] = fastpodptr->pq3[i];
   Kokkos::deep_copy(pq3, h_pq3);
 
   auto h_pc3 = Kokkos::create_mirror_view(pc3);
-  for (int i = 0; i < K3; i++) h_pc3[i] = podptr->pc3[i];
+  for (int i = 0; i < K3; i++) h_pc3[i] = fastpodptr->pc3[i];
   Kokkos::deep_copy(pc3, h_pc3);
 
   auto h_pa4 = Kokkos::create_mirror_view(pa4);
-  for (int i = 0; i < nabf4+1; i++) h_pa4[i] = podptr->pa4[i];
+  for (int i = 0; i < nabf4+1; i++) h_pa4[i] = fastpodptr->pa4[i];
   Kokkos::deep_copy(pa4, h_pa4);
 
   auto h_pb4 = Kokkos::create_mirror_view(pb4);
-  for (int i = 0; i < Q4*3; i++) h_pb4[i] = podptr->pb4[i];
+  for (int i = 0; i < Q4*3; i++) h_pb4[i] = fastpodptr->pb4[i];
   Kokkos::deep_copy(pb4, h_pb4);
 
   auto h_pc4 = Kokkos::create_mirror_view(pc4);
-  for (int i = 0; i < Q4; i++) h_pc4[i] = podptr->pc4[i];
+  for (int i = 0; i < Q4; i++) h_pc4[i] = fastpodptr->pc4[i];
   Kokkos::deep_copy(pc4, h_pc4);
 
   MemKK::realloc_kokkos(ind33l, "pair_pod:ind33l", nl33);
@@ -431,28 +443,91 @@ void PairPODKokkos<DeviceType>::copy_from_pod_class(EAPOD *podptr)
   MemKK::realloc_kokkos(ind44r, "pair_pod:ind44r", nl44);
 
   auto h_ind33l = Kokkos::create_mirror_view(ind33l);
-  for (int i = 0; i < nl33; i++) h_ind33l[i] = podptr->ind33l[i];
+  for (int i = 0; i < nl33; i++) h_ind33l[i] = fastpodptr->ind33l[i];
   Kokkos::deep_copy(ind33l, h_ind33l);
 
   auto h_ind33r = Kokkos::create_mirror_view(ind33r);
-  for (int i = 0; i < nl33; i++) h_ind33r[i] = podptr->ind33r[i];
+  for (int i = 0; i < nl33; i++) h_ind33r[i] = fastpodptr->ind33r[i];
   Kokkos::deep_copy(ind33r, h_ind33r);
 
   auto h_ind34l = Kokkos::create_mirror_view(ind34l);
-  for (int i = 0; i < nl34; i++) h_ind34l[i] = podptr->ind34l[i];
+  for (int i = 0; i < nl34; i++) h_ind34l[i] = fastpodptr->ind34l[i];
   Kokkos::deep_copy(ind34l, h_ind34l);
 
   auto h_ind34r = Kokkos::create_mirror_view(ind34r);
-  for (int i = 0; i < nl34; i++) h_ind34r[i] = podptr->ind34r[i];
+  for (int i = 0; i < nl34; i++) h_ind34r[i] = fastpodptr->ind34r[i];
   Kokkos::deep_copy(ind34r, h_ind34r);
 
   auto h_ind44l = Kokkos::create_mirror_view(ind44l);
-  for (int i = 0; i < nl44; i++) h_ind44l[i] = podptr->ind44l[i];
+  for (int i = 0; i < nl44; i++) h_ind44l[i] = fastpodptr->ind44l[i];
   Kokkos::deep_copy(ind44l, h_ind44l);
 
   auto h_ind44r = Kokkos::create_mirror_view(ind44r);
-  for (int i = 0; i < nl44; i++) h_ind44r[i] = podptr->ind44r[i];
+  for (int i = 0; i < nl44; i++) h_ind44r[i] = fastpodptr->ind44r[i];
   Kokkos::deep_copy(ind44r, h_ind44r);
+}
+
+template<class DeviceType>
+void PairPODKokkos<DeviceType>::copy_from_mlpod_class(MLPOD *podptr)
+{
+  nelements = podptr->pod.nelements; // number of elements
+  ncoeffs = podptr->pod.nd;
+  nd1 = podptr->pod.nd1;
+  nd2 = podptr->pod.nd2;
+  nd3 = podptr->pod.nd3;
+  nd4 = podptr->pod.nd4;
+  nrbf2 = podptr->pod.nbf2;
+  nrbf3 = podptr->pod.nrbf3;
+  nrbf4 = podptr->pod.nrbf4;
+  nrbfmax = nrbf2;               // number of radial basis functions
+  nabf3 = podptr->pod.nabf3;     // number of three-body angular basis functions
+  nabf4 = podptr->pod.nabf4;     // number of four-body angular basis functions
+  
+  femdegree = podptr->femdegree;
+  npelem = podptr->npelem;
+  nelemabf = podptr->nelemabf;
+  nelemrbf = podptr->nelemrbf;
+  nfemelem = podptr->nfemelem;
+  nfemcoeffs = podptr->nfemcoeffs;
+  nfemfuncs = podptr->nfemfuncs;
+  nelemrbpod = podptr->rbpodptr->nfemelem;
+  orderrbpod = podptr->rbpodptr->nfemdegree;   
+          
+  rin = podptr->pod.rin;
+  rcut = podptr->pod.rcut;
+  rmax = rcut - rin;
+  rcutsq = rcut*rcut;
+      
+  MemKK::realloc_kokkos(coefficients, "pair_pod:coefficients", ncoeffs);
+  auto h_coefficients = Kokkos::create_mirror_view(coefficients);
+  for (int i=0; i<ncoeffs; i++) h_coefficients[i] = podptr->podcoeffs[i];
+  Kokkos::deep_copy(coefficients, h_coefficients);
+    
+  MemKK::realloc_kokkos(elemindex, "pair_pod:elemindex", nelements*nelements);
+  auto h_elemindex = Kokkos::create_mirror_view(elemindex);
+  for (int i=0; i<nelements*nelements; i++) h_elemindex[i] = podptr->pod.elemindex[i];
+  Kokkos::deep_copy(elemindex, h_elemindex);
+      
+  int n = (orderrbpod+1)*nrbfmax*nelemrbpod;
+  MemKK::realloc_kokkos(crbf, "pair_pod:crbf", n);
+  auto h_crbf = Kokkos::create_mirror_view(crbf);
+  for (int i=0; i<n; i++) h_crbf[i] = podptr->rbpodptr->crbf[i];
+  Kokkos::deep_copy(crbf, h_crbf);
+    
+  MemKK::realloc_kokkos(drbf, "pair_pod:drbf", n);
+  auto h_drbf = Kokkos::create_mirror_view(drbf);
+  for (int i=0; i<n; i++) h_drbf[i] = podptr->rbpodptr->drbf[i];
+  Kokkos::deep_copy(drbf, h_drbf);
+    
+  MemKK::realloc_kokkos(femcoeffs, "pair_pod:femcoeffs", nfemcoeffs);
+  auto h_femcoeffs = Kokkos::create_mirror_view(femcoeffs);
+  for (int i=0; i<nfemcoeffs; i++) h_femcoeffs[i] = podptr->femcoeffs[i];
+  Kokkos::deep_copy(femcoeffs, h_femcoeffs);      
+  
+  memory->destroy(podptr->podcoeffs);
+  memory->destroy(podptr->femcoeffs);     
+  memory->destroy(podptr->rbpodptr->crbf);     
+  memory->destroy(podptr->rbpodptr->drbf);     
 }
 
 template<class DeviceType>
@@ -488,12 +563,15 @@ void PairPODKokkos<DeviceType>::grow_atoms(int Ni)
     MemKK::realloc_kokkos(numij, "pair_pod:numij", nimax+1);
     MemKK::realloc_kokkos(ei, "pair_pod:ei", nimax);
     MemKK::realloc_kokkos(typeai, "pair_pod:typeai", nimax);
-    int n = nimax * nelements * K3 * nrbfmax;
-    MemKK::realloc_kokkos(sumU, "pair_pod:sumU", n);
-    MemKK::realloc_kokkos(forcecoeff, "pair_pod:forcecoeff", n);
-    MemKK::realloc_kokkos(bd, "pair_pod:bd", nimax * Mdesc);
-    MemKK::realloc_kokkos(cb, "pair_pod:cb", nimax * Mdesc);
-    if (nClusters > 1)MemKK::realloc_kokkos(pd, "pair_pod:pd", nimax * (1 + nComponents + 3*nClusters));
+    if (descriptorform==1) {
+      int n = nimax * nelements * K3 * nrbfmax;
+      MemKK::realloc_kokkos(sumU, "pair_pod:sumU", n);
+      MemKK::realloc_kokkos(forcecoeff, "pair_pod:forcecoeff", n);
+      MemKK::realloc_kokkos(bd, "pair_pod:bd", nimax * Mdesc);
+      MemKK::realloc_kokkos(cb, "pair_pod:cb", nimax * Mdesc);
+      if (nClusters > 1)MemKK::realloc_kokkos(pd, "pair_pod:pd", nimax * (1 + nComponents + 3*nClusters));
+    }
+    
     Kokkos::deep_copy(numij, 0);
   }
 }
@@ -510,15 +588,23 @@ void PairPODKokkos<DeviceType>::grow_pairs(int Nij)
     MemKK::realloc_kokkos(aj, "pair_pod:aj", nijmax);
     MemKK::realloc_kokkos(ti, "pair_pod:ti", nijmax);
     MemKK::realloc_kokkos(tj, "pair_pod:tj", nijmax);
-    MemKK::realloc_kokkos(rbf, "pair_pod:rbf", nijmax * nrbfmax);
-    MemKK::realloc_kokkos(rbfx, "pair_pod:rbfx", nijmax * nrbfmax);
-    MemKK::realloc_kokkos(rbfy, "pair_pod:rbfy", nijmax * nrbfmax);
-    MemKK::realloc_kokkos(rbfz, "pair_pod:rbfz", nijmax * nrbfmax);
-    int kmax = (K3 > ns) ? K3 : ns;
-    MemKK::realloc_kokkos(abf, "pair_pod:abf", nijmax * kmax);
-    MemKK::realloc_kokkos(abfx, "pair_pod:abfx", nijmax * kmax);
-    MemKK::realloc_kokkos(abfy, "pair_pod:abfy", nijmax * kmax);
-    MemKK::realloc_kokkos(abfz, "pair_pod:abfz", nijmax * kmax);
+    if (descriptorform==1) {
+      MemKK::realloc_kokkos(rbf, "pair_pod:rbf", nijmax * nrbfmax);
+      MemKK::realloc_kokkos(rbfx, "pair_pod:rbfx", nijmax * nrbfmax);
+      MemKK::realloc_kokkos(rbfy, "pair_pod:rbfy", nijmax * nrbfmax);
+      MemKK::realloc_kokkos(rbfz, "pair_pod:rbfz", nijmax * nrbfmax);
+      int kmax = (K3 > ns) ? K3 : ns;
+      MemKK::realloc_kokkos(abf, "pair_pod:abf", nijmax * kmax);
+      MemKK::realloc_kokkos(abfx, "pair_pod:abfx", nijmax * kmax);
+      MemKK::realloc_kokkos(abfy, "pair_pod:abfy", nijmax * kmax);
+      MemKK::realloc_kokkos(abfz, "pair_pod:abfz", nijmax * kmax);
+    }
+    else if (descriptorform==0) {
+      int p1 = femdegree + 1;      
+      int n = 2*p1*p1*4;
+      if ((femdegree==0) || (nfemelem==0)) n = 2 * (nijmax * nrbfmax + 2 * (nabf3 + 1) + p1*p1*4);  
+      MemKK::realloc_kokkos(tempmem, "pair_pod:tempmem", n);
+    }
   }
 }
 
@@ -1664,6 +1750,213 @@ void PairPODKokkos<DeviceType>::blockatom_energyforce(t_pod_1d l_ei, t_pod_1d l_
       pa4, pb4, pc4, nelements, nrbf3, nrbf4, nabf4, K3, Q4, Ni);
   if ((nl3 > 0) && (Nij>1)) allbody_forces(l_fij, forcecoeff, rbf, rbfx, rbfy, rbfz, abf, abfx, abfy, abfz,
           idxi, tj, nelements, nrbf3, K3, Nij);
+}
+
+template<class DeviceType>
+void PairPODKokkos<DeviceType>::fempod_energyforce(t_pod_1d l_ei, t_pod_1d l_fij, int Ni, int Nij)
+{
+  auto cefs = coefficients;
+  auto tyai = typeai;
+  auto l_rij = rij;
+  auto l_ti = ti;
+  auto l_tj = tj;
+  auto l_idxi = idxi;
+  auto l_numij = numij;
+  auto l_elemindex = elemindex;
+  auto l_crbf = crbf;
+  auto l_drbf = drbf;
+  auto l_femcoeffs = femcoeffs;
+  
+  int l_nelements = nelements;
+  int nelements2 = nelements * (nelements + 1) / 2;
+  int l_nelemrbpod = nelemrbpod;
+  int l_femdegree = femdegree;
+  int l_npelem = npelem;
+  int l_nfemelem = nfemelem;
+  int l_nrbf2 = nrbf2;
+  int l_nrbf3 = nrbf3;
+  int nelemr = nelemrbf;
+  int nelema = nelemabf;
+  int p1 = femdegree + 1;
+  int n4  = p1*4;
+  int nsq4 = p1*p1*4;
+  
+  double l_rin = rin;
+  double l_rcut = rcut;  
+  double dr = (rcut-rin-1e-3)/nelemrbf;
+  double fr = 2.0/dr;    
+  double dt = M_PI/nelemabf;
+  double ft = 2.0/dt;    
+  double dr2 = (rcut-rin-1e-3)/nelemrbpod;
+  double fr2 = 2.0/dr2;    
+  
+  auto coeff1 = Kokkos::subview(coefficients, std::make_pair(0, nd1));
+  auto coeff2 = Kokkos::subview(coefficients, std::make_pair(nd1, nd1+nd2));
+  auto coeff3 = Kokkos::subview(coefficients, std::make_pair(nd1+nd2, nd1+nd2+nd3));  
+  auto c1 = Kokkos::subview(tempmem, std::make_pair(0, nsq4)); 
+  auto c2 = Kokkos::subview(tempmem, std::make_pair(nsq4, 2*nsq4)); 
+  
+  Kokkos::parallel_for("atomic_energies", Ni, KOKKOS_LAMBDA(int n) {
+    l_ei[n] = cefs[tyai[n]-1];    
+  });  
+  
+  set_array_to_zero(l_fij, 3*Nij);  
+  Kokkos::parallel_for("ComputeFEMPOD", Nij, KOKKOS_LAMBDA(int n) {
+    double xij1 = l_rij(0+3*n);
+    double xij2 = l_rij(1+3*n);
+    double xij3 = l_rij(2+3*n);    
+    double dijsq = xij1*xij1 + xij2*xij2 + xij3*xij3;
+    double dij = sqrt(dijsq);
+    
+    int typei = l_ti[n] - 1;
+    int typej = l_tj[n] - 1;
+
+    int ii = l_idxi[n];
+    int s = l_numij[ii];          
+    int numneigh = l_numij[ii + 1] - s;    
+    int lj = n - s;   
+        
+    int e1 = (dij-l_rin-1e-3)/dr2;        
+    e1 = (e1 > (l_nelemrbpod-1)) ? (l_nelemrbpod-1) : e1;        
+    double tm1 = l_rin+1e-3 + e1*dr2;        
+    double x1 = fr2 * (dij  - tm1) - 1;       
+    double tm2 = x1*x1;
+    double x2 = 1.5*tm2 - 0.5;
+    double x3 = (2.5*tm2 - 1.5)*x1;                          
+    
+    double *crbf2 = &l_crbf[4*l_nrbf2*e1];    
+    double *drbf2 = &l_drbf[4*l_nrbf2*e1];                      
+    double en = 0.0, tn = 0.0;      
+    for (int m = 0; m < l_nrbf2; m++) {      
+      int nm = n + Nij * m;
+      int km = (l_elemindex[typei + typej * l_nelements] - 1) + nelements2 * m;        
+      int pm = 4*m;
+      en += coeff2[km] * (crbf2[0+pm] + crbf2[1+pm]*x1 + crbf2[2+pm]*x2 + crbf2[3+pm]*x3);
+      tn += coeff2[km] * (drbf2[0+pm] + drbf2[1+pm]*x1 + drbf2[2+pm]*x2 + drbf2[3+pm]*x3);
+    }          
+    
+    tn = tn/dij;     
+    double fjx = tn*xij1;
+    double fjy = tn*xij2;
+    double fjz = tn*xij3;                      
+          
+    for (int lk = lj + 1; lk < numneigh; lk++) {
+      int ik = lk + s;
+      int typek = l_tj[ik] - 1;
+      double xik1 = l_rij[0 + 3 * ik];
+      double xik2 = l_rij[1 + 3 * ik];
+      double xik3 = l_rij[2 + 3 * ik];
+      double diksq = xik1 * xik1 + xik2 * xik2 + xik3 * xik3;
+      double dik = sqrt(diksq);
+      
+      double xdot = xij1 * xik1 + xij2 * xik2 + xij3 * xik3;
+      double tm = dij * dik;
+      double costhe = xdot / tm;
+      costhe = costhe > 1.0 ? 1.0 : costhe;
+      costhe = costhe < -1.0 ? -1.0 : costhe;
+      xdot = costhe * tm;
+      double theta = acos(costhe);
+      
+      double sinthe = sqrt(1.0 - costhe * costhe);
+      sinthe = sinthe > 1e-12 ? sinthe : 1e-12;
+      double dtheta = -1.0 / sinthe;
+
+      tm1 = dtheta / (dijsq * tm);
+      tm2 = dtheta / (diksq * tm);
+      double dct1 = (xik1 * dijsq - xij1 * xdot) * tm1;
+      double dct2 = (xik2 * dijsq - xij2 * xdot) * tm1;
+      double dct3 = (xik3 * dijsq - xij3 * xdot) * tm1;
+      double dct4 = (xij1 * diksq - xik1 * xdot) * tm2;
+      double dct5 = (xij2 * diksq - xik2 * xdot) * tm2;
+      double dct6 = (xij3 * diksq - xik3 * xdot) * tm2;
+      
+      e1 = (dij-l_rin-1e-3)/dr;        
+      e1 = (e1 > (nelemr-1)) ? (nelemr-1) : e1;                
+      int e2 = (dik-l_rin-1e-3)/dr;        
+      e2 = (e2 > (nelemr-1)) ? (nelemr-1) : e2;        
+      int e3 = theta/dt;        
+      e3 = (e3 > (nelema-1)) ? (nelema-1) : e3;    
+
+      int e = e3 + nelema*e2 + nelema*nelemr*e1;
+      int idxe = (l_elemindex[typej + typek * nelements] - 1) + nelements2 * typei;
+      double *c = &l_femcoeffs[l_npelem*4*(e + l_nfemelem*idxe)];        
+      
+      double fn = 0.0, fm = 0.0, fq = 0.0, fp = 0.0;
+      
+      if (l_femdegree==3) {
+        tm1 = e3*dt;    
+        x1 = ft * (theta  - tm1) - 1;   
+        tm2 = x1*x1;
+        x2 = 1.5*tm2 - 0.5;
+        x3 = (2.5*tm2 - 1.5)*x1;                  
+        for (int i=0; i<nsq4; i++)           
+          c1[i] = c[0 + p1*i] + x1*c[1 + p1*i] + x2*c[2 + p1*i] + x3*c[3 + p1*i];
+
+        tm1 = l_rin+1e-3 + e2*dr;    
+        x1 = fr * (dik  - tm1) - 1;   
+        tm2 = x1*x1;
+        x2 = 1.5*tm2 - 0.5;
+        x3 = (2.5*tm2 - 1.5)*x1;                  
+        for (int i=0; i<n4; i++)
+          c2[i] = c1[0 + p1*i] + x1*c1[1 + p1*i] + x2*c1[2 + p1*i] + x3*c1[3 + p1*i];
+
+        tm1 = l_rin+1e-3 + e1*dr;        
+        x1 = fr * (dij  - tm1) - 1;       
+        tm2 = x1*x1;
+        x2 = 1.5*tm2 - 0.5;
+        x3 = (2.5*tm2 - 1.5)*x1;                          
+        fn = c2[0 + p1*0] + x1*c2[1 + p1*0] + x2*c2[2 + p1*0] + x3*c2[3 + p1*0];
+        fm = c2[0 + p1*1] + x1*c2[1 + p1*1] + x2*c2[2 + p1*1] + x3*c2[3 + p1*1];
+        fq = c2[0 + p1*2] + x1*c2[1 + p1*2] + x2*c2[2 + p1*2] + x3*c2[3 + p1*2];
+        fp = c2[0 + p1*3] + x1*c2[1 + p1*3] + x2*c2[2 + p1*3] + x3*c2[3 + p1*3];
+      }
+      else if (l_femdegree==2) {
+        tm1 = e3*dt;    
+        x1 = ft * (theta  - tm1) - 1;   
+        tm2 = x1*x1;
+        x2 = 1.5*tm2 - 0.5;
+        for (int i=0; i<nsq4; i++)           
+          c1[i] = c[0 + p1*i] + x1*c[1 + p1*i] + x2*c[2 + p1*i];
+
+        tm1 = l_rin+1e-3 + e2*dr;    
+        x1 = fr * (dik  - tm1) - 1;   
+        tm2 = x1*x1;
+        x2 = 1.5*tm2 - 0.5;
+        for (int i=0; i<n4; i++)
+          c2[i] = c1[0 + p1*i] + x1*c1[1 + p1*i] + x2*c1[2 + p1*i];
+
+        tm1 = l_rin+1e-3 + e1*dr;        
+        x1 = fr * (dij  - tm1) - 1;       
+        tm2 = x1*x1;
+        x2 = 1.5*tm2 - 0.5;
+        fn = c2[0 + p1*0] + x1*c2[1 + p1*0] + x2*c2[2 + p1*0];
+        fm = c2[0 + p1*1] + x1*c2[1 + p1*1] + x2*c2[2 + p1*1];
+        fq = c2[0 + p1*2] + x1*c2[1 + p1*2] + x2*c2[2 + p1*2];
+        fp = c2[0 + p1*3] + x1*c2[1 + p1*3] + x2*c2[2 + p1*3];
+      }
+      
+      en += fn;
+      tm1 = fm/dij;
+      tm2 = fq/dik;        
+      fjx += tm1*xij1 + fp * dct1;
+      fjy += tm1*xij2 + fp * dct2;
+      fjz += tm1*xij3 + fp * dct3;           
+      Kokkos::atomic_add(&fij[0+3*ik], tm2*xik1 + fp * dct4);
+      Kokkos::atomic_add(&fij[1+3*ik], tm2*xik2 + fp * dct5);
+      Kokkos::atomic_add(&fij[2+3*ik], tm2*xik3 + fp * dct6);
+      //fij[0+3*ik] += (tm2*xik1 + fp * dct4);
+      //fij[1+3*ik] += (tm2*xik2 + fp * dct5);
+      //fij[2+3*ik] += (tm2*xik3 + fp * dct6);                                              
+    }
+    
+    Kokkos::atomic_add(&l_ei(ii), en);
+    //l_ei[ii] += en;
+    l_fij[0+3*n] += fjx;
+    l_fij[1+3*n] += fjy;
+    l_fij[2+3*n] += fjz;                                                      
+    
+  });  
+  
 }
 
 template<class DeviceType>

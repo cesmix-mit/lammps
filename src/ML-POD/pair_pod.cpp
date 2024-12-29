@@ -774,8 +774,10 @@ void PairPOD::grow_pairs(int Nij)
       memory->create(abfz, nijmax * kmax, "pair_pod:abfz");
     }
     else if (descriptorform==0) {
-      int p1 = podptr->femdegree + 1;
-      int n = 2 * (nijmax * podptr->pod.nbf2 + 2 * (podptr->pod.nabf3 + 1) + p1*p1*4);
+      int p1 = podptr->femdegree + 1;      
+      int n = 2*p1*p1*4;
+      if ((podptr->femdegree==0) || (podptr->nfemelem==0)) 
+        n = 2 * (nijmax * podptr->pod.nbf2 + 2 * (podptr->pod.nabf3 + 1) + p1*p1*4);
       memory->create(temp, n, "pair_pod:temp");
     }
   }

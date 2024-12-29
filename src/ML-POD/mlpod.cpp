@@ -73,6 +73,7 @@ MLPOD::MLPOD(LAMMPS *_lmp, const std::string &pod_file, const std::string &coeff
 MLPOD::~MLPOD() {
   memory->destroy(podcoeffs);
   memory->destroy(femcoeffs);  
+  delete rbpodptr;
 }
 
 void MLPOD::podMatMul(double *c, double *a, double *b, int r1, int c1, int c2) {
@@ -268,7 +269,13 @@ void MLPOD::read_pod(const std::string &pod_file) {
   //pod.nbf3 = pod.nrbf3 * (1 + pod.nabf3);
   pod.nbf3 = pod.nrbf3 * pod.nrbf3 * (1 + 2*pod.nabf3);
   pod.nd3 = pod.nbf3 * pod.nc3;
+  
+  pod.nrbf4 = pod.fourbody[2];
+  pod.nabf4 = pod.fourbody[3];
   pod.nd4 = 0;
+  
+  if (pod.nbf2 < pod.nrbf3) error->all(FLERR,"number of three-body radial basis functions must be equal or less than number of two-body radial basis functions");
+  if (pod.nrbf3 < pod.nrbf4) error->all(FLERR,"number of four-body radial basis functions must be equal or less than number of three-body radial basis functions");
 
   pod.nd = pod.nd1 + pod.nd2 + pod.nd3 + pod.nd4;
   pod.nd1234 = pod.nd1 + pod.nd2 + pod.nd3 + pod.nd4;
