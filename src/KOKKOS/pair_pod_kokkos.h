@@ -223,6 +223,7 @@ class PairPODKokkos : public PairPOD {
     t_pod_1i l_idxi, t_pod_1i l_tj, int l_nelements, int l_nrbf3, int l_K3, int Nij);
 
   void fempod_energyforce(t_pod_1d l_ei, t_pod_1d l_fij, int Ni, int Nij);
+  void fempod2_energyforce(t_pod_1d l_ei, t_pod_1d l_fij, int Ni, int Nij);
   void blockatom_energyforce(t_pod_1d l_ei, t_pod_1d l_fij, int Ni, int Nij);
   void tallyenergy(t_pod_1d l_ei, int istart, int Ni);
   void tallyforce(t_pod_1d l_fij, t_pod_1i l_ai, t_pod_1i l_aj, int Nij);

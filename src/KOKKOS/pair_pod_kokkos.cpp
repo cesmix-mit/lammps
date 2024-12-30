@@ -255,6 +255,8 @@ void PairPODKokkos<DeviceType>::compute(int eflag_in, int vflag_in)
   auto begin = std::chrono::high_resolution_clock::now();
   auto end = std::chrono::high_resolution_clock::now();
 
+  if (descriptorform==0) atomBlockSize = 18000; 
+  
   // determine the number of atom blocks and divide atoms into blocks
   nAtomBlocks = calculateNumberOfIntervals(inum, atomBlockSize);
   if (nAtomBlocks > 100) nAtomBlocks = 100;
@@ -293,7 +295,7 @@ void PairPODKokkos<DeviceType>::compute(int eflag_in, int vflag_in)
     if (descriptorform==1)
       blockatom_energyforce(ei, fij, ni, nij);
     if (descriptorform==0)
-      fempod_energyforce(ei, fij, ni, nij);
+      fempod2_energyforce(ei, fij, ni, nij);
     Kokkos::fence();
     end = std::chrono::high_resolution_clock::now();
     comptime[2] += std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count()/1e6;
@@ -1945,6 +1947,205 @@ void PairPODKokkos<DeviceType>::fempod_energyforce(t_pod_1d l_ei, t_pod_1d l_fij
     l_fij[1+3*n] += fjy;
     l_fij[2+3*n] += fjz;                                                      
     
+  });  
+  
+}
+
+template<class DeviceType>
+void PairPODKokkos<DeviceType>::fempod2_energyforce(t_pod_1d l_ei, t_pod_1d l_fij, int Ni, int Nij)
+{
+  auto cefs = coefficients;
+  auto tyai = typeai;
+  auto l_rij = rij;
+  auto l_ti = ti;
+  auto l_tj = tj;
+  auto l_idxi = idxi;
+  auto l_numij = numij;
+  auto l_elemindex = elemindex;
+  auto l_crbf = crbf;
+  auto l_drbf = drbf;
+  auto l_femcoeffs = femcoeffs;
+  
+  int l_nelements = nelements;
+  int nelements2 = nelements * (nelements + 1) / 2;
+  int l_nelemrbpod = nelemrbpod;
+  int l_femdegree = femdegree;
+  int l_npelem = npelem;
+  int l_nfemelem = nfemelem;
+  int l_nrbf2 = nrbf2;
+  int nelemr = nelemrbf;
+  int nelema = nelemabf;
+  int p1 = femdegree + 1;
+  int n4  = p1*4;
+  int nsq4 = p1*p1*4;
+  
+  double l_rin = rin;
+  double dr = (rcut-rin-1e-3)/nelemrbf;
+  double fr = 2.0/dr;    
+  double dt = M_PI/nelemabf;
+  double ft = 2.0/dt;    
+  double dr2 = (rcut-rin-1e-3)/nelemrbpod;
+  double fr2 = 2.0/dr2;    
+  
+  auto coeff1 = Kokkos::subview(coefficients, std::make_pair(0, nd1));
+  auto coeff2 = Kokkos::subview(coefficients, std::make_pair(nd1, nd1+nd2));
+  auto coeff3 = Kokkos::subview(coefficients, std::make_pair(nd1+nd2, nd1+nd2+nd3));  
+  
+  Kokkos::parallel_for("atomic_energies", Ni, KOKKOS_LAMBDA(int n) {
+    l_ei[n] = cefs[tyai[n]-1];    
+  });  
+  
+  set_array_to_zero(l_fij, 3*Nij);  
+  
+  Kokkos::parallel_for("ComputeFEMPOD", Ni, KOKKOS_LAMBDA(int ii) {      
+    int s = l_numij[ii];          
+    int numneigh = l_numij[ii + 1] - s;    
+    double en = 0.0;
+    for (int lj = 0; lj < numneigh; lj++) {
+      int n = lj + s;  
+      double xij1 = l_rij(0+3*n);
+      double xij2 = l_rij(1+3*n);
+      double xij3 = l_rij(2+3*n);    
+      double dijsq = xij1*xij1 + xij2*xij2 + xij3*xij3;
+      double dij = sqrt(dijsq);
+      int typei = l_ti[n] - 1;
+      int typej = l_tj[n] - 1;
+
+      int e1 = (dij-l_rin-1e-3)/dr2;        
+      e1 = (e1 > (l_nelemrbpod-1)) ? (l_nelemrbpod-1) : e1;        
+      double tm1 = l_rin+1e-3 + e1*dr2;        
+      double x1 = fr2 * (dij  - tm1) - 1;       
+      double tm2 = x1*x1;
+      double x2 = 1.5*tm2 - 0.5;
+      double x3 = (2.5*tm2 - 1.5)*x1;                          
+
+      int ne1 = 4*l_nrbf2*e1;
+      double tn = 0.0;      
+      for (int m = 0; m < l_nrbf2; m++) {      
+        int km = (l_elemindex[typei + typej * l_nelements] - 1) + nelements2 * m;        
+        int pm = 4*m + ne1;
+        en += coeff2[km] * (l_crbf[0+pm] + l_crbf[1+pm]*x1 + l_crbf[2+pm]*x2 + l_crbf[3+pm]*x3);
+        tn += coeff2[km] * (l_drbf[0+pm] + l_drbf[1+pm]*x1 + l_drbf[2+pm]*x2 + l_drbf[3+pm]*x3);
+      }          
+
+      tn = tn/dij;     
+      double fjx = tn*xij1;
+      double fjy = tn*xij2;
+      double fjz = tn*xij3;                      
+
+      for (int lk = lj + 1; lk < numneigh; lk++) {
+        int ik = lk + s;
+        int typek = l_tj[ik] - 1;
+        double xik1 = l_rij[0 + 3 * ik];
+        double xik2 = l_rij[1 + 3 * ik];
+        double xik3 = l_rij[2 + 3 * ik];
+        double diksq = xik1 * xik1 + xik2 * xik2 + xik3 * xik3;
+        double dik = sqrt(diksq);
+
+        double xdot = xij1 * xik1 + xij2 * xik2 + xij3 * xik3;
+        double tm = dij * dik;
+        double costhe = xdot / tm;
+        costhe = costhe > 1.0 ? 1.0 : costhe;
+        costhe = costhe < -1.0 ? -1.0 : costhe;
+        xdot = costhe * tm;
+        double theta = acos(costhe);
+
+        double sinthe = sqrt(1.0 - costhe * costhe);
+        sinthe = sinthe > 1e-12 ? sinthe : 1e-12;
+        double dtheta = -1.0 / sinthe;
+
+        tm1 = dtheta / (dijsq * tm);
+        tm2 = dtheta / (diksq * tm);
+        double dct1 = (xik1 * dijsq - xij1 * xdot) * tm1;
+        double dct2 = (xik2 * dijsq - xij2 * xdot) * tm1;
+        double dct3 = (xik3 * dijsq - xij3 * xdot) * tm1;
+        double dct4 = (xij1 * diksq - xik1 * xdot) * tm2;
+        double dct5 = (xij2 * diksq - xik2 * xdot) * tm2;
+        double dct6 = (xij3 * diksq - xik3 * xdot) * tm2;
+
+        e1 = (dij-l_rin-1e-3)/dr;        
+        e1 = (e1 > (nelemr-1)) ? (nelemr-1) : e1;                
+        int e2 = (dik-l_rin-1e-3)/dr;        
+        e2 = (e2 > (nelemr-1)) ? (nelemr-1) : e2;        
+        int e3 = theta/dt;        
+        e3 = (e3 > (nelema-1)) ? (nelema-1) : e3;    
+
+        int e = e3 + nelema*e2 + nelema*nelemr*e1;
+        int idxe = (l_elemindex[typej + typek * l_nelements] - 1) + nelements2 * typei;
+        ne1 = l_npelem*4*(e + l_nfemelem*idxe);
+
+        double fn = 0.0, fm = 0.0, fq = 0.0, fp = 0.0;      
+        if (l_femdegree==3) {
+          double c1[64];
+          double c2[16];
+          tm1 = e3*dt;    
+          x1 = ft * (theta  - tm1) - 1;   
+          tm2 = x1*x1;
+          x2 = 1.5*tm2 - 0.5;
+          x3 = (2.5*tm2 - 1.5)*x1;                  
+          for (int i=0; i<nsq4; i++)           
+            c1[i] = l_femcoeffs[0 + p1*i + ne1] + x1*l_femcoeffs[1 + p1*i + ne1] + x2*l_femcoeffs[2 + p1*i + ne1] + x3*l_femcoeffs[3 + p1*i + ne1];
+
+          tm1 = l_rin+1e-3 + e2*dr;    
+          x1 = fr * (dik  - tm1) - 1;   
+          tm2 = x1*x1;
+          x2 = 1.5*tm2 - 0.5;
+          x3 = (2.5*tm2 - 1.5)*x1;                  
+          for (int i=0; i<n4; i++)
+            c2[i] = c1[0 + p1*i] + x1*c1[1 + p1*i] + x2*c1[2 + p1*i] + x3*c1[3 + p1*i];
+
+          tm1 = l_rin+1e-3 + e1*dr;        
+          x1 = fr * (dij  - tm1) - 1;       
+          tm2 = x1*x1;
+          x2 = 1.5*tm2 - 0.5;
+          x3 = (2.5*tm2 - 1.5)*x1;                          
+          fn = c2[0 + p1*0] + x1*c2[1 + p1*0] + x2*c2[2 + p1*0] + x3*c2[3 + p1*0];
+          fm = c2[0 + p1*1] + x1*c2[1 + p1*1] + x2*c2[2 + p1*1] + x3*c2[3 + p1*1];
+          fq = c2[0 + p1*2] + x1*c2[1 + p1*2] + x2*c2[2 + p1*2] + x3*c2[3 + p1*2];
+          fp = c2[0 + p1*3] + x1*c2[1 + p1*3] + x2*c2[2 + p1*3] + x3*c2[3 + p1*3];
+        }
+        else if (l_femdegree==2) {
+          double c1[36];
+          double c2[12];
+          tm1 = e3*dt;    
+          x1 = ft * (theta  - tm1) - 1;   
+          tm2 = x1*x1;
+          x2 = 1.5*tm2 - 0.5;
+          for (int i=0; i<nsq4; i++)           
+            c1[i] = l_femcoeffs[0 + p1*i + ne1] + x1*l_femcoeffs[1 + p1*i + ne1] + x2*l_femcoeffs[2 + p1*i + ne1];
+
+          tm1 = l_rin+1e-3 + e2*dr;    
+          x1 = fr * (dik  - tm1) - 1;   
+          tm2 = x1*x1;
+          x2 = 1.5*tm2 - 0.5;
+          for (int i=0; i<n4; i++)
+            c2[i] = c1[0 + p1*i] + x1*c1[1 + p1*i] + x2*c1[2 + p1*i];
+
+          tm1 = l_rin+1e-3 + e1*dr;        
+          x1 = fr * (dij  - tm1) - 1;       
+          tm2 = x1*x1;
+          x2 = 1.5*tm2 - 0.5;
+          fn = c2[0 + p1*0] + x1*c2[1 + p1*0] + x2*c2[2 + p1*0];
+          fm = c2[0 + p1*1] + x1*c2[1 + p1*1] + x2*c2[2 + p1*1];
+          fq = c2[0 + p1*2] + x1*c2[1 + p1*2] + x2*c2[2 + p1*2];
+          fp = c2[0 + p1*3] + x1*c2[1 + p1*3] + x2*c2[2 + p1*3];
+        }
+
+        en += fn;
+        tm1 = fm/dij;
+        tm2 = fq/dik;        
+        fjx += tm1*xij1 + fp * dct1;
+        fjy += tm1*xij2 + fp * dct2;
+        fjz += tm1*xij3 + fp * dct3;           
+        Kokkos::atomic_add(&l_fij[0+3*ik], tm2*xik1 + fp * dct4);
+        Kokkos::atomic_add(&l_fij[1+3*ik], tm2*xik2 + fp * dct5);
+        Kokkos::atomic_add(&l_fij[2+3*ik], tm2*xik3 + fp * dct6);
+      }      
+      Kokkos::atomic_add(&l_fij[0+3*n], fjx);
+      Kokkos::atomic_add(&l_fij[1+3*n], fjy);
+      Kokkos::atomic_add(&l_fij[2+3*n], fjz);        
+    }    
+    l_ei(ii) += en;    
   });  
   
 }
