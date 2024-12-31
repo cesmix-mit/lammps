@@ -2208,7 +2208,7 @@ void PairPOD::blockatomenergyforce(double *ei, double *fij, int Ni, int Nij)
 {
   if (descriptorform==1) blockatom_energyforce(ei, fij, Ni, Nij);
   else if (descriptorform==0) {
-    podptr->fempod_energyforce(fij, ei, rij, podptr->podcoeffs, temp, 
+    podptr->fempod3_energyforce(fij, ei, rij, podptr->podcoeffs, temp, 
             idxi, numij, typeai, ti, tj, Ni, Nij);
   }  
 }

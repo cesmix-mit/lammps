@@ -152,6 +152,10 @@ class MLPOD : protected Pointers {
   void fempod_energyforce(double *fij, double *ei, double *rij, double *podcoeff, 
                        double *tmpmem, int *idxi, int *numij, int *typeai, int *ti, int *tj, int natom, int Nij);   
   
+  void fempod3_energyforce(double *fij, double *ei, double *rij, double *podcoeff, 
+                       double *tmpmem, int *idxi, int *numij, int *typeai, 
+                       int *ti, int *tj, int natom, int Nij);   
+  
   void tallyforce(double *force, double *fij, int *ai, int *aj, int N);
   
   double energyforce_calculation(double *force, double *fij, double *rij, double *podcoeff, double *tmpmem, 

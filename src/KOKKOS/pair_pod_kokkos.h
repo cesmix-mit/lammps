@@ -95,6 +95,7 @@ class PairPODKokkos : public PairPOD {
 
   int ni;            // number of atoms i in the current atom block
   int nij;           // number of pairs (i,j) in the current atom block
+  int nijk;          // number of triplets (i,j, k) in the current atom block
   int nimax;         // maximum number of atoms i
   int nijmax;        // maximum number of pairs (i,j)
   
@@ -131,6 +132,7 @@ class PairPODKokkos : public PairPOD {
   t_pod_1d ei;          // energy for each atom I
   t_pod_1i typeai;         // types of atoms I only
   t_pod_1i numij;          // number of pairs (I, J) for each atom I
+  t_pod_1i numijk;         // number of triplets (I, J, K) for each atom I
   t_pod_1i idxi;           // storing linear indices of atom I for all pairs (I, J)
   t_pod_1i ai;             // IDs of atoms I for all pairs (I, J)
   t_pod_1i aj;             // IDs of atoms J for all pairs (I, J)
@@ -168,6 +170,8 @@ class PairPODKokkos : public PairPOD {
 
   void set_array_to_zero(t_pod_1d a, int N);
 
+  int TripletCount(t_pod_1i, t_pod_1i, int);
+  
   int NeighborCount(t_pod_1i, double, int, int);
 
   void NeighborList(t_pod_1d l_rij, t_pod_1i l_numij,  t_pod_1i l_typeai, t_pod_1i l_idxi,
@@ -224,6 +228,8 @@ class PairPODKokkos : public PairPOD {
 
   void fempod_energyforce(t_pod_1d l_ei, t_pod_1d l_fij, int Ni, int Nij);
   void fempod2_energyforce(t_pod_1d l_ei, t_pod_1d l_fij, int Ni, int Nij);
+  void fempod3_energyforce(t_pod_1d l_ei, t_pod_1d l_fij, int Ni, int Nij, int Nijk);
+  
   void blockatom_energyforce(t_pod_1d l_ei, t_pod_1d l_fij, int Ni, int Nij);
   void tallyenergy(t_pod_1d l_ei, int istart, int Ni);
   void tallyforce(t_pod_1d l_fij, t_pod_1i l_ai, t_pod_1i l_aj, int Nij);

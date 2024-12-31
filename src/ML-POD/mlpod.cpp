@@ -575,20 +575,21 @@ void MLPOD::pod3body(double *eatom, double *fatom, double *yij, double *e2ij,
         xik3 = yij[2 + dim * ik];
         riksq = xik1 * xik1 + xik2 * xik2 + xik3 * xik3;
         rik = sqrt(riksq);
+        tm = rij * rik;
 
         xdot = xij1 * xik1 + xij2 * xik2 + xij3 * xik3;
-        costhe = xdot / (rij * rik);
+        costhe = xdot / tm;
         costhe = costhe > 1.0 ? 1.0 : costhe;
         costhe = costhe < -1.0 ? -1.0 : costhe;
-        xdot = costhe * (rij * rik);
+        xdot = costhe * tm;
 
         sinthe = sqrt(1.0 - costhe * costhe);
         sinthe = sinthe > 1e-12 ? sinthe : 1e-12;
         theta = acos(costhe);
         dtheta = -1.0 / sinthe;
 
-        tm1 = 1.0 / (rij * rijsq * rik);
-        tm2 = 1.0 / (rij * riksq * rik);
+        tm1 = dtheta / (tm * rijsq );
+        tm2 = dtheta / (tm * riksq );
         dct1 = (xik1 * rijsq - xij1 * xdot) * tm1;
         dct2 = (xik2 * rijsq - xij2 * xdot) * tm1;
         dct3 = (xik3 * rijsq - xij3 * xdot) * tm1;
@@ -598,7 +599,7 @@ void MLPOD::pod3body(double *eatom, double *fatom, double *yij, double *e2ij,
 
         for (int p = 0; p < nabf1; p++) {
           abf[p] = cos(p * theta);
-          tm = -p * sin(p * theta) * dtheta;
+          tm = -p * sin(p * theta);
           dabf1[p] = tm * dct1;
           dabf2[p] = tm * dct2;
           dabf3[p] = tm * dct3;
@@ -610,7 +611,7 @@ void MLPOD::pod3body(double *eatom, double *fatom, double *yij, double *e2ij,
         for (int p = 1; p < nabf1; p++) {
           int np = nabf+p;
           abf[np] = sin(p * theta);
-          tm = p * cos(p * theta) * dtheta;
+          tm = p * cos(p * theta);
           dabf1[np] = tm * dct1;
           dabf2[np] = tm * dct2;
           dabf3[np] = tm * dct3;
@@ -1416,6 +1417,468 @@ double MLPOD::energyforce_calculation(double *force, double *fij, double *rij, d
   return energy;
 }
 
+void MLPOD::fempod3_energyforce(double *fij, double *ei, double *rij, double *podcoeff, 
+                       double *tmpmem, int *idxi, int *numij, int *typeai, 
+                       int *ti, int *tj, int natom, int Nij) 
+{  
+  int dim = 3;
+  int nelements = pod.nelements;
+  int nelements2 = nelements * (nelements + 1) / 2;
+  int typei, typej, typek, ii, ij, ik, e1, e2, e3;
+  int nabf = pod.nabf3;
+  int nabf1 = nabf + 1;
+  int nabf2 = 2*nabf + 1;
+  int nrbf2 = pod.nbf2;
+  int nrbf3 = pod.nrbf3;
+  int nd1 = pod.nd1;
+  int nd2 = pod.nd2;
+  int *elemindex = pod.elemindex;
+  
+  double xij1, xij2, xij3, xik1, xik2, xik3;
+  double xdot, dijsq, diksq, dij, dik;
+  double costhe, sinthe, theta, dtheta;
+  double tm, tm1, tm2, dct1, dct2, dct3, dct4, dct5, dct6;
+  double fm, fn, fp, fq, x1, x2, x3;
+    
+  int p1 = femdegree + 1;
+  int n4  = p1*4;
+  int nsq4 = p1*p1*4;
+  double *c1 = &tmpmem[0];
+  double *c2 = &tmpmem[nsq4];
+  double *rbf, *drbfdr, *abf, *dabf;  
+  
+  if (femdegree==0) {    
+    rbf = &tmpmem[0];
+    drbfdr = &tmpmem[Nij * nrbf2];  
+    abf = &tmpmem[2 * Nij * nrbf2];
+    dabf = &tmpmem[2 * Nij * nrbf2 + nabf2];     
+    rbpodptr->femdrbfdr(rbf, drbfdr, rij, Nij);
+  }
+  
+  int nelemr = nelemrbf;
+  int nelema = nelemabf;
+  double rcut = pod.rcut;
+  double rin = pod.rin;
+  double dr = (rcut-rin-1e-3)/nelemr;
+  double fr = 2.0/dr;    
+  double dt = M_PI/nelema;
+  double ft = 2.0/dt;  
+
+  double dr2 = (rcut-rin-1e-3)/rbpodptr->nfemelem;
+  double fr2 = 2.0/dr2;    
+      
+  double *coeff1 = &podcoeff[0];
+  double *coeff2 = &podcoeff[nd1];
+  double *coeff3 = &podcoeff[nd1 + nd2];
+  
+  for (int i = 0; i < natom; i++)
+    for (int m = 1; m <= nelements; m++) {   
+      ei[i] = coeff1[m-1] * ((typeai[i] == m) ? 1.0 : 0.0);      
+    }
+    
+  for (int n=0; n<Nij; n++) {         
+    ii = idxi[n];
+    typei = ti[n] - 1;
+    typej = tj[n] - 1;
+    xij1 = rij[0 + dim * n];
+    xij2 = rij[1 + dim * n];
+    xij3 = rij[2 + dim * n];
+    dijsq = xij1 * xij1 + xij2 * xij2 + xij3 * xij3;
+    dij = sqrt(dijsq);
+
+    e1 = (dij-rin-1e-3)/dr2;        
+    e1 = (e1 > (rbpodptr->nfemelem-1)) ? (rbpodptr->nfemelem-1) : e1;        
+    tm1 = rin+1e-3 + e1*dr2;        
+    x1 = fr2 * (dij  - tm1) - 1;       
+    tm2 = x1*x1;
+    x2 = 1.5*tm2 - 0.5;
+    x3 = (2.5*tm2 - 1.5)*x1;                          
+
+    double *crbf2 = &rbpodptr->crbf[4*nrbf2*e1];    
+    double *drbf2 = &rbpodptr->drbf[4*nrbf2*e1];                      
+    double en = 0.0, tn = 0.0;      
+    for (int m = 0; m < nrbf2; m++) {      
+      int km = (elemindex[typei + typej * nelements] - 1) + nelements2 * m;        
+      int pm = 4*m;
+      en += coeff2[km] * (crbf2[0+pm] + crbf2[1+pm]*x1 + crbf2[2+pm]*x2 + crbf2[3+pm]*x3);
+      tn += coeff2[km] * (drbf2[0+pm] + drbf2[1+pm]*x1 + drbf2[2+pm]*x2 + drbf2[3+pm]*x3);
+    }          
+    ei[ii] += en;
+
+    tn = tn/dij;     
+    fij[0+3*n] = tn*xij1;
+    fij[1+3*n] = tn*xij2;
+    fij[2+3*n] = tn*xij3;                            
+  }        
+
+
+  int *numijk;
+  memory->create(numijk, natom+1, "mlpod:numijk");
+  numijk[0] = 0;
+  for (int i=0; i<natom; i++) {
+    int numneigh = numij[i + 1] - numij[i];
+    numijk[i+1] = numneigh*(numneigh-1)/2; 
+  }  
+  int Nijk = 0;
+  for (int i=1; i<=natom; i++) {
+    Nijk += numijk[i];
+    numijk[i] += numijk[i-1];
+  }
+  
+  for (int n=0; n<Nijk; n++) {          
+    int ii;
+    int low = 0;
+    int high = natom - 1;
+
+    while (low < high) {
+      int mid = (low + high) / 2;
+      if (n >= numijk[mid+1]) {
+        low = mid + 1;
+      } else {
+        high = mid;
+      }
+    }
+    if (low == 0 && n < numijk[1]) {
+      ii = 0; 
+    } else {
+      ii = low; 
+    }
+    
+    int numneigh = numij[ii + 1] - numij[ii];
+    int jk = n - numijk[ii];
+    
+    int lj, lk;
+    int cumulative_count = 0;
+    for (lj = 0; lj < numneigh - 1; lj++) {
+      int iterations_for_j = numneigh - lj - 1;
+      if (cumulative_count + iterations_for_j > jk) {            
+        break;
+      }
+      cumulative_count += iterations_for_j;
+    }
+
+    // Determine k
+    int offset_within_inner_loop = jk - cumulative_count;
+    lk = lj + 1 + offset_within_inner_loop;
+    
+    int ij = lj + numij[ii];
+    int ik = lk + numij[ii];
+    
+    typei = ti[ij] - 1;
+    typej = tj[ij] - 1;
+    typek = tj[ik] - 1;
+    
+    xij1 = rij[0 + dim * ij];
+    xij2 = rij[1 + dim * ij];
+    xij3 = rij[2 + dim * ij];
+    dijsq = xij1 * xij1 + xij2 * xij2 + xij3 * xij3;
+    dij = sqrt(dijsq);
+        
+    xik1 = rij[0 + dim * ik];
+    xik2 = rij[1 + dim * ik];
+    xik3 = rij[2 + dim * ik];
+    diksq = xik1 * xik1 + xik2 * xik2 + xik3 * xik3;
+    dik = sqrt(diksq);
+
+    xdot = xij1 * xik1 + xij2 * xik2 + xij3 * xik3;
+    tm = dij * dik;
+    costhe = xdot / tm;
+    costhe = costhe > 1.0 ? 1.0 : costhe;
+    costhe = costhe < -1.0 ? -1.0 : costhe;
+    xdot = costhe * tm;
+    theta = acos(costhe);
+
+    sinthe = sqrt(1.0 - costhe * costhe);
+    sinthe = sinthe > 1e-12 ? sinthe : 1e-12;
+    dtheta = -1.0 / sinthe;
+
+    tm1 = dtheta / (dijsq * tm);
+    tm2 = dtheta / (diksq * tm);
+    dct1 = (xik1 * dijsq - xij1 * xdot) * tm1;
+    dct2 = (xik2 * dijsq - xij2 * xdot) * tm1;
+    dct3 = (xik3 * dijsq - xij3 * xdot) * tm1;
+    dct4 = (xij1 * diksq - xik1 * xdot) * tm2;
+    dct5 = (xij2 * diksq - xik2 * xdot) * tm2;
+    dct6 = (xij3 * diksq - xik3 * xdot) * tm2;     
+    
+    if (femdegree==0) {
+      for (int p = 0; p < nabf1; p++) {
+        abf[p] = cos(p * theta);
+        dabf[p] = -p * sin(p * theta);          
+      }
+
+      for (int p = 1; p < nabf1; p++) {            
+        abf[nabf+p] = sin(p * theta);
+        dabf[nabf+p] = p * cos(p * theta);
+      }
+
+      fn = 0.0, fm = 0.0, fq = 0.0, fp = 0.0;
+      for (int m = 0; m < nrbf3; m++) {
+        for (int q = 0; q < nrbf3; q++) {
+          x1 = rbf[ij + Nij * m];
+          x2 = rbf[ik + Nij * q];
+          x3 = x1 * x2;
+          costhe = drbfdr[ij + Nij * m] * x2;
+          sinthe = drbfdr[ik + Nij * q] * x1;
+
+          for (int p = 0; p < nabf2; p++) {
+            e1 = p + (nabf2)*q + nabf2*nrbf3*m;
+            e2 = (elemindex[typej + typek * nelements] - 1) +
+                nelements2 * typei + nelements2 * nelements * e1;            
+            tm1 = coeff3[e2];            
+            tm = abf[p];          
+
+            fn += tm1 * x3 * tm;
+            fm += tm1 * costhe * tm;
+            fq += tm1 * sinthe * tm;
+            fp += tm1 * x3 * dabf[p];            
+          }
+        }
+      }          
+    }
+    else {
+      e1 = (dij-rin-1e-3)/dr;        
+      e1 = (e1 > (nelemr-1)) ? (nelemr-1) : e1;                
+      e2 = (dik-rin-1e-3)/dr;        
+      e2 = (e2 > (nelemr-1)) ? (nelemr-1) : e2;        
+      e3 = theta/dt;        
+      e3 = (e3 > (nelema-1)) ? (nelema-1) : e3;    
+
+      int e = e3 + nelema*e2 + nelema*nelemr*e1;
+      int idxe = (elemindex[typej + typek * nelements] - 1) + nelements2 * typei;
+      double *c = &femcoeffs[npelem*4*(e + nfemelem*idxe)];        
+
+      if (femdegree==3) {
+        tm1 = e3*dt;    
+        x1 = ft * (theta  - tm1) - 1;   
+        tm2 = x1*x1;
+        x2 = 1.5*tm2 - 0.5;
+        x3 = (2.5*tm2 - 1.5)*x1;                  
+        for (int i=0; i<nsq4; i++)           
+          c1[i] = c[0 + p1*i] + x1*c[1 + p1*i] + x2*c[2 + p1*i] + x3*c[3 + p1*i];
+
+        tm1 = rin+1e-3 + e2*dr;    
+        x1 = fr * (dik  - tm1) - 1;   
+        tm2 = x1*x1;
+        x2 = 1.5*tm2 - 0.5;
+        x3 = (2.5*tm2 - 1.5)*x1;                  
+        for (int i=0; i<n4; i++)
+          c2[i] = c1[0 + p1*i] + x1*c1[1 + p1*i] + x2*c1[2 + p1*i] + x3*c1[3 + p1*i];
+
+        tm1 = rin+1e-3 + e1*dr;        
+        x1 = fr * (dij  - tm1) - 1;       
+        tm2 = x1*x1;
+        x2 = 1.5*tm2 - 0.5;
+        x3 = (2.5*tm2 - 1.5)*x1;                          
+        fn = c2[0 + p1*0] + x1*c2[1 + p1*0] + x2*c2[2 + p1*0] + x3*c2[3 + p1*0];
+        fm = c2[0 + p1*1] + x1*c2[1 + p1*1] + x2*c2[2 + p1*1] + x3*c2[3 + p1*1];
+        fq = c2[0 + p1*2] + x1*c2[1 + p1*2] + x2*c2[2 + p1*2] + x3*c2[3 + p1*2];
+        fp = c2[0 + p1*3] + x1*c2[1 + p1*3] + x2*c2[2 + p1*3] + x3*c2[3 + p1*3];
+      }
+      else if (femdegree==2) {
+        tm1 = e3*dt;    
+        x1 = ft * (theta  - tm1) - 1;   
+        tm2 = x1*x1;
+        x2 = 1.5*tm2 - 0.5;
+        for (int i=0; i<nsq4; i++)           
+          c1[i] = c[0 + p1*i] + x1*c[1 + p1*i] + x2*c[2 + p1*i];
+
+        tm1 = rin+1e-3 + e2*dr;    
+        x1 = fr * (dik  - tm1) - 1;   
+        tm2 = x1*x1;
+        x2 = 1.5*tm2 - 0.5;
+        for (int i=0; i<n4; i++)
+          c2[i] = c1[0 + p1*i] + x1*c1[1 + p1*i] + x2*c1[2 + p1*i];
+
+        tm1 = rin+1e-3 + e1*dr;        
+        x1 = fr * (dij  - tm1) - 1;       
+        tm2 = x1*x1;
+        x2 = 1.5*tm2 - 0.5;
+        fn = c2[0 + p1*0] + x1*c2[1 + p1*0] + x2*c2[2 + p1*0];
+        fm = c2[0 + p1*1] + x1*c2[1 + p1*1] + x2*c2[2 + p1*1];
+        fq = c2[0 + p1*2] + x1*c2[1 + p1*2] + x2*c2[2 + p1*2];
+        fp = c2[0 + p1*3] + x1*c2[1 + p1*3] + x2*c2[2 + p1*3];
+      }
+    }
+    
+    tm1 = fm/dij;
+    tm2 = fq/dik;        
+    
+    ei[ii] += fn;
+    fij[0+3*ij] += (tm1*xij1 + fp * dct1);
+    fij[1+3*ij] += (tm1*xij2 + fp * dct2);
+    fij[2+3*ij] += (tm1*xij3 + fp * dct3);                                                      
+    fij[0+3*ik] += (tm2*xik1 + fp * dct4);
+    fij[1+3*ik] += (tm2*xik2 + fp * dct5);
+    fij[2+3*ik] += (tm2*xik3 + fp * dct6);                                            
+  }
+  
+  memory->destroy(numijk);
+  
+//   for (int n=0; n<Nij; n++) {          
+//     ij = n;
+//     typei = ti[ij] - 1;
+//     typej = tj[ij] - 1;
+//     xij1 = rij[0 + dim * ij];
+//     xij2 = rij[1 + dim * ij];
+//     xij3 = rij[2 + dim * ij];
+//     dijsq = xij1 * xij1 + xij2 * xij2 + xij3 * xij3;
+//     dij = sqrt(dijsq);
+// 
+//     ii = idxi[n];
+//     int numneigh = numij[ii + 1] - numij[ii];
+//     int s = numij[ii];          
+//     int lj = n - numij[ii];   
+// 
+//     double en = 0.0, fjx = 0.0, fjy = 0.0, fjz = 0.0;
+//     for (int lk = lj + 1; lk < numneigh; lk++) {
+//       ik = lk + s;
+//       typek = tj[ik] - 1;
+//       xik1 = rij[0 + dim * ik];
+//       xik2 = rij[1 + dim * ik];
+//       xik3 = rij[2 + dim * ik];
+//       diksq = xik1 * xik1 + xik2 * xik2 + xik3 * xik3;
+//       dik = sqrt(diksq);
+// 
+//       xdot = xij1 * xik1 + xij2 * xik2 + xij3 * xik3;
+//       tm = dij * dik;
+//       costhe = xdot / tm;
+//       costhe = costhe > 1.0 ? 1.0 : costhe;
+//       costhe = costhe < -1.0 ? -1.0 : costhe;
+//       xdot = costhe * tm;
+//       theta = acos(costhe);
+// 
+//       sinthe = sqrt(1.0 - costhe * costhe);
+//       sinthe = sinthe > 1e-12 ? sinthe : 1e-12;
+//       dtheta = -1.0 / sinthe;
+// 
+//       tm1 = dtheta / (dijsq * tm);
+//       tm2 = dtheta / (diksq * tm);
+//       dct1 = (xik1 * dijsq - xij1 * xdot) * tm1;
+//       dct2 = (xik2 * dijsq - xij2 * xdot) * tm1;
+//       dct3 = (xik3 * dijsq - xij3 * xdot) * tm1;
+//       dct4 = (xij1 * diksq - xik1 * xdot) * tm2;
+//       dct5 = (xij2 * diksq - xik2 * xdot) * tm2;
+//       dct6 = (xij3 * diksq - xik3 * xdot) * tm2;
+// 
+//       if (femdegree==0) {
+//         for (int p = 0; p < nabf1; p++) {
+//           abf[p] = cos(p * theta);
+//           dabf[p] = -p * sin(p * theta);          
+//         }
+// 
+//         for (int p = 1; p < nabf1; p++) {            
+//           abf[nabf+p] = sin(p * theta);
+//           dabf[nabf+p] = p * cos(p * theta);
+//         }
+// 
+//         fn = 0.0, fm = 0.0, fq = 0.0, fp = 0.0;
+//         for (int m = 0; m < nrbf3; m++) {
+//           for (int q = 0; q < nrbf3; q++) {
+//             x1 = rbf[ij + Nij * m];
+//             x2 = rbf[ik + Nij * q];
+//             x3 = x1 * x2;
+//             costhe = drbfdr[ij + Nij * m] * x2;
+//             sinthe = drbfdr[ik + Nij * q] * x1;
+// 
+//             for (int p = 0; p < nabf2; p++) {
+//               e1 = p + (nabf2)*q + nabf2*nrbf3*m;
+//               e2 = (elemindex[typej + typek * nelements] - 1) +
+//                   nelements2 * typei + nelements2 * nelements * e1;            
+//               tm1 = coeff3[e2];            
+//               tm = abf[p];          
+// 
+//               fn += tm1 * x3 * tm;
+//               fm += tm1 * costhe * tm;
+//               fq += tm1 * sinthe * tm;
+//               fp += tm1 * x3 * dabf[p];            
+//             }
+//           }
+//         }          
+//       }
+//       else {
+//         e1 = (dij-rin-1e-3)/dr;        
+//         e1 = (e1 > (nelemr-1)) ? (nelemr-1) : e1;                
+//         e2 = (dik-rin-1e-3)/dr;        
+//         e2 = (e2 > (nelemr-1)) ? (nelemr-1) : e2;        
+//         e3 = theta/dt;        
+//         e3 = (e3 > (nelema-1)) ? (nelema-1) : e3;    
+// 
+//         int e = e3 + nelema*e2 + nelema*nelemr*e1;
+//         int idxe = (elemindex[typej + typek * nelements] - 1) + nelements2 * typei;
+//         double *c = &femcoeffs[npelem*4*(e + nfemelem*idxe)];        
+// 
+//         if (femdegree==3) {
+//           tm1 = e3*dt;    
+//           x1 = ft * (theta  - tm1) - 1;   
+//           tm2 = x1*x1;
+//           x2 = 1.5*tm2 - 0.5;
+//           x3 = (2.5*tm2 - 1.5)*x1;                  
+//           for (int i=0; i<nsq4; i++)           
+//             c1[i] = c[0 + p1*i] + x1*c[1 + p1*i] + x2*c[2 + p1*i] + x3*c[3 + p1*i];
+// 
+//           tm1 = rin+1e-3 + e2*dr;    
+//           x1 = fr * (dik  - tm1) - 1;   
+//           tm2 = x1*x1;
+//           x2 = 1.5*tm2 - 0.5;
+//           x3 = (2.5*tm2 - 1.5)*x1;                  
+//           for (int i=0; i<n4; i++)
+//             c2[i] = c1[0 + p1*i] + x1*c1[1 + p1*i] + x2*c1[2 + p1*i] + x3*c1[3 + p1*i];
+// 
+//           tm1 = rin+1e-3 + e1*dr;        
+//           x1 = fr * (dij  - tm1) - 1;       
+//           tm2 = x1*x1;
+//           x2 = 1.5*tm2 - 0.5;
+//           x3 = (2.5*tm2 - 1.5)*x1;                          
+//           fn = c2[0 + p1*0] + x1*c2[1 + p1*0] + x2*c2[2 + p1*0] + x3*c2[3 + p1*0];
+//           fm = c2[0 + p1*1] + x1*c2[1 + p1*1] + x2*c2[2 + p1*1] + x3*c2[3 + p1*1];
+//           fq = c2[0 + p1*2] + x1*c2[1 + p1*2] + x2*c2[2 + p1*2] + x3*c2[3 + p1*2];
+//           fp = c2[0 + p1*3] + x1*c2[1 + p1*3] + x2*c2[2 + p1*3] + x3*c2[3 + p1*3];
+//         }
+//         else if (femdegree==2) {
+//           tm1 = e3*dt;    
+//           x1 = ft * (theta  - tm1) - 1;   
+//           tm2 = x1*x1;
+//           x2 = 1.5*tm2 - 0.5;
+//           for (int i=0; i<nsq4; i++)           
+//             c1[i] = c[0 + p1*i] + x1*c[1 + p1*i] + x2*c[2 + p1*i];
+// 
+//           tm1 = rin+1e-3 + e2*dr;    
+//           x1 = fr * (dik  - tm1) - 1;   
+//           tm2 = x1*x1;
+//           x2 = 1.5*tm2 - 0.5;
+//           for (int i=0; i<n4; i++)
+//             c2[i] = c1[0 + p1*i] + x1*c1[1 + p1*i] + x2*c1[2 + p1*i];
+// 
+//           tm1 = rin+1e-3 + e1*dr;        
+//           x1 = fr * (dij  - tm1) - 1;       
+//           tm2 = x1*x1;
+//           x2 = 1.5*tm2 - 0.5;
+//           fn = c2[0 + p1*0] + x1*c2[1 + p1*0] + x2*c2[2 + p1*0];
+//           fm = c2[0 + p1*1] + x1*c2[1 + p1*1] + x2*c2[2 + p1*1];
+//           fq = c2[0 + p1*2] + x1*c2[1 + p1*2] + x2*c2[2 + p1*2];
+//           fp = c2[0 + p1*3] + x1*c2[1 + p1*3] + x2*c2[2 + p1*3];
+//         }
+//       }
+// 
+//       en += fn;
+//       tm1 = fm/dij;
+//       tm2 = fq/dik;        
+//       fjx += (tm1*xij1 + fp * dct1);
+//       fjy += (tm1*xij2 + fp * dct2);
+//       fjz += (tm1*xij3 + fp * dct3);                                
+//       fij[0+3*ik] += (tm2*xik1 + fp * dct4);
+//       fij[1+3*ik] += (tm2*xik2 + fp * dct5);
+//       fij[2+3*ik] += (tm2*xik3 + fp * dct6);                                        
+//     }
+// 
+//     ei[ii] += en;
+//     fij[0+3*ij] += fjx;
+//     fij[1+3*ij] += fjy;
+//     fij[2+3*ij] += fjz;                                                  
+//   }        
+  
+}
 
 
 
