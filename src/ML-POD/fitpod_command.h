@@ -204,6 +204,8 @@ class FitPOD : public Command {
   void least_squares_fit(const datastruct &data);
   void descriptors_calculation(const datastruct &data);
   void environment_cluster_calculation(const datastruct &data);
+  void environment_proj_calculation(const datastruct &data);
+  void training_cluster_calculation(const datastruct &data);
   void print_analysis(const datastruct &data, double *outarray, double *errors);
   void error_analysis(const datastruct &data, double *coeff);
   double energyforce_calculation_fastpod(double *force, const datastruct &data, int ci);

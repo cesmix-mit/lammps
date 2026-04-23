@@ -13,7 +13,7 @@
 ------------------------------------------------------------------------- */
 
 /* ----------------------------------------------------------------------
-   Contributing author: Ngoc Cuong Nguyen (MIT)
+   Contributing author: Ngoc Cuong Nguyen (MIT) and Dionysios Sema (MIT)
 ------------------------------------------------------------------------- */
 
 #include "pair_pod_kokkos.h"
@@ -58,6 +58,7 @@ PairPODKokkos<DeviceType>::PairPODKokkos(LAMMPS *lmp) : PairPOD(lmp)
   nij = 0;
   nijmax = 0;
   atomBlockSize = getStreamingProcessorCount();
+  //atomBlockSize = 2048;
   utils::logmesg(lmp, "Atom Block Size: {:d}\n", atomBlockSize);
   nAtomBlocks = 0;
   timing = 0;

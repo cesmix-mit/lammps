@@ -301,6 +301,7 @@ void EAPOD::read_pod_file(const std::string &pod_file)
   if (P4 > 6) error->all(FLERR,"four-body angular degree must be equal or less than 6");
 
   if (nClusters < 1) nClusters = 1;
+  if (nClusters == 1) nActiveClusters = 0;
   if ((nActiveClusters < 2) && (static_cast<int>(nActiveClusters) != 0)) error->all(FLERR,"average number of active clusters must be greater or equal to 2");
   //if (nActiveClusters < 2) utils::logmesg(lmp, "WARNING: average number of active clusters should be greater or equal to 2. Simulation might be unstable.");
   if ( (nActiveClusters >= 2) && (nComponents != 1)) error->all(FLERR,"local EA-POD with multiple PCA components is not supported yet. Please use one principal component.");
@@ -1101,8 +1102,8 @@ double EAPOD::peratom_local_environment_descriptors(double *cb, double *bd, doub
   double *ceffs = &coeff[nc];
 
   double *cent = &Centroids[ncct];
-  double *lcrc2 = &invLeftClusterRcut2[ncct];
-  double *rcrc2 = &invRightClusterRcut2[ncct];
+  double *invlcut2 = &invLeftClusterRcut2[ncct];
+  double *invrcut2 = &invRightClusterRcut2[ncct];
 
   double *P    = &tm[0];    // nClusters
   double *cp   = &tm[nClusters];  // nClusters
@@ -1126,7 +1127,6 @@ double EAPOD::peratom_local_environment_descriptors(double *cb, double *bd, doub
 
   // Since active clusters are consecutive and at most l clusters,
   // we only need to check a window of size l+1 starting from the left index
-  //int l = 0.5 * nActiveClusters + 1;
   int ks = MAX(left - clusterSearchBox, 0);
   int ke = MIN(left + clusterSearchBox, nClusters);
 
@@ -1159,14 +1159,14 @@ double EAPOD::peratom_local_environment_descriptors(double *cb, double *bd, doub
 
   // Assign appropriate cutoff radius
   for (int j=ks; j<ke; j++) {
-    double clusterRcut2 = 0.0;
+    double rcut2 = 0.0;
     if (pca[0] > cent[j]) {
-      clusterRcut2 = rcrc2[j];
+      rcut2 = 1.0/invrcut2[j];
     } else {
-      clusterRcut2 = lcrc2[j];
+      rcut2 = 1.0/invlcut2[j];
     }
     double D2 = 2 * D[j] * D[j];
-    double invrratio = 1.0 / (1.0 - clusterRcut2 * D[j]);
+    double invrratio = 1.0 / (1.0 - rcut2 * D[j]);
     double denom2 = invrratio * invrratio;
     double fcutj = exp(invrratio);
     fcut[j] = fcutj;
@@ -1651,6 +1651,10 @@ double EAPOD::peratomenergyforce3(double *fij, double *rij, double *temp,
   for (int n=0; n<N; n++) fij[n] = 0.0;
   for (int i=0; i<Mdesc; i++) bd[i] = 0.0;
 
+  if (nl1>0) {
+    bd[0] = 1.0;
+  }
+
   double e = 0.0;
   if (Nj==0) {
     if (nl1>0) {
@@ -1660,12 +1664,6 @@ double EAPOD::peratomenergyforce3(double *fij, double *rij, double *temp,
       }
     }
     return e;
-  }
-
-  if (nl1>0) {
-    for (int j = 0; j < nClusters; j++) {
-      bd[j*Mdesc] = 1.0;
-    }
   }
 
   double *d2 =  &bd[nl1]; // nl2

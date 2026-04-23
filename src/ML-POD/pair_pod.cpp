@@ -12,7 +12,8 @@
 ------------------------------------------------------------------------- */
 
 /* ----------------------------------------------------------------------
-   Contributing authors: Ngoc Cuong Nguyen (MIT) and Andrew Rohskopf (SNL)
+   Contributing authors: Ngoc Cuong Nguyen (MIT), Dionysios Sema (MIT),
+                         Andrew Rohskopf (SNL)
 ------------------------------------------------------------------------- */
 
 #include "pair_pod.h"

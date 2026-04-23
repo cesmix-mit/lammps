@@ -124,7 +124,7 @@ void FitPOD::command(int narg, char **arg)
                                  fastpodptr->nelements);
   estimate_memory_neighborstruct(testdata, fastpodptr->pbc, fastpodptr->rcutmax,
                                  fastpodptr->nelements);
-  if (desc.nClusters > 1)
+  if (((int) envdata.data_path.size() > 1))
     estimate_memory_neighborstruct(envdata, fastpodptr->pbc, fastpodptr->rcutmax,
                                    fastpodptr->nelements);
   allocate_memory_neighborstruct();
@@ -134,8 +134,9 @@ void FitPOD::command(int narg, char **arg)
 
   if (coeff_file != "") podArrayCopy(desc.c, fastpodptr->coeff, fastpodptr->nCoeffAll);
 
-  if (((int) envdata.data_path.size() > 1) && (desc.nClusters > 1)) {
-    environment_cluster_calculation(envdata);
+  if (((int) envdata.data_path.size() > 1)) {
+    //environment_cluster_calculation(envdata);
+    environment_proj_calculation(envdata);
     memory->destroy(envdata.lattice);
     memory->destroy(envdata.energy);
     memory->destroy(envdata.stress);
@@ -144,6 +145,7 @@ void FitPOD::command(int narg, char **arg)
     memory->destroy(envdata.atomtype);
     memory->destroy(envdata.we);
     memory->destroy(envdata.wf);
+    training_cluster_calculation(traindata);
   }
 
   if (compute_descriptors == 0) {
@@ -158,7 +160,7 @@ void FitPOD::command(int narg, char **arg)
 
         int nCoeffAll = desc.nCoeffAll;
         int n1 = 0, n2 = 0;
-        if (((int) envdata.data_path.size() > 1) && (desc.nClusters > 1)) {
+        if (((int) envdata.data_path.size() > 1)) {
           n1 = fastpodptr->nComponents * fastpodptr->Mdesc * fastpodptr->nelements;
           n2 = fastpodptr->nComponents * fastpodptr->nClusters * fastpodptr->nelements;
         }
@@ -1038,7 +1040,7 @@ void FitPOD::read_data_files(const std::string &data_file, const std::vector<std
   testdata.test_analysis = traindata.test_analysis;
   testdata.filenametag = traindata.filenametag;
 
-  if (((int) envdata.data_path.size() > 1) && (desc.nClusters > 1)) {
+  if (((int) envdata.data_path.size() > 1)) {
     envdata.filenametag = traindata.filenametag;
     envdata.file_format = traindata.file_format;
     envdata.file_extension = traindata.file_extension;
@@ -1603,6 +1605,311 @@ void FitPOD::environment_cluster_calculation(const datastruct &data)
     utils::logmesg(
         lmp, "**************** End Calculating Environment Descriptor Matrix ****************\n");
 }
+
+
+void FitPOD::environment_proj_calculation(const datastruct &data)
+{
+  if (comm->me == 0)
+    utils::logmesg(
+        lmp, "**************** Begin Calculating Environment Projection Matrix ****************\n");
+  
+  int nComponents = fastpodptr->nComponents;
+  int Mdesc = fastpodptr->Mdesc;
+  int nelements = fastpodptr->nelements;
+  
+  memory->create(fastpodptr->Proj, Mdesc * nComponents * nelements, "fitpod:P");
+
+  int nAtoms = 0;
+  int nTotalAtoms = 0;
+  for (int ci = 0; ci < (int) data.num_atom.size(); ci++) {
+    if ((ci % comm->nprocs) == comm->me) nAtoms += data.num_atom[ci];
+    nTotalAtoms += data.num_atom[ci];
+  }
+
+  double *basedescmatrix;
+  double *A;
+  double *work;
+  double *b;
+  double *Lambda;
+  int *nElemAtoms;
+  int *nElemAtomsCumSum;
+  int *nElemAtomsCount;
+
+  memory->create(basedescmatrix, nAtoms * Mdesc, "fitpod:basedescmatrix");
+  memory->create(A, Mdesc * Mdesc, "fitpod:A");
+  memory->create(work, Mdesc * Mdesc, "fitpod:work");
+  memory->create(b, Mdesc, "fitpod:b");
+  memory->create(Lambda, Mdesc * nelements, "fitpod:Lambda");
+  memory->create(nElemAtoms, nelements, "fitpod:nElemAtoms");
+  memory->create(nElemAtomsCumSum, 1 + nelements, "fitpod:nElemAtomsCumSum");
+  memory->create(nElemAtomsCount, nelements, "fitpod:nElemAtomsCount");
+
+  char chn = 'N';
+  char cht = 'T';
+  char chv = 'V';
+  char chu = 'U';
+  double alpha = 1.0, beta = 0.0;
+
+  for (int elem = 0; elem < nelements; elem++) {
+    nElemAtoms[elem] = 0;    // number of atoms for this element
+  }
+  for (int ci = 0; ci < (int) data.num_atom.size(); ci++) {
+    if ((ci % comm->nprocs) == comm->me) {
+      int natom = data.num_atom[ci];
+      int natom_cumsum = data.num_atom_cumsum[ci];
+      int *atomtype = &data.atomtype[natom_cumsum];
+      for (int n = 0; n < natom; n++) nElemAtoms[atomtype[n] - 1] += 1;
+    }
+  }
+
+  nElemAtomsCumSum[0] = 0;
+  for (int elem = 0; elem < nelements; elem++) {
+    nElemAtomsCumSum[elem + 1] = nElemAtomsCumSum[elem] + nElemAtoms[elem];
+    nElemAtomsCount[elem] = 0;
+  }
+
+  // loop over each configuration in the data set
+  for (int ci = 0; ci < (int) data.num_atom.size(); ci++) {
+    if ((ci % 100) == 0) {
+      if (comm->me == 0) utils::logmesg(lmp, "Configuration: # {}\n", ci + 1);
+    }
+
+    if ((ci % comm->nprocs) == comm->me) {
+      base_descriptors_fastpod(data, ci);
+
+      // basedescmatrix is a Mdesc x nAtoms matrix
+      int natom = data.num_atom[ci];
+      int natom_cumsum = data.num_atom_cumsum[ci];
+      int *atomtype = &data.atomtype[natom_cumsum];
+      for (int n = 0; n < natom; n++) {
+        int elem = atomtype[n] - 1;    // offset by 1 to match the element index in the C++ code
+        nElemAtomsCount[elem] += 1;
+        int k = nElemAtomsCumSum[elem] + nElemAtomsCount[elem] - 1;
+        for (int m = 0; m < Mdesc; m++) basedescmatrix[m + Mdesc * k] = desc.bd[n + natom * (m)];
+      }
+    }
+  }
+
+  int save = 0;
+  for (int elem = 0; elem < nelements; elem++) {    // loop over each element
+    nAtoms = nElemAtoms[elem];
+    nTotalAtoms = nAtoms;
+
+    MPI_Allreduce(MPI_IN_PLACE, &nTotalAtoms, 1, MPI_INT, MPI_SUM, world);
+
+    double *descmatrix = &basedescmatrix[Mdesc * nElemAtomsCumSum[elem]];
+    double *Proj = &fastpodptr->Proj[nComponents * Mdesc * elem];
+
+    // Calculate covariance matrix A = basedescmatrix*basedescmatrix'. A is a Mdesc x Mdesc matrix
+    DGEMM(&chn, &cht, &Mdesc, &Mdesc, &nAtoms, &alpha, descmatrix, &Mdesc, descmatrix, &Mdesc,
+          &beta, A, &Mdesc);
+    MPI_Allreduce(MPI_IN_PLACE, A, Mdesc * Mdesc, MPI_DOUBLE, MPI_SUM, world);
+
+    if ((comm->me == 0) && (save == 1))
+      savematrix2binfile(data.filenametag + "_covariance_matrix_elem" + std::to_string(elem + 1) +
+                             ".bin",
+                         A, Mdesc, Mdesc);
+
+    // Calculate eigenvalues and eigenvectors of A
+    int lwork = Mdesc * Mdesc;    // the length of the array work, lwork >= max(1,3*N-1)
+    int info = 1;                 // = 0:  successful exit
+
+    DSYEV(&chv, &chu, &Mdesc, A, &Mdesc, b, work, &lwork, &info);
+
+    // order eigenvalues and eigenvectors from largest to smallest
+    for (int i = 0; i < Mdesc; i++) Lambda[(Mdesc - i - 1)] = b[i];
+
+    // P is a nComponents x Mdesc matrix
+    for (int j = 0; j < nComponents; j++)
+      for (int i = 0; i < Mdesc; i++)
+        Proj[j + nComponents * i] =
+            A[i + Mdesc * (Mdesc - j - 1)] * sqrt(fabs(b[(Mdesc - j - 1)] / Lambda[0]));
+
+    if (save == 1) {
+      if (comm->me == 0) {
+        savematrix2binfile(data.filenametag + "_eigenvector_matrix_elem" +
+                               std::to_string(elem + 1) + ".bin",
+                           A, Mdesc, Mdesc);
+        savematrix2binfile(data.filenametag + "_eigenvalues_elem" + std::to_string(elem + 1) +
+                               ".bin",
+                           b, Mdesc, 1);
+      }
+      savematrix2binfile(data.filenametag + "_desc_matrix_elem" + std::to_string(elem + 1) +
+                             "_proc" + std::to_string(comm->me + 1) + ".bin",
+                         descmatrix, Mdesc, nAtoms);
+    }
+  }
+
+  memory->destroy(basedescmatrix);
+  memory->destroy(A);
+  memory->destroy(work);
+  memory->destroy(b);
+  memory->destroy(Lambda);
+  memory->destroy(nElemAtoms);
+  memory->destroy(nElemAtomsCumSum);
+  memory->destroy(nElemAtomsCount);
+
+  if (comm->me == 0)
+    utils::logmesg(
+        lmp, "**************** End Calculating Environment PCA Matrix ****************\n");
+}
+
+
+void FitPOD::training_cluster_calculation(const datastruct &data)
+{
+  if (comm->me == 0)
+    utils::logmesg(
+        lmp, "**************** Begin Calculating Training K-means Clustering ****************\n");
+  
+  int nComponents = fastpodptr->nComponents;
+  int Mdesc = fastpodptr->Mdesc;
+  int nClusters = fastpodptr->nClusters;
+  double nActiveClusters = fastpodptr->nActiveClusters;
+  int nelements = fastpodptr->nelements;
+  
+  memory->create(fastpodptr->Centroids, nClusters * nComponents * nelements, "fitpod:centroids");
+  
+  memory->create(fastpodptr->ClusterFcut, nClusters * nComponents * nelements, "fitpod:ClusterFcut");
+  memory->create(fastpodptr->ClusterDFcut, nClusters * nComponents * nelements, "fitpod:ClusterDFcut");
+  memory->create(fastpodptr->invLeftClusterRcut2, nClusters * nComponents * nelements, "fitpod:invLeftClusterRcut2");
+  memory->create(fastpodptr->invRightClusterRcut2, nClusters * nComponents * nelements, "fitpod:invRightClusterRcut2");
+  memory->create(fastpodptr->leftClusterEdges, nClusters * nComponents * nelements, "fitpod:leftClusterEdges");
+  memory->create(fastpodptr->rightClusterEdges, nClusters * nComponents * nelements, "fitpod:rightClusterEdges");
+
+  int nAtoms = 0;
+  int nTotalAtoms = 0;
+  for (int ci = 0; ci < (int) data.num_atom.size(); ci++) {
+    if ((ci % comm->nprocs) == comm->me) nAtoms += data.num_atom[ci];
+    nTotalAtoms += data.num_atom[ci];
+  }
+
+  double *basedescmatrix;
+  double *pca;
+  int *clusterSizes;
+  int *assignments;
+  int *nElemAtoms;
+  int *nElemAtomsCumSum;
+  int *nElemAtomsCount;
+
+  memory->create(basedescmatrix, nAtoms * Mdesc, "fitpod:basedescmatrix");
+  memory->create(pca, nAtoms * nComponents, "fitpod:pca");
+  memory->create(clusterSizes, nClusters * nelements, "fitpod:clusterSizes");
+  memory->create(assignments, nAtoms, "fitpod:assignments");
+  memory->create(nElemAtoms, nelements, "fitpod:nElemAtoms");
+  memory->create(nElemAtomsCumSum, 1 + nelements, "fitpod:nElemAtomsCumSum");
+  memory->create(nElemAtomsCount, nelements, "fitpod:nElemAtomsCount");
+
+  char chn = 'N';
+  double alpha = 1.0, beta = 0.0;
+
+  for (int elem = 0; elem < nelements; elem++) {
+    nElemAtoms[elem] = 0;    // number of atoms for this element
+  }
+  for (int ci = 0; ci < (int) data.num_atom.size(); ci++) {
+    if ((ci % comm->nprocs) == comm->me) {
+      int natom = data.num_atom[ci];
+      int natom_cumsum = data.num_atom_cumsum[ci];
+      int *atomtype = &data.atomtype[natom_cumsum];
+      for (int n = 0; n < natom; n++) nElemAtoms[atomtype[n] - 1] += 1;
+    }
+  }
+
+  nElemAtomsCumSum[0] = 0;
+  for (int elem = 0; elem < nelements; elem++) {
+    nElemAtomsCumSum[elem + 1] = nElemAtomsCumSum[elem] + nElemAtoms[elem];
+    nElemAtomsCount[elem] = 0;
+  }
+
+  // loop over each configuration in the data set
+  for (int ci = 0; ci < (int) data.num_atom.size(); ci++) {
+    if ((ci % 100) == 0) {
+      if (comm->me == 0) utils::logmesg(lmp, "Configuration: # {}\n", ci + 1);
+    }
+
+    if ((ci % comm->nprocs) == comm->me) {
+      base_descriptors_fastpod(data, ci);
+
+      // basedescmatrix is a Mdesc x nAtoms matrix
+      int natom = data.num_atom[ci];
+      int natom_cumsum = data.num_atom_cumsum[ci];
+      int *atomtype = &data.atomtype[natom_cumsum];
+      for (int n = 0; n < natom; n++) {
+        int elem = atomtype[n] - 1;    // offset by 1 to match the element index in the C++ code
+        nElemAtomsCount[elem] += 1;
+        int k = nElemAtomsCumSum[elem] + nElemAtomsCount[elem] - 1;
+        for (int m = 0; m < Mdesc; m++) basedescmatrix[m + Mdesc * k] = desc.bd[n + natom * (m)];
+      }
+    }
+  }
+
+  int save = 0;
+  for (int elem = 0; elem < nelements; elem++) {    // loop over each element
+    nAtoms = nElemAtoms[elem];
+    nTotalAtoms = nAtoms;
+
+    MPI_Allreduce(MPI_IN_PLACE, &nTotalAtoms, 1, MPI_INT, MPI_SUM, world);
+
+    double *descmatrix = &basedescmatrix[Mdesc * nElemAtomsCumSum[elem]];
+    double *Proj = &fastpodptr->Proj[nComponents * Mdesc * elem];
+    double *centroids = &fastpodptr->Centroids[nComponents * nClusters * elem];
+    
+    // Calculate principal compoment analysis matrix pca = P*descmatrix. pca is a nComponents x nAtoms matrix
+    DGEMM(&chn, &chn, &nComponents, &nAtoms, &Mdesc, &alpha, Proj, &nComponents, descmatrix, &Mdesc,
+          &beta, pca, &nComponents);
+
+    // initialize centroids
+    for (int i = 0; i < nClusters * nComponents; i++) centroids[i] = 0.0;
+    for (int i = 0; i < nAtoms; i++) {
+      int m = (i * nClusters) / nAtoms;
+      for (int j = 0; j < nComponents; j++)
+        centroids[j + nComponents * m] += pca[j + nComponents * i];
+    }
+
+    MPI_Allreduce(MPI_IN_PLACE, centroids, nClusters * nComponents, MPI_DOUBLE, MPI_SUM, world);
+    double fac = ((double) nClusters) / ((double) nTotalAtoms);
+    for (int i = 0; i < nClusters * nComponents; i++) centroids[i] = centroids[i] * fac;
+
+    // Calculate centroids using k-means clustering
+    int max_iter = 100;
+    KmeansClustering(pca, centroids, assignments, clusterSizes, nAtoms, nClusters, nComponents,
+                     max_iter);
+    
+    if (nComponents == 1) {
+      std::sort(centroids, centroids + nClusters);
+    }
+
+    
+    if (save == 1) {
+      savematrix2binfile(data.filenametag + "_desc_matrix_elem" + std::to_string(elem + 1) +
+                             "_proc" + std::to_string(comm->me + 1) + ".bin",
+                         descmatrix, Mdesc, nAtoms);
+      savematrix2binfile(data.filenametag + "_pca_matrix_elem" + std::to_string(elem + 1) +
+                             "_proc" + std::to_string(comm->me + 1) + ".bin",
+                         pca, nComponents, nAtoms);
+      saveintmatrix2binfile(data.filenametag + "_cluster_assignments_elem" +
+                                std::to_string(elem + 1) + "_proc" + std::to_string(comm->me + 1) +
+                                ".bin",
+                            assignments, nAtoms, 1);
+    }
+  }
+
+  if (nActiveClusters >= 2) {
+    fastpodptr->calculateClusterEdges(nClusters, nActiveClusters, nComponents, nelements);
+  }
+
+  memory->destroy(basedescmatrix);
+  memory->destroy(pca);
+  memory->destroy(clusterSizes);
+  memory->destroy(assignments);
+  memory->destroy(nElemAtoms);
+  memory->destroy(nElemAtomsCumSum);
+  memory->destroy(nElemAtomsCount);
+
+  if (comm->me == 0)
+    utils::logmesg(
+        lmp, "**************** End Calculating Training K-means Clustering ****************\n");
+}
+
 
 void FitPOD::least_squares_matrix(const datastruct &data, int ci)
 {
@@ -2247,18 +2554,6 @@ void FitPOD::updateCentroids(double *points, double *centroids, int *assignments
     }
   }
 }
-
-// Function for K-means clustering
-//void FitPOD::KmeansClustering(double *points, double *centroids, int *assignments, int *clusterSizes,
-//                              int NUM_POINTS, int NUM_CLUSTERS, int DIMENSIONS, int MAX_ITER)
-//{
-//  for (int iter = 0; iter < MAX_ITER; iter++) {
-//    assignPointsToClusters(points, centroids, assignments, clusterSizes,
-//                            NUM_POINTS, NUM_CLUSTERS, DIMENSIONS);
-//    updateCentroids(points, centroids, assignments, clusterSizes,
-//                            NUM_POINTS, NUM_CLUSTERS, DIMENSIONS);
-//  }
-//}
 
 // Function for K-means clustering
 void FitPOD::KmeansClustering(double *points, double *centroids, int *assignments, int *clusterSizes,
