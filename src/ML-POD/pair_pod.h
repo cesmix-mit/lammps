@@ -37,12 +37,11 @@ class PairPOD : public Pair {
   double memory_usage() override;
 
   void lammpsNeighborList(double *rij1, int *ai1, int *aj1, int *ti1, int *tj1, double **x,
-                          int **firstneigh, int *atomtype, int *map, int *numneigh, double rcutsq,
-                          int i);
-  void NeighborCount(double **x, int **firstneigh, int *ilist, int *numneigh, double rcutsq,
-                     int i1);
+                          int **firstneigh, int *atomtype, int *map, int *numneigh, int i);
+  void NeighborCount(double **x, int **firstneigh, int *ilist, int *numneigh,
+                     int *atomtype, int i1);
   void NeighborList(double **x, int **firstneigh, int *atomtype, int *map, int *ilist,
-                    int *numneigh, double rcutsq, int i1);
+                    int *numneigh, int i1);
   void tallyenergy(double *ei, int istart, int Ni);
   void tallystress(double *fij, double *rij, int *ai, int *aj, int nlocal, int N);
   void tallyforce(double **force, double *fij, int *ai, int *aj, int N);
@@ -120,12 +119,13 @@ class PairPOD : public Pair {
 
   // environmental variables
   int nClusters;      // number of environment clusters
+  double nActiveClusters; // average number of active clusters
+  int clusterSearchBox; // Range to search for active clusters around centroids
   int nComponents;    // number of principal components
   int Mdesc;          // number of base descriptors
 
-  double rin;     // inner cut-off radius
-  double rcut;    // outer cut-off radius
-  double rmax;    // rcut - rin
+  double *rin;     // inner cut-off radius
+  double *rcut;    // outer cut-off radius
 
   double *rij;    // (xj - xi) for all pairs (I, J)
   double *fij;    // force for all pairs (I, J)
@@ -153,6 +153,7 @@ class PairPOD : public Pair {
   double *forcecoeff;      // force coefficients ni x K3 x nrbfmax x nelements
   double *Proj;            // PCA Projection matrix
   double *Centroids;       // centroids of the clusters
+
   double *bd;              // base descriptors ni x Mdesc
   double *cb;              // force coefficients for base descriptors ni x Mdesc
   double *pd;              // environment probability descriptors ni x nClusters

@@ -49,7 +49,7 @@ ComputePODAtom::ComputePODAtom(LAMMPS *lmp, int narg, char **arg) :
   memory->create(map, ntypes + 1, "compute_pod_global:map");
   map_element2type(narg - 5, arg + 5, podptr->nelements);
 
-  cutmax = podptr->rcut;
+  cutmax = podptr->rcutmax;
 
   nmax = 0;
   nijmax = 0;
@@ -128,7 +128,7 @@ void ComputePODAtom::compute_peratom()
   int inum = list->inum;
   int nClusters = podptr->nClusters;
   int Mdesc = podptr->Mdesc;
-  double rcutsq = podptr->rcut*podptr->rcut;
+  double *rcutsq = podptr->rcutsq;
 
   for (int ii = 0; ii < inum; ii++) {
     int i = ilist[ii];
@@ -155,7 +155,7 @@ void ComputePODAtom::compute_peratom()
       // peratom base descriptors
       double *bd = &podptr->bd[0];
       double *bdd = &podptr->bdd[0];
-      podptr->peratombase_descriptors(bd, bdd, rij, tmpmem, tj, nij);
+      podptr->peratombase_descriptors(bd, bdd, rij, tmpmem, ti, tj, nij);
 
       if (nClusters>1) {
         // peratom env descriptors
@@ -189,26 +189,29 @@ double ComputePODAtom::memory_usage()
 }
 
 void ComputePODAtom::lammpsNeighborList(double **x, int **firstneigh, tagint *atomid, int *atomtypes,
-                               int *numneigh, double rcutsq, int gi)
+                               int *numneigh, double *rcutsq, int gi)
 {
   nij = 0;
   int itype = map[atomtypes[gi]] + 1;
-  int m = numneigh[gi];
   ti[nij] = itype;
+  int m = numneigh[gi];
   for (int l = 0; l < m; l++) {           // loop over each atom around atom i
     int gj = firstneigh[gi][l];           // atom j
+    int jtype = map[atomtypes[gj]] + 1;   // type of neighboring atom j
+    double rcutsq_tij = rcutsq[jtype + podptr->nelements*itype];
+    //double rcutsq_tij = cutsq[itype][jtype];
     double delx = x[gj][0] - x[gi][0];    // xj - xi
     double dely = x[gj][1] - x[gi][1];    // xj - xi
     double delz = x[gj][2] - x[gi][2];    // xj - xi
     double rsq = delx * delx + dely * dely + delz * delz;
-    if (rsq < rcutsq && rsq > 1e-20) {
+    if (rsq < rcutsq_tij && rsq > 1e-20) {
       rij[nij * 3 + 0] = delx;
       rij[nij * 3 + 1] = dely;
       rij[nij * 3 + 2] = delz;
       ai[nij] = atomid[gi]-1;
       aj[nij] = atomid[gj]-1;
       ti[nij] = itype;
-      tj[nij] = map[atomtypes[gj]] + 1;
+      tj[nij] = jtype;
       nij++;
     }
   }

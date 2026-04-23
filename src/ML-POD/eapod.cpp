@@ -13,7 +13,7 @@
 ------------------------------------------------------------------------- */
 
 /* ----------------------------------------------------------------------
-   Contributing authors: Ngoc Cuong Nguyen (MIT)
+   Contributing authors: Ngoc Cuong Nguyen (MIT) and Dionysios Sema (MIT)
 ------------------------------------------------------------------------- */
 
 // LAMMPS header files
@@ -23,7 +23,6 @@
 #include "math_const.h"
 #include "math_special.h"
 #include "memory.h"
-#include "safe_pointers.h"
 #include "tokenizer.h"
 
 #include <algorithm>
@@ -41,17 +40,24 @@ static constexpr int MAXLINE=1024;
 // constructor
 EAPOD::EAPOD(LAMMPS *_lmp, const std::string &pod_file, const std::string &coeff_file) :
     Pointers(_lmp), elemindex(nullptr), Phi(nullptr), Lambda(nullptr), coeff(nullptr),
-    tmpmem(nullptr), Proj(nullptr), Centroids(nullptr), bd(nullptr), bdd(nullptr), pd(nullptr),
-    pdd(nullptr), pn3(nullptr), pq3(nullptr), pc3(nullptr), pq4(nullptr), pa4(nullptr),
+    tmpmem(nullptr), Proj(nullptr), Centroids(nullptr),
+    rin(nullptr), rcut(nullptr), rcutsq(nullptr), rdiff(nullptr),
+    PcaMean(nullptr), PcaInvStd(nullptr), DescMean(nullptr), DescInvStd(nullptr),
+    invLeftClusterRcut2(nullptr), invRightClusterRcut2(nullptr),
+    leftClusterEdges(nullptr), rightClusterEdges(nullptr), 
+    bd(nullptr), bdd(nullptr), pd(nullptr), pdd(nullptr),
+    pn3(nullptr), pq3(nullptr), pc3(nullptr), pq4(nullptr), pa4(nullptr),
     pb4(nullptr), pc4(nullptr), tmpint(nullptr), ind23(nullptr), ind32(nullptr), ind33(nullptr),
     ind34(nullptr), ind43(nullptr), ind44(nullptr), ind33l(nullptr), ind33r(nullptr),
     ind34l(nullptr), ind34r(nullptr), ind44l(nullptr), ind44r(nullptr)
 {
-  rin = 0.5;
-  rcut = 5.0;
-  nClusters = 1;
-  nComponents = 1;
   nelements = 1;
+  //rin[0] = 0.5;
+  //rcut[0] = 5.0;
+  nClusters = 1;
+  nActiveClusters = 0;
+  clusterSearchBox = 0.5 * nActiveClusters + 1;
+  nComponents = 1;
   onebody = 1;
   besseldegree = 4;
   inversedegree = 8;
@@ -102,8 +108,20 @@ EAPOD::~EAPOD()
   memory->destroy(elemindex);
   memory->destroy(Phi);
   memory->destroy(Lambda);
+  memory->destroy(rin);
+  memory->destroy(rcut);
+  memory->destroy(rcutsq);
+  memory->destroy(rdiff);
   memory->destroy(Proj);
+  memory->destroy(PcaMean);
+  memory->destroy(PcaInvStd);
+  memory->destroy(DescMean);
+  memory->destroy(DescInvStd);
   memory->destroy(Centroids);
+  memory->destroy(invLeftClusterRcut2);
+  memory->destroy(invRightClusterRcut2);
+  memory->destroy(leftClusterEdges);
+  memory->destroy(rightClusterEdges);
   memory->destroy(bd);
   memory->destroy(bdd);
   memory->destroy(pd);
@@ -135,7 +153,7 @@ EAPOD::~EAPOD()
 void EAPOD::read_pod_file(const std::string &pod_file)
 {
   std::string podfilename = pod_file;
-  SafeFilePtr fppod;
+  FILE *fppod;
   if (comm->me == 0) {
 
     fppod = utils::open_potential(podfilename,lmp,nullptr);
@@ -154,6 +172,7 @@ void EAPOD::read_pod_file(const std::string &pod_file)
       ptr = fgets(line,MAXLINE,fppod);
       if (ptr == nullptr) {
         eof = 1;
+        fclose(fppod);
       }
     }
     MPI_Bcast(&eof,1,MPI_INT,0,world);
@@ -189,15 +208,49 @@ void EAPOD::read_pod_file(const std::string &pod_file)
       pbc[2] = utils::inumeric(FLERR,words[3],false,lmp);
     }
 
-    if ((keywd != "#") && (keywd != "species") && (keywd != "pbc")) {
+    int Ne = nelements;
+
+    if (keywd == "rin") {
+      int wsize = words.size();
+      if ( (wsize != Ne*Ne+1) && (wsize != 2) )
+        error->one(FLERR,"Improper POD file. Provide outer cut-off radius for each element pair", utils::getsyserror());
+      
+      memory->create(rin, Ne*Ne, "rin");
+      if (wsize != Ne*Ne+1) {
+        double r = utils::numeric(FLERR,words[1],false,lmp);
+        for (int i = 0; i < Ne*Ne; i++) rin[i] = r;
+      }
+      else {
+        for (int i = 0; i < Ne*Ne; i++)
+          rin[i] = utils::numeric(FLERR,words[i+1],false,lmp);
+      }
+    }
+
+    if (keywd == "rcut") {
+      int wsize = words.size();
+      if ( (wsize != Ne*Ne+1) && (wsize != 2) )
+        error->one(FLERR,"Improper POD file. Provide outer cut-off radius for each element pair", utils::getsyserror());
+      
+      memory->create(rcut, Ne*Ne, "rcut");
+      if (wsize != Ne*Ne+1) {
+        double r = utils::numeric(FLERR,words[1],false,lmp);
+        for (int i = 0; i < Ne*Ne; i++) rcut[i] = r;
+      }
+      else {
+        for (int i = 0; i < Ne*Ne; i++)
+          rcut[i] = utils::numeric(FLERR,words[i+1],false,lmp);
+      }
+    }
+
+    if ((keywd != "#") && (keywd != "species") && (keywd != "pbc") && (keywd != "rin") && (keywd != "rcut")) {
 
       if (words.size() != 2)
         error->one(FLERR,"Improper POD file.", utils::getsyserror());
-
-      if (keywd == "rin") rin = utils::numeric(FLERR,words[1],false,lmp);
-      if (keywd == "rcut") rcut = utils::numeric(FLERR,words[1],false,lmp);
+      
       if (keywd == "number_of_environment_clusters")
         nClusters = utils::inumeric(FLERR,words[1],false,lmp);
+      if (keywd == "number_of_active_clusters")
+        nActiveClusters = utils::numeric(FLERR,words[1],false,lmp);
       if (keywd == "number_of_principal_components")
         nComponents = utils::inumeric(FLERR,words[1],false,lmp);
       if (keywd == "bessel_polynomial_degree")
@@ -247,6 +300,13 @@ void EAPOD::read_pod_file(const std::string &pod_file)
   if (P3 > 12) error->all(FLERR,"three-body angular degree must be equal or less than 12");
   if (P4 > 6) error->all(FLERR,"four-body angular degree must be equal or less than 6");
 
+  if (nClusters < 1) nClusters = 1;
+  if ((nActiveClusters < 2) && (static_cast<int>(nActiveClusters) != 0)) error->all(FLERR,"average number of active clusters must be greater or equal to 2");
+  //if (nActiveClusters < 2) utils::logmesg(lmp, "WARNING: average number of active clusters should be greater or equal to 2. Simulation might be unstable.");
+  if ( (nActiveClusters >= 2) && (nComponents != 1)) error->all(FLERR,"local EA-POD with multiple PCA components is not supported yet. Please use one principal component.");
+  //if ( (nActiveClusters > static_cast<float>(nClusters)) ) error->all(FLERR,"number of active clusters larger than number of total available clusters.");
+  clusterSearchBox = 0.5 * nActiveClusters + 1;
+
   int Ne = nelements;
   memory->create(elemindex, Ne*Ne, "elemindex");
   int k = 0;
@@ -256,6 +316,24 @@ void EAPOD::read_pod_file(const std::string &pod_file)
       elemindex[i1 + Ne*i2] = k;
       k += 1;
     }
+
+  // Compute the maximum and minimum distances between two atoms for each element pair type
+  memory->create(rcutsq, Ne*Ne, "rcutsq");
+  memory->create(rdiff, Ne*Ne, "rdiff");
+  rcutmax = rcut[0];
+  rinmin = rin[0];
+  for (int i = 0; i < nelements * nelements; i++) {
+    double rcut_ij = rcut[i];
+    double rin_ij = rin[i];
+    rcutsq[i] = rcut_ij * rcut_ij;
+    rdiff[i] = rcut_ij - rin_ij;
+    if (rcut_ij > rcutmax) {
+      rcutmax = rcut_ij;
+    }
+    if (rin_ij < rinmin) {
+      rinmin = rin_ij;
+    }
+  }
 
   init2body();
   init3body(P3);
@@ -347,10 +425,10 @@ void EAPOD::read_pod_file(const std::string &pod_file)
   nd34 = ngd34;
   nd44 = ngd44;
 
-  Mdesc = nl2 + nl3 + nl4 + nl23 + nl33 + nl34 + nl44;
+  Mdesc = nl1 + nl2 + nl3 + nl4 + nl23 + nl33 + nl34 + nl44;
   nl = nl1 + nl2 + nl3 + nl4 + nl23 + nl33 + nl34 + nl44;
   nd = nd1 + nd2 + nd3 + nd4 + nd23 + nd33 + nd34 + nd44;
-  nCoeffPerElement = nl1 + Mdesc*nClusters;
+  nCoeffPerElement = Mdesc*nClusters;
   nCoeffAll = nCoeffPerElement*nelements;
 
   allocate_temp_memory(Njmax);
@@ -363,9 +441,21 @@ void EAPOD::read_pod_file(const std::string &pod_file)
     utils::logmesg(lmp, "\n");
     utils::logmesg(lmp, "periodic boundary conditions: {} {} {}\n", pbc[0], pbc[1], pbc[2]);
     utils::logmesg(lmp, "number of environment clusters: {}\n", nClusters);
-    utils::logmesg(lmp, "number of principal compoments: {}\n", nComponents);
-    utils::logmesg(lmp, "inner cut-off radius: {}\n", rin);
-    utils::logmesg(lmp, "outer cut-off radius: {}\n", rcut);
+    utils::logmesg(lmp, "number of active clusters: {}\n", nActiveClusters);
+    utils::logmesg(lmp, "active cluster box search range: {}\n", clusterSearchBox);
+    utils::logmesg(lmp, "number of principal components: {}\n", nComponents);
+    utils::logmesg(lmp, "inner cut-off radius for element pairs:\n");
+    for (int i = 0; i < nelements; i++) {
+      for (int j = 0; j < nelements; j++) {
+        utils::logmesg(lmp, "  {}-{}: {}\n", species[i], species[j], rin[j + i*nelements]);
+      }
+    }
+    utils::logmesg(lmp, "outer cut-off radius for element pairs:\n");
+    for (int i = 0; i < nelements; i++) {
+      for (int j = 0; j < nelements; j++) {
+        utils::logmesg(lmp, "  {}-{}: {}\n", species[i], species[j], rcut[j + i*nelements]);
+      }
+    }
     utils::logmesg(lmp, "bessel polynomial degree: {}\n", besseldegree);
     utils::logmesg(lmp, "inverse polynomial degree: {}\n",inversedegree);
     utils::logmesg(lmp, "one-body potential: {}\n", onebody);
@@ -402,7 +492,7 @@ void EAPOD::read_pod_file(const std::string &pod_file)
 void EAPOD::read_model_coeff_file(const std::string &coeff_file)
 {
   std::string coefffilename = coeff_file;
-  SafeFilePtr fpcoeff;
+  FILE *fpcoeff;
   if (comm->me == 0) {
 
     fpcoeff = utils::open_potential(coefffilename,lmp,nullptr);
@@ -420,6 +510,7 @@ void EAPOD::read_model_coeff_file(const std::string &coeff_file)
       ptr = fgets(line,MAXLINE,fpcoeff);
       if (ptr == nullptr) {
         eof = 1;
+        fclose(fpcoeff);
       }
     }
     MPI_Bcast(&eof,1,MPI_INT,0,world);
@@ -456,6 +547,7 @@ void EAPOD::read_model_coeff_file(const std::string &coeff_file)
       ptr = fgets(line,MAXLINE,fpcoeff);
       if (ptr == nullptr) {
         eof = 1;
+        fclose(fpcoeff);
       }
     }
 
@@ -480,6 +572,7 @@ void EAPOD::read_model_coeff_file(const std::string &coeff_file)
       ptr = fgets(line,MAXLINE,fpcoeff);
       if (ptr == nullptr) {
         eof = 1;
+        fclose(fpcoeff);
       }
     }
 
@@ -504,6 +597,7 @@ void EAPOD::read_model_coeff_file(const std::string &coeff_file)
       ptr = fgets(line,MAXLINE,fpcoeff);
       if (ptr == nullptr) {
         eof = 1;
+        fclose(fpcoeff);
       }
     }
 
@@ -521,6 +615,10 @@ void EAPOD::read_model_coeff_file(const std::string &coeff_file)
     }
   }
 
+  if (comm->me == 0) {
+    if (!eof) fclose(fpcoeff);
+  }
+
 
   if (ncoeffall != nCoeffAll)
     error->all(FLERR,"number of coefficients in the coefficient file is not correct");
@@ -531,6 +629,14 @@ void EAPOD::read_model_coeff_file(const std::string &coeff_file)
 
     if (ncentall != nComponents*nClusters*nelements)
         error->all(FLERR,"number of coefficients in the projection file is not correct");
+    
+    if (nActiveClusters >= 2) {
+      memory->create(invLeftClusterRcut2, ncentall, "pod:invLeftClusterRcut2");
+      memory->create(invRightClusterRcut2, ncentall, "pod:invRightClusterRcut2");
+      memory->create(leftClusterEdges, ncentall, "pod:leftClusterEdges");
+      memory->create(rightClusterEdges, ncentall, "pod:rightClusterEdges");
+      calculateClusterEdges(nClusters, nActiveClusters, nComponents, nelements);
+    }
   }
 
   if (comm->me == 0) {
@@ -545,7 +651,7 @@ void EAPOD::read_model_coeff_file(const std::string &coeff_file)
 int EAPOD::read_coeff_file(const std::string &coeff_file)
 {
   std::string coefffilename = coeff_file;
-  SafeFilePtr fpcoeff;
+  FILE *fpcoeff;
   if (comm->me == 0) {
 
     fpcoeff = utils::open_potential(coefffilename,lmp,nullptr);
@@ -564,6 +670,7 @@ int EAPOD::read_coeff_file(const std::string &coeff_file)
       ptr = fgets(line,MAXLINE,fpcoeff);
       if (ptr == nullptr) {
         eof = 1;
+        fclose(fpcoeff);
       }
     }
     MPI_Bcast(&eof,1,MPI_INT,0,world);
@@ -599,6 +706,7 @@ int EAPOD::read_coeff_file(const std::string &coeff_file)
       ptr = fgets(line,MAXLINE,fpcoeff);
       if (ptr == nullptr) {
         eof = 1;
+        fclose(fpcoeff);
       }
     }
 
@@ -619,6 +727,10 @@ int EAPOD::read_coeff_file(const std::string &coeff_file)
   }
 
   if (comm->me == 0) {
+    if (!eof) fclose(fpcoeff);
+  }
+
+  if (comm->me == 0) {
     utils::logmesg(lmp, "**************** Begin of POD Coefficients ****************\n");
     utils::logmesg(lmp, "total number of coefficients for POD potential: {}\n", ncoeffall);
     utils::logmesg(lmp, "**************** End of POD Coefficients ****************\n\n");
@@ -631,7 +743,7 @@ int EAPOD::read_coeff_file(const std::string &coeff_file)
 int EAPOD::read_projection_matrix(const std::string &proj_file)
 {
   std::string projfilename = proj_file;
-  SafeFilePtr fpproj;
+  FILE *fpproj;
   if (comm->me == 0) {
 
     fpproj = utils::open_potential(projfilename,lmp,nullptr);
@@ -650,6 +762,7 @@ int EAPOD::read_projection_matrix(const std::string &proj_file)
       ptr = fgets(line,MAXLINE,fpproj);
       if (ptr == nullptr) {
         eof = 1;
+        fclose(fpproj);
       }
     }
     MPI_Bcast(&eof,1,MPI_INT,0,world);
@@ -685,6 +798,7 @@ int EAPOD::read_projection_matrix(const std::string &proj_file)
       ptr = fgets(line,MAXLINE,fpproj);
       if (ptr == nullptr) {
         eof = 1;
+        fclose(fpproj);
       }
     }
 
@@ -703,6 +817,9 @@ int EAPOD::read_projection_matrix(const std::string &proj_file)
       error->all(FLERR,"Incorrect format in PCA projection matrix file: {}", e.what());
     }
   }
+  if (comm->me == 0) {
+    if (!eof) fclose(fpproj);
+  }
 
   if (comm->me == 0) {
     utils::logmesg(lmp, "**************** Begin of PCA projection matrix ****************\n");
@@ -717,7 +834,7 @@ int EAPOD::read_projection_matrix(const std::string &proj_file)
 int EAPOD::read_centroids(const std::string &centroids_file)
 {
   std::string centfilename = centroids_file;
-  SafeFilePtr fpcent;
+  FILE *fpcent;
   if (comm->me == 0) {
 
     fpcent = utils::open_potential(centfilename,lmp,nullptr);
@@ -736,6 +853,7 @@ int EAPOD::read_centroids(const std::string &centroids_file)
       ptr = fgets(line,MAXLINE,fpcent);
       if (ptr == nullptr) {
         eof = 1;
+        fclose(fpcent);
       }
     }
     MPI_Bcast(&eof,1,MPI_INT,0,world);
@@ -771,6 +889,7 @@ int EAPOD::read_centroids(const std::string &centroids_file)
       ptr = fgets(line,MAXLINE,fpcent);
       if (ptr == nullptr) {
         eof = 1;
+        fclose(fpcent);
       }
     }
 
@@ -789,6 +908,9 @@ int EAPOD::read_centroids(const std::string &centroids_file)
       error->all(FLERR,"Incorrect format in PCA centroids file: {}", e.what());
     }
   }
+  if (comm->me == 0) {
+    if (!eof) fclose(fpcent);
+  }
 
   if (comm->me == 0) {
     utils::logmesg(lmp, "**************** Begin of PCA centroids ****************\n");
@@ -801,28 +923,33 @@ int EAPOD::read_centroids(const std::string &centroids_file)
 
 
 void EAPOD::peratombase_descriptors(double *bd1, double *bdd1, double *rij, double *temp,
-        int *tj, int Nj)
+        int *ti, int *tj, int Nj)
 {
   for (int i=0; i<Mdesc; i++) bd1[i] = 0.0;
   for (int i=0; i<3*Nj*Mdesc; i++) bdd1[i] = 0.0;
 
+  // one-body local descriptor
+  if (nl1 > 0) {
+    bd1[0] = 1.0;
+  }
+
   if (Nj == 0) return;
 
-  double *d2 =  &bd1[0]; // nl2
-  double *d3 =  &bd1[nl2]; // nl3
-  double *d4 =  &bd1[nl2 + nl3]; // nl4
-  double *d23 =  &bd1[nl2 + nl3 + nl4]; // nl23
-  double *d33 =  &bd1[nl2 + nl3 + nl4 + nl23]; // nl33
-  double *d34 =  &bd1[nl2 + nl3 + nl4 + nl23 + nl33]; // nl34
-  double *d44 =  &bd1[nl2 + nl3 + nl4 + nl23 + nl33 + nl34]; // nl44
+  double *d2 =  &bd1[nl1]; // nl2
+  double *d3 =  &bd1[nl1 + nl2]; // nl3
+  double *d4 =  &bd1[nl1 + nl2 + nl3]; // nl4
+  double *d23 =  &bd1[nl1 + nl2 + nl3 + nl4]; // nl23
+  double *d33 =  &bd1[nl1 + nl2 + nl3 + nl4 + nl23]; // nl33
+  double *d34 =  &bd1[nl1 + nl2 + nl3 + nl4 + nl23 + nl33]; // nl34
+  double *d44 =  &bd1[nl1 + nl2 + nl3 + nl4 + nl23 + nl33 + nl34]; // nl44
 
-  double *dd2 = &bdd1[0]; // 3*Nj*nl2
-  double *dd3 = &bdd1[3*Nj*nl2]; // 3*Nj*nl3
-  double *dd4 = &bdd1[3*Nj*(nl2+nl3)]; // 3*Nj*nl4
-  double *dd23 = &bdd1[3*Nj*(nl2+nl3+nl4)]; // 3*Nj*nl23
-  double *dd33 = &bdd1[3*Nj*(nl2+nl3+nl4+nl23)]; // 3*Nj*nl33
-  double *dd34 = &bdd1[3*Nj*(nl2+nl3+nl4+nl23+nl33)]; // 3*Nj*nl34
-  double *dd44 = &bdd1[3*Nj*(nl2+nl3+nl4+nl23+nl33+nl34)]; // 3*Nj*nl44
+  double *dd2 = &bdd1[3*Nj*nl1]; // 3*Nj*nl2
+  double *dd3 = &bdd1[3*Nj*(nl1+nl2)]; // 3*Nj*nl3
+  double *dd4 = &bdd1[3*Nj*(nl1+nl2+nl3)]; // 3*Nj*nl4
+  double *dd23 = &bdd1[3*Nj*(nl1+nl2+nl3+nl4)]; // 3*Nj*nl23
+  double *dd33 = &bdd1[3*Nj*(nl1+nl2+nl3+nl4+nl23)]; // 3*Nj*nl33
+  double *dd34 = &bdd1[3*Nj*(nl1+nl2+nl3+nl4+nl23+nl33)]; // 3*Nj*nl34
+  double *dd44 = &bdd1[3*Nj*(nl1+nl2+nl3+nl4+nl23+nl33+nl34)]; // 3*Nj*nl44
 
   int n1 = Nj*K3*nrbf3;
   int n2 = Nj*nrbfmax;
@@ -846,7 +973,7 @@ void EAPOD::peratombase_descriptors(double *bd1, double *bdd1, double *rij, doub
   double *rbfyt = &temp[4*n1 + n5 + 4*n2 + 2*n3]; // Nj*ns
   double *rbfzt = &temp[4*n1 + n5 + 4*n2 + 3*n3]; // Nj*ns
 
-  radialbasis(rbft, rbfxt, rbfyt, rbfzt, rij, besselparams, rin, rcut-rin, pdegree[0], pdegree[1], nbesselpars, Nj);
+  radialbasis(rbft, rbfxt, rbfyt, rbfzt, rij, ti, tj, besselparams, rin, rdiff, pdegree[0], pdegree[1], nbesselpars, Nj);
 
   char chn = 'N';
   double alpha = 1.0, beta = 0.0;
@@ -918,12 +1045,336 @@ void EAPOD::peratombase_descriptors(double *bd1, double *bdd1, double *rij, doub
 
 double EAPOD::peratombase_coefficients(double *cb, double *bd, int *ti)
 {
-  int nc = nCoeffPerElement*(ti[0]-1);
+  double *ceffs = &coeff[nCoeffPerElement*(ti[0]-1)];
 
-  double ei = coeff[0 + nc];
+  //double ei = ceff[0];
+  double ei = 0.0;
   for (int m=0; m<Mdesc; m++) {
-    ei += coeff[1 + m + nc]*bd[m];
-    cb[m] = coeff[1 + m + nc];
+    cb[m] = ceffs[m];
+    ei += ceffs[m]*bd[m];
+  }
+
+  return ei;
+}
+
+double EAPOD::peratombase_local_env_coefficients(double *cb, double *bd, int *ti, int k)
+{
+  double *ceffs = &coeff[nCoeffPerElement*(ti[0]-1) + k*Mdesc];
+
+  double ei = 0.0;
+  for (int m=0; m<Mdesc; m++) {
+    cb[m] = ceffs[m];
+    ei += ceffs[m]*bd[m];
+  }
+
+  return ei;
+}
+
+// with mollifier activation function (old)
+double EAPOD::peratom_local_environment_descriptors(double *cb, double *bd, double *tm, int *ti)
+{
+  int typei = ti[0]-1;
+  int nc = nCoeffPerElement*typei;
+  int ncct = nClusters*nComponents*typei;
+  int ncdt = nComponents*Mdesc*typei;
+  
+  double *proj = &Proj[ncdt];
+  double *ledges = &leftClusterEdges[ncct];
+  double *redges = &rightClusterEdges[ncct];
+  double *pca  = &tm[5*nClusters]; // nComponents
+  
+  // Calculate PCA descriptors
+  for (int k=0; k < nComponents; k++) {
+    double sum = 0.0;
+    for (int m = 0; m < Mdesc; m++) {
+      sum += proj[k + nComponents*m] * bd[m];
+    }
+    pca[k] = sum;
+  }
+  
+  // If PCA descriptors before the second or after the nClusters-1 cluster:
+  // only one cluster active -> use FPOD and exit
+  if (pca[0] <= ledges[1] || pca[0] >= redges[nClusters-2]) {
+    return peratombase_coefficients(cb, bd, ti);
+  }
+
+  double *ceffs = &coeff[nc];
+
+  double *cent = &Centroids[ncct];
+  double *lcrc2 = &invLeftClusterRcut2[ncct];
+  double *rcrc2 = &invRightClusterRcut2[ncct];
+
+  double *P    = &tm[0];    // nClusters
+  double *cp   = &tm[nClusters];  // nClusters
+  double *D    = &tm[2*nClusters];   // nClusters
+  double *fcut = &tm[3*nClusters];   // nClusters
+  double *dfcut = &tm[4*nClusters];   // nClusters
+  
+  // Main Routine to find active clusters
+  // Binary search for leftmost index of active cluster
+  int left = 0;
+  int right = nClusters - 1;
+  while (left < right) {
+    int mid = (left + right) >> 1;
+    if (ledges[mid] <= pca[0]) {
+      left = mid + 1;
+    } else {
+      right = mid;
+    }
+  }
+  left--;
+
+  // Since active clusters are consecutive and at most l clusters,
+  // we only need to check a window of size l+1 starting from the left index
+  //int l = 0.5 * nActiveClusters + 1;
+  int ks = MAX(left - clusterSearchBox, 0);
+  int ke = MIN(left + clusterSearchBox, nClusters);
+
+  // Find first active cluster
+  for (int k = ks; k < ke; k++) {
+    if (pca[0] > ledges[k] && pca[0] < redges[k]) {
+      ks = k;
+      break;
+    }
+  }
+
+  // Find last active cluster
+  for (int k = ke-1; k >= ks; k--) {
+    if (pca[0] > ledges[k] && pca[0] < redges[k]) {
+      ke = k + 1;
+      break;
+    }
+  }
+
+  // calc inv square distances
+  for (int j=ks; j<ke; j++) {
+    double sum = 1e-20;
+    for (int k = 0; k < nComponents; k++) {
+      double c = cent[k + j * nComponents];
+      double p = pca[k];
+      sum += (p - c) * (p - c);
+    }
+    D[j] = 1.0 / sum;
+  }
+
+  // Assign appropriate cutoff radius
+  for (int j=ks; j<ke; j++) {
+    double clusterRcut2 = 0.0;
+    if (pca[0] > cent[j]) {
+      clusterRcut2 = rcrc2[j];
+    } else {
+      clusterRcut2 = lcrc2[j];
+    }
+    double D2 = 2 * D[j] * D[j];
+    double invrratio = 1.0 / (1.0 - clusterRcut2 * D[j]);
+    double denom2 = invrratio * invrratio;
+    double fcutj = exp(invrratio);
+    fcut[j] = fcutj;
+    dfcut[j] = (1.0 - invrratio + denom2) * fcutj * D2;
+  }
+
+  double sumD = 0.0;
+  for (int j = ks; j < ke; j++) sumD += fcut[j] * D[j];
+  double S1 = 1.0/sumD;
+  for (int j = ks; j < ke; j++) P[j] = fcut[j] * D[j] * S1;
+
+  double ei = ceffs[0];
+  for (int k = ks; k<ke; k++)
+    for (int m=0; m<Mdesc; m++)
+      ei += ceffs[1 + m + Mdesc*k]*bd[m]*P[k];
+
+  for (int k=ks; k<ke; k++) {
+    double sum = 0;
+    for (int m = 0; m<Mdesc; m++)
+      sum += ceffs[1 + m + k*Mdesc]*bd[m];
+    cp[k] = sum;
+  }
+
+  for (int m = 0; m<Mdesc; m++) {
+    double sum = 0.0;
+    for (int k = ks; k<ke; k++)
+      sum += ceffs[1 + m + k*Mdesc]*P[k];
+    cb[m] = sum;
+  }
+  
+  double S2 = S1*S1;
+  for (int m = 0; m<Mdesc; m++) {
+    double sum = 0.0;
+    for (int j=ks; j<ke; j++) {
+      double dP_dB = 0.0;
+      for (int k = ks; k < ke; k++) {
+        double dP_dD = -fcut[j] * D[j] * S2;
+        if (k==j) dP_dD += S1;
+        double dD_dB = 0.0;
+        for (int n = 0; n < nComponents; n++) {
+          double dD_dpca = (cent[n + k * nComponents] - pca[n]);
+          dD_dB += dD_dpca * proj[n + m * nComponents];
+        }
+        dP_dB += dfcut[k] * dP_dD * dD_dB;
+      }
+      sum += cp[j] * dP_dB;
+    }
+    cb[m] += sum;
+  }
+
+  return ei;
+}
+
+double EAPOD::peratom_local_environment_descriptors2(double *cb, double *bd, double *tm, int *ti)
+{
+  int typei = ti[0]-1;
+  int nc = nCoeffPerElement*typei;
+  int ncct = nClusters*nComponents*typei;
+  int ncdt = nComponents*Mdesc*typei;
+  
+  double *proj = &Proj[ncdt];
+  double *ledges = &leftClusterEdges[ncct];
+  double *redges = &rightClusterEdges[ncct];
+  double *pca  = &tm[5*nClusters]; // nComponents
+  
+  // Calculate PCA descriptors
+  for (int k=0; k < nComponents; k++) {
+    double sum = 0.0;
+    for (int m = 0; m < Mdesc; m++) {
+      sum += proj[k + nComponents*m] * bd[m];
+    }
+    pca[k] = sum;
+  }
+  
+  // For inference mode:
+  // If PCA descriptors before the second or after the (nClusters-1)-th cluster:
+  // only one cluster active -> use FPOD and exit
+  if (pca[0] <= ledges[1]) {
+    int k = 0;
+    return peratombase_local_env_coefficients(cb, bd, ti, k);
+  }
+
+  if (pca[0] >= redges[nClusters-2]) {
+    int k = nClusters-1;
+    return peratombase_local_env_coefficients(cb, bd, ti, k);
+  }
+
+  double *ceffs = &coeff[nc];
+
+  double *cent = &Centroids[ncct];
+  double *invlcut2 = &invLeftClusterRcut2[ncct];
+  double *invrcut2 = &invRightClusterRcut2[ncct];
+
+  double *P    = &tm[0];    // nClusters
+  double *cp   = &tm[nClusters];  // nClusters
+  double *D    = &tm[2*nClusters];   // nClusters
+  double *fcut = &tm[3*nClusters];   // nClusters
+  double *dD_dpca = &tm[4*nClusters];   // nClusters
+  
+  // Main Routine to find active clusters.
+  // Could be replaced with getting index of ledge and redge: 
+  // floor(D % dist_k) and interpolation
+  // Binary search for index of leftmost active cluster
+  // Scaling: O(log(log(nClusters)) + 1)
+  int left = 0;
+  int right = nClusters - 1;
+  while (left < right) {
+    int mid = (left + right) >> 1;
+    if (ledges[mid] <= pca[0]) {
+      left = mid + 1;
+    } else {
+      right = mid;
+    }
+  }
+  left--;
+
+  // Since active clusters are consecutive and at most l clusters,
+  // no need to do a right side binary search
+  // we only need to check a window of size l+1 starting from the left index
+  int ks = MAX(left - clusterSearchBox, 0);
+  int ke = MIN(left + clusterSearchBox, nClusters);
+
+  // Find first active cluster
+  for (int k = ks; k < ke; k++) {
+    if (pca[0] > ledges[k] && pca[0] < redges[k]) {
+      ks = k;
+      break;
+    }
+  }
+
+  // Find last active cluster
+  for (int k = ke-1; k >= ks; k--) {
+    if (pca[0] > ledges[k] && pca[0] < redges[k]) {
+      ke = k + 1;
+      break;
+    }
+  }
+
+  // inv square distances
+  for (int j=ks; j<ke; j++) {
+    double sum = 1e-20;
+    for (int k = 0; k < nComponents; k++) {
+      double c = cent[k + j * nComponents];
+      double p = pca[k];
+      sum += (p - c) * (p - c);
+    }
+    D[j] = 1.0 / sum;
+  }
+
+  // Assign appropriate cutoff radius
+  // ToDo: Precompute, fcut, dD_dpca
+  // with a lookup table or interpolation
+  for (int j=ks; j<ke; j++) {
+    double Dj = D[j];
+    double D2 = 8.0 * Dj * Dj;
+    for (int n = 0; n < nComponents; n++) {
+      double p = pca[n];
+      double c = cent[n + j * nComponents];
+      double pc = p - c;
+      double invcut2 = 0.0;
+      if (pc > 0.0) {
+        invcut2 = invrcut2[j + n*nClusters];
+      } else {
+        invcut2 = invlcut2[j + n*nClusters];
+      }
+      double invr_S = invcut2 / Dj;
+      double fhat = 1.0 - invr_S;
+      double fcutj = powint(fhat, 4);
+      double prefac = ( 1.0/fhat - 1.25 ) * fcutj * D2;
+      fcut[j + n*nClusters] = fcutj;
+      dD_dpca[j + n*nClusters] = prefac * pc;
+    }
+  }
+
+  // can be combined with above loops
+  double sumD = 0.0;
+  for (int j = ks; j < ke; j++) sumD += fcut[j] * D[j];
+  double S1 = 1.0/sumD;
+  // can be combined with below loops for ei and cp
+  for (int j = ks; j < ke; j++) P[j] = fcut[j] * D[j] * S1;
+
+  //double ei = ceffs[0];
+  double ei = 0.0;
+  for (int k = ks; k<ke; k++) {
+    double sumE = 0.0;
+    for (int m=0; m<Mdesc; m++)
+      sumE += ceffs[m + k*Mdesc]*bd[m];
+    ei += sumE * P[k];
+    cp[k] = sumE * S1;
+  }
+
+  for (int m = 0; m<Mdesc; m++) {
+    double sum = 0.0;
+    for (int j=ks; j<ke; j++) {
+      double dP_dB = 0.0;
+      double Pj = P[j];
+      for (int k = ks; k < ke; k++) {
+        double dD_dB = 0.0;
+        for (int n = 0; n < nComponents; n++) {
+          dD_dB += dD_dpca[k + n*nClusters] * proj[n + m*nComponents];
+        }
+        dP_dB -= Pj * dD_dB;
+        if (k==j) dP_dB += dD_dB;
+      }
+      sum += cp[j] * dP_dB;
+      sum += ceffs[m + j*Mdesc] * Pj;
+    }
+    cb[m] = sum;
   }
 
   return ei;
@@ -968,22 +1419,23 @@ double EAPOD::peratom_environment_descriptors(double *cb, double *bd, double *tm
   }
 
   int nc = nCoeffPerElement*(ti[0]-1);
-  double ei = coeff[0 + nc];
+  //double ei = coeff[0 + nc];
+  double ei = 0.0;
   for (int k = 0; k<nClusters; k++)
     for (int m=0; m<Mdesc; m++)
-      ei += coeff[1 + m + Mdesc*k + nc]*bd[m]*P[k];
+      ei += coeff[m + Mdesc*k + nc]*bd[m]*P[k];
 
   for (int k=0; k<nClusters; k++) {
     double sum = 0;
     for (int m = 0; m<Mdesc; m++)
-      sum += coeff[1 + m + k*Mdesc + nc]*bd[m];
+      sum += coeff[m + k*Mdesc + nc]*bd[m];
     cp[k] = sum;
   }
 
   for (int m = 0; m<Mdesc; m++) {
     double sum = 0.0;
     for (int k = 0; k<nClusters; k++)
-      sum += coeff[1 + m + k*Mdesc + nc]*P[k];
+      sum += coeff[m + k*Mdesc + nc]*P[k];
     cb[m] = sum;
   }
 
@@ -1192,6 +1644,149 @@ void EAPOD::allbody_forces(double *fij, double *forcecoeff, double *Ux, double *
   }
 }
 
+double EAPOD::peratomenergyforce3(double *fij, double *rij, double *temp,
+        int *ti, int *tj, int Nj)
+{
+  int N = 3*Nj;
+  for (int n=0; n<N; n++) fij[n] = 0.0;
+  for (int i=0; i<Mdesc; i++) bd[i] = 0.0;
+
+  double e = 0.0;
+  if (Nj==0) {
+    if (nl1>0) {
+      int nc = nCoeffPerElement*(ti[0]-1);
+      for (int j = 0; j < nClusters; j++) {
+        e += coeff[j*Mdesc + nc];
+      }
+    }
+    return e;
+  }
+
+  if (nl1>0) {
+    for (int j = 0; j < nClusters; j++) {
+      bd[j*Mdesc] = 1.0;
+    }
+  }
+
+  double *d2 =  &bd[nl1]; // nl2
+  double *d3 =  &bd[nl1 + nl2]; // nl3
+  double *d4 =  &bd[nl1 + nl2 + nl3]; // nl4
+  double *d23 =  &bd[nl1 + nl2 + nl3 + nl4]; // nl23
+  double *d33 =  &bd[nl1 + nl2 + nl3 + nl4 + nl23]; // nl33
+  double *d34 =  &bd[nl1 + nl2 + nl3 + nl4 + nl23 + nl33]; // nl34
+  double *d44 =  &bd[nl1 + nl2 + nl3 + nl4 + nl23 + nl33 + nl34]; // nl44
+
+  int n1 = Nj*K3*nrbf3;
+  int n2 = Nj*nrbfmax;
+  int n3 = Nj*ns;
+  int n4 = Nj*K3;
+  int n5 = K3*nrbf3*nelements;
+
+  double *U = &temp[0]; // Nj*K3*nrbf3
+  double *Ux = &temp[n1]; // Nj*K3*nrbf3
+  double *Uy = &temp[2*n1]; // Nj*K3*nrbf3
+  double *Uz = &temp[3*n1]; // Nj*K3*nrbf3
+  double *sumU = &temp[4*n1]; // K3*nrbf3*nelements
+
+  double *rbf = &temp[4*n1 + n5]; // Nj*nrbf2
+  double *rbfx = &temp[4*n1 + n5 + n2]; // Nj*nrbf2
+  double *rbfy = &temp[4*n1 + n5 + 2*n2]; // Nj*nrbf2
+  double *rbfz = &temp[4*n1 + n5 + 3*n2]; // Nj*nrbf2
+
+  double *rbft = &temp[4*n1 + n5 + 4*n2]; // Nj*ns
+  double *rbfxt = &temp[4*n1 + n5 + 4*n2 + n3]; // Nj*ns
+  double *rbfyt = &temp[4*n1 + n5 + 4*n2 + 2*n3]; // Nj*ns
+  double *rbfzt = &temp[4*n1 + n5 + 4*n2 + 3*n3]; // Nj*ns
+
+  radialbasis(rbft, rbfxt, rbfyt, rbfzt, rij, ti, tj, besselparams, rin, rdiff, pdegree[0], pdegree[1], nbesselpars, Nj);
+
+  char chn = 'N';
+  double alpha = 1.0, beta = 0.0;
+  DGEMM(&chn, &chn, &Nj, &nrbfmax, &ns, &alpha, rbft, &Nj, Phi, &ns, &beta, rbf, &Nj);
+  DGEMM(&chn, &chn, &Nj, &nrbfmax, &ns, &alpha, rbfxt, &Nj, Phi, &ns, &beta, rbfx, &Nj);
+  DGEMM(&chn, &chn, &Nj, &nrbfmax, &ns, &alpha, rbfyt, &Nj, Phi, &ns, &beta, rbfy, &Nj);
+  DGEMM(&chn, &chn, &Nj, &nrbfmax, &ns, &alpha, rbfzt, &Nj, Phi, &ns, &beta, rbfz, &Nj);
+
+  if ((nl2>0) && (Nj>0)) {
+    twobodydesc(d2, rbf, tj, Nj);
+  }
+
+  if ((nl3 > 0) && (Nj>1)) {
+    double *abf = &temp[4*n1 + n5 + 4*n2]; // Nj*K3
+    double *abfx = &temp[4*n1 + n5 + 4*n2 + n4]; // Nj*K3
+    double *abfy = &temp[4*n1 + n5 + 4*n2 + 2*n4]; // Nj*K3
+    double *abfz = &temp[4*n1 + n5 + 4*n2 + 3*n4]; // Nj*K3
+    double *tm = &temp[4*n1 + n5 + 4*n2 + 4*n4]; // 4*K3
+
+    angularbasis(abf, abfx, abfy, abfz, rij, tm, pq3, Nj, K3);
+
+    radialangularbasis(sumU, U, Ux, Uy, Uz, rbf, rbfx, rbfy, rbfz,
+            abf, abfx, abfy, abfz, tj, Nj, K3, nrbf3, nelements);
+
+    threebodydesc(d3, sumU);
+
+    if ((nl23>0) && (Nj>2)) {
+      fourbodydesc23(d23, d2, d3);
+    }
+
+    if ((nl33>0) && (Nj>3)) {
+      crossdesc(d33, d3, d3, ind33l, ind33r, nl33);
+    }
+
+    if ((nl4 > 0) && (Nj>2)) {
+      fourbodydesc(d4, sumU);
+
+      if ((nl34>0) && (Nj>4)) {
+        crossdesc(d34, d3, d4, ind34l, ind34r, nl34);
+      }
+
+      if ((nl44>0) && (Nj>5)) {
+        crossdesc(d44, d4, d4, ind44l, ind44r, nl44);
+      }
+    }
+  }
+
+  double *cb = &bdd[0];
+  if (nActiveClusters >= 2) {
+    //e += peratom_local_environment_descriptors(cb, bd, &temp[4*n1 + n5 + 4*n2], ti);
+    e += peratom_local_environment_descriptors2(cb, bd, &temp[4*n1 + n5 + 4*n2], ti);
+  }
+  else if (nClusters > 1) {
+    e += peratom_environment_descriptors(cb, bd, &temp[4*n1 + n5 + 4*n2], ti);
+  }
+  else {
+    e += peratombase_coefficients(cb, bd, ti);
+  }
+
+  double *cb2 =  &cb[(nl1)]; // nl2
+  double *cb3 =  &cb[(nl1 + nl2)]; // nl3
+  double *cb4 =  &cb[(nl1 + nl2 + nl3)]; // nl4
+  double *cb33 = &cb[(nl1 + nl2 + nl3 + nl4)]; // nl33
+  double *cb34 = &cb[(nl1 + nl2 + nl3 + nl4 + nl33)]; // nl34
+  double *cb44 = &cb[(nl1 + nl2 + nl3 + nl4 + nl33 + nl34)]; // nl44
+
+  if ((nl33>0) && (Nj>3)) {
+    crossdesc_reduction(cb3, cb3, cb33, d3, d3, ind33l, ind33r, nl33);
+  }
+  if ((nl34>0) && (Nj>4)) {
+    crossdesc_reduction(cb3, cb4, cb34, d3, d4, ind34l, ind34r, nl34);
+  }
+  if ((nl44>0) && (Nj>5)) {
+    crossdesc_reduction(cb4, cb4, cb44, d4, d4, ind44l, ind44r, nl44);
+  }
+
+  if ((nl2 > 0) && (Nj>0)) twobody_forces(fij, cb2, rbfx, rbfy, rbfz, tj, Nj);
+
+  // Initialize forcecoeff to zero
+  double *forcecoeff = &cb[(nl1 + nl2 + nl3 + nl4)]; // nl33
+  std::fill(forcecoeff, forcecoeff + nelements * K3 * nrbf3, 0.0);
+  if ((nl3 > 0) && (Nj>1)) threebody_forcecoeff(forcecoeff, cb3, sumU);
+  if ((nl4 > 0) && (Nj>2)) fourbody_forcecoeff(forcecoeff, cb4, sumU);
+  if ((nl3 > 0) && (Nj>1)) allbody_forces(fij, forcecoeff, Ux, Uy, Uz, tj, Nj);
+
+  return e;
+}
+
 double EAPOD::peratomenergyforce2(double *fij, double *rij, double *temp,
         int *ti, int *tj, int Nj)
 {
@@ -1236,7 +1831,7 @@ double EAPOD::peratomenergyforce2(double *fij, double *rij, double *temp,
   double *rbfyt = &temp[4*n1 + n5 + 4*n2 + 2*n3]; // Nj*ns
   double *rbfzt = &temp[4*n1 + n5 + 4*n2 + 3*n3]; // Nj*ns
 
-  radialbasis(rbft, rbfxt, rbfyt, rbfzt, rij, besselparams, rin, rcut-rin, pdegree[0], pdegree[1], nbesselpars, Nj);
+  radialbasis(rbft, rbfxt, rbfyt, rbfzt, rij, ti, tj, besselparams, rin, rdiff, pdegree[0], pdegree[1], nbesselpars, Nj);
 
   char chn = 'N';
   double alpha = 1.0, beta = 0.0;
@@ -1324,26 +1919,27 @@ double EAPOD::peratomenergyforce2(double *fij, double *rij, double *temp,
 double EAPOD::peratomenergyforce(double *fij, double *rij, double *temp,
         int *ti, int *tj, int Nj)
 {
-  if (Nj==0) {
-    return coeff[nCoeffPerElement*(ti[0]-1)];
-  }
-
   int N = 3*Nj;
   for (int n=0; n<N; n++) fij[n] = 0.0;
 
   double *coeff1 = &coeff[nCoeffPerElement*(ti[0]-1)];
-  double e = coeff1[0];
+  double e = 0.0;
 
   // calculate base descriptors and their derivatives with respect to atom coordinates
-  peratombase_descriptors(bd, bdd, rij, temp, tj, Nj);
+  peratombase_descriptors(bd, bdd, rij, temp, ti, tj, Nj);
 
   if (nClusters > 1) { // multi-environment descriptors
+
     // calculate multi-environment descriptors and their derivatives with respect to atom coordinates
-    peratomenvironment_descriptors(pd, pdd, bd, bdd, temp, ti[0] - 1,  Nj);
+    if (nActiveClusters >= 2.0) {
+      peratomlocalenvironment_descriptors(pd, pdd, bd, bdd, tmpmem, ti[0] - 1,  Nj);
+    } else {
+      peratomenvironment_descriptors(pd, pdd, bd, bdd, temp, ti[0] - 1,  Nj);
+    }
 
     for (int j = 0; j<nClusters; j++)
       for (int m=0; m<Mdesc; m++)
-        e += coeff1[1 + m + j*Mdesc]*bd[m]*pd[j];
+        e += coeff1[m + j*Mdesc]*bd[m]*pd[j];
 
     double *cb = &temp[0];
     double *cp = &temp[Mdesc];
@@ -1351,8 +1947,8 @@ double EAPOD::peratomenergyforce(double *fij, double *rij, double *temp,
     for (int j = 0; j<nClusters; j++) cp[j] = 0.0;
     for (int j = 0; j<nClusters; j++)
       for (int m = 0; m<Mdesc; m++)  {
-        cb[m] += coeff1[1 + m + j*Mdesc]*pd[j];
-        cp[j] += coeff1[1 + m + j*Mdesc]*bd[m];
+        cb[m] += coeff1[m + j*Mdesc]*pd[j];
+        cp[j] += coeff1[m + j*Mdesc]*bd[m];
       }
     char chn = 'N';
     double alpha = 1.0, beta = 0.0;
@@ -1362,12 +1958,12 @@ double EAPOD::peratomenergyforce(double *fij, double *rij, double *temp,
   }
   else { // single-environment descriptors
     for (int m=0; m<Mdesc; m++)
-      e += coeff1[1+m]*bd[m];
+      e += coeff1[m]*bd[m];
 
     char chn = 'N';
     double alpha = 1.0, beta = 0.0;
     int inc1 = 1;
-    DGEMV(&chn, &N, &Mdesc, &alpha, bdd, &N, &coeff1[1], &inc1, &beta, fij, &inc1);
+    DGEMV(&chn, &N, &Mdesc, &alpha, bdd, &N, coeff1, &inc1, &beta, fij, &inc1);
   }
 
   return e;
@@ -1383,30 +1979,35 @@ double EAPOD::energyforce(double *force, double *x, int *atomtype, int *alist,
     int Nj = pairnumsum[i+1] - pairnumsum[i]; // # neighbors around atom i
 
     if (Nj==0) {
-      etot += coeff[nCoeffPerElement*(atomtype[i]-1)];
-    }
-    else
-    {
-      // reallocate temporary memory
-      if (Nj>Njmax) {
-        Njmax = Nj;
-        free_temp_memory();
-        allocate_temp_memory(Njmax);
+      if (nl1>0) {
+        for (int j = 0; j < nClusters; j++) {
+          int k = nCoeffPerElement*(atomtype[i]-1) + j*Mdesc;
+          etot += coeff[k];
+        }
       }
-
-      double *rij = &tmpmem[0];    // 3*Nj
-      double *fij = &tmpmem[3*Nj]; // 3*Nj
-      int *ai = &tmpint[0];        // Nj
-      int *aj = &tmpint[Nj];       // Nj
-      int *ti = &tmpint[2*Nj];     // Nj
-      int *tj = &tmpint[3*Nj];     // Nj
-
-      myneighbors(rij, x, ai, aj, ti, tj, jlist, pairnumsum, atomtype, alist, i);
-
-      etot += peratomenergyforce(fij, rij, &tmpmem[6*Nj], ti, tj, Nj);
-
-      tallyforce(force, fij, ai, aj, Nj);
+      continue;
     }
+
+    // reallocate temporary memory
+    if (Nj>Njmax) {
+      Njmax = Nj;
+      free_temp_memory();
+      allocate_temp_memory(Njmax);
+    }
+
+    double *rij = &tmpmem[0];    // 3*Nj
+    double *fij = &tmpmem[3*Nj]; // 3*Nj
+    int *ai = &tmpint[0];        // Nj
+    int *aj = &tmpint[Nj];       // Nj
+    int *ti = &tmpint[2*Nj];     // Nj
+    int *tj = &tmpint[3*Nj];     // Nj
+
+    myneighbors(rij, x, ai, aj, ti, tj, jlist, pairnumsum, atomtype, alist, i);
+
+    etot += peratomenergyforce(fij, rij, &tmpmem[6*Nj], ti, tj, Nj);
+
+    tallyforce(force, fij, ai, aj, Nj);
+    
   }
 
   return etot;
@@ -1420,13 +2021,20 @@ void EAPOD::base_descriptors(double *basedesc, double *x,
   for (int i=0; i<natom; i++) {
     int Nj = pairnumsum[i+1] - pairnumsum[i]; // # neighbors around atom i
 
+    if (Nj==0) {
+      if (nl1>0) {
+        basedesc[i + natom*(0)] = 1.0;
+      }
+      continue;
+    }
+
     if (Nj>0) {
       // reallocate temporary memory
       if (Nj>Njmax) {
         Njmax = Nj;
         free_temp_memory();
         allocate_temp_memory(Njmax);
-        if (comm->me == 0) utils::logmesg(lmp, "reallocate temporary memory with Njmax = %d ...\n", Njmax);
+        if (comm->me == 0) utils::logmesg(lmp, "reallocate temporary memory with Njmax = {:d} ...\n", Njmax);
       }
 
       double *rij = &tmpmem[0]; // 3*Nj
@@ -1438,10 +2046,10 @@ void EAPOD::base_descriptors(double *basedesc, double *x,
       myneighbors(rij, x, ai, aj, ti, tj, jlist, pairnumsum, atomtype, alist, i);
 
       // many-body descriptors
-      peratombase_descriptors(bd, bdd, rij, &tmpmem[3*Nj], tj, Nj);
+      peratombase_descriptors(bd, bdd, rij, &tmpmem[3*Nj], ti, tj, Nj);
 
       for (int m=0; m<Mdesc; m++) {
-        basedesc[i + natom*m] = bd[m];
+        basedesc[i + natom*(m)] = bd[m];
       }
 
     }
@@ -1458,49 +2066,50 @@ void EAPOD::descriptors(double *gd, double *gdd, double *basedesc, double *x,
   for (int i=0; i<natom; i++) {
     int Nj = pairnumsum[i+1] - pairnumsum[i]; // # neighbors around atom i
 
-    // one-body descriptor
-    if (nd1>0) {
-      gd[nCoeffPerElement*(atomtype[i]-1)] += 1.0;
+    if (Nj==0) {
+      if (nd1>0) {
+        basedesc[i] = 1.0;
+        gd[nCoeffPerElement*(atomtype[i]-1)] += 1.0;
+      }
+      continue;
     }
 
-    if (Nj>0) {
-      // reallocate temporary memory
-      if (Nj>Njmax) {
-        Njmax = Nj;
-        free_temp_memory();
-        allocate_temp_memory(Njmax);
-        if (comm->me == 0) utils::logmesg(lmp, "reallocate temporary memory with Njmax = %d ...\n", Njmax);
-      }
-
-      double *rij = &tmpmem[0]; // 3*Nj
-      int *ai = &tmpint[0];     // Nj
-      int *aj = &tmpint[Nj];   // Nj
-      int *ti = &tmpint[2*Nj]; // Nj
-      int *tj = &tmpint[3*Nj]; // Nj
-
-      myneighbors(rij, x, ai, aj, ti, tj, jlist, pairnumsum, atomtype, alist, i);
-
-      // many-body descriptors
-      peratombase_descriptors(bd, bdd, rij, &tmpmem[3*Nj], tj, Nj);
-
-      for (int m=0; m<Mdesc; m++) {
-        basedesc[i + natom*m] = bd[m];
-        int k = nCoeffPerElement*(ti[0]-1) + nl1 + m; // increment by nl1 because of the one-body descriptor
-        gd[k] += bd[m];
-        for (int n=0; n<Nj; n++) {
-          int im = 3*ai[n] + 3*natom*k;
-          int jm = 3*aj[n] + 3*natom*k;
-          int nm = 3*n + 3*Nj*m;
-          gdd[0 + im] += bdd[0 + nm];
-          gdd[1 + im] += bdd[1 + nm];
-          gdd[2 + im] += bdd[2 + nm];
-          gdd[0 + jm] -= bdd[0 + nm];
-          gdd[1 + jm] -= bdd[1 + nm];
-          gdd[2 + jm] -= bdd[2 + nm];
-        }
-      }
-
+    // reallocate temporary memory
+    if (Nj>Njmax) {
+      Njmax = Nj;
+      free_temp_memory();
+      allocate_temp_memory(Njmax);
+      if (comm->me == 0) utils::logmesg(lmp, "reallocate temporary memory with Njmax = {:d} ...\n", Njmax);
     }
+
+    double *rij = &tmpmem[0]; // 3*Nj
+    int *ai = &tmpint[0];     // Nj
+    int *aj = &tmpint[Nj];   // Nj
+    int *ti = &tmpint[2*Nj]; // Nj
+    int *tj = &tmpint[3*Nj]; // Nj
+
+    myneighbors(rij, x, ai, aj, ti, tj, jlist, pairnumsum, atomtype, alist, i);
+
+    // many-body descriptors
+    peratombase_descriptors(bd, bdd, rij, &tmpmem[3*Nj], ti, tj, Nj);
+
+    for (int m=0; m<Mdesc; m++) {
+      basedesc[i + natom*(m)] = bd[m];
+      int k = nCoeffPerElement*(ti[0]-1) + m;
+      gd[k] += bd[m];
+      for (int n=0; n<Nj; n++) {
+        int im = 3*ai[n] + 3*natom*k;
+        int jm = 3*aj[n] + 3*natom*k;
+        int nm = 3*n + 3*Nj*m;
+        gdd[0 + im] += bdd[0 + nm];
+        gdd[1 + im] += bdd[1 + nm];
+        gdd[2 + im] += bdd[2 + nm];
+        gdd[0 + jm] -= bdd[0 + nm];
+        gdd[1 + jm] -= bdd[1 + nm];
+        gdd[2 + jm] -= bdd[2 + nm];
+      }
+    }
+    
   }
 }
 
@@ -1515,56 +2124,64 @@ void EAPOD::descriptors(double *gd, double *gdd, double *basedesc, double *probd
   for (int i=0; i<natom; i++) {
     int Nj = pairnumsum[i+1] - pairnumsum[i]; // # neighbors around atom i
 
-    // one-body descriptor
-    if (nd1>0) {
-      gd[nCoeffPerElement*(atomtype[i]-1)] += 1.0;
-    }
-
-    if (Nj>0) {
-      // reallocate temporary memory
-      if (Nj>Njmax) {
-        Njmax = Nj;
-        free_temp_memory();
-        allocate_temp_memory(Njmax);
-        if (comm->me == 0) utils::logmesg(lmp, "reallocate temporary memory with Njmax = %d ...\n", Njmax);
-      }
-
-      double *rij = &tmpmem[0]; // 3*Nj
-      int *ai = &tmpint[0];     // Nj
-      int *aj = &tmpint[Nj];   // Nj
-      int *ti = &tmpint[2*Nj]; // Nj
-      int *tj = &tmpint[3*Nj]; // Nj
-
-      myneighbors(rij, x, ai, aj, ti, tj, jlist, pairnumsum, atomtype, alist, i);
-
-      // many-body descriptors
-      peratombase_descriptors(bd, bdd, rij, &tmpmem[3*Nj], tj, Nj);
-
-      // calculate multi-environment descriptors and their derivatives with respect to atom coordinates
-      peratomenvironment_descriptors(pd, pdd, bd, bdd, tmpmem, ti[0] - 1,  Nj);
-
-      for (int j = 0; j < nClusters; j++) {
-        probdesc[i + natom*j] = pd[j];
-        for (int m=0; m<Mdesc; m++) {
-          basedesc[i + natom*m] = bd[m];
-          int k = nCoeffPerElement*(ti[0]-1) + nl1 + m + j*Mdesc; // increment by nl1 because of the one-body descriptor
-          gd[k] += pd[j]*bd[m];
-          for (int n=0; n<Nj; n++) {
-            int im = 3*ai[n] + 3*natom*k;
-            int jm = 3*aj[n] + 3*natom*k;
-            int nm = 3*n + 3*Nj*m;
-            int nj = 3*n + 3*Nj*j;
-            gdd[0 + im] += bdd[0 + nm]*pd[j] + bd[m]*pdd[0 + nj];
-            gdd[1 + im] += bdd[1 + nm]*pd[j] + bd[m]*pdd[1 + nj];
-            gdd[2 + im] += bdd[2 + nm]*pd[j] + bd[m]*pdd[2 + nj];
-            gdd[0 + jm] -= bdd[0 + nm]*pd[j] + bd[m]*pdd[0 + nj];
-            gdd[1 + jm] -= bdd[1 + nm]*pd[j] + bd[m]*pdd[1 + nj];
-            gdd[2 + jm] -= bdd[2 + nm]*pd[j] + bd[m]*pdd[2 + nj];
-          }
+    if (Nj==0) {
+      if (nd1>0) {
+        for (int j = 0; j < nClusters; j++) {
+          basedesc[i] = 1.0;
+          int k = nCoeffPerElement*(atomtype[i]-1) + j*Mdesc;
+          gd[k] += 1.0;
         }
       }
-
+      continue;
     }
+
+    // reallocate temporary memory
+    if (Nj>Njmax) {
+      Njmax = Nj;
+      free_temp_memory();
+      allocate_temp_memory(Njmax);
+      if (comm->me == 0) utils::logmesg(lmp, "reallocate temporary memory with Njmax = {:d} ...\n", Njmax);
+    }
+
+    double *rij = &tmpmem[0]; // 3*Nj
+    int *ai = &tmpint[0];     // Nj
+    int *aj = &tmpint[Nj];   // Nj
+    int *ti = &tmpint[2*Nj]; // Nj
+    int *tj = &tmpint[3*Nj]; // Nj
+
+    myneighbors(rij, x, ai, aj, ti, tj, jlist, pairnumsum, atomtype, alist, i);
+
+    // many-body descriptors
+    peratombase_descriptors(bd, bdd, rij, &tmpmem[3*Nj], ti, tj, Nj);
+    
+    if (nActiveClusters >= 2.0) {
+      peratomlocalenvironment_descriptors(pd, pdd, bd, bdd, tmpmem, ti[0] - 1,  Nj);
+    } else {
+      peratomenvironment_descriptors(pd, pdd, bd, bdd, tmpmem, ti[0] - 1,  Nj);
+    }
+
+    for (int j = 0; j < nClusters; j++) {
+      probdesc[i + natom*(j)] = pd[j];
+      for (int m=0; m<Mdesc; m++) {
+        basedesc[i + natom*(m)] = bd[m];
+        int k = nCoeffPerElement*(ti[0]-1) + m + j*Mdesc;
+        gd[k] += pd[j]*bd[m];
+        for (int n=0; n<Nj; n++) {
+          int im = 3*ai[n] + 3*natom*k;
+          int jm = 3*aj[n] + 3*natom*k;
+          int nm = 3*n + 3*Nj*m;
+          int nj = 3*n + 3*Nj*j;
+          gdd[0 + im] += bdd[0 + nm]*pd[j] + bd[m]*pdd[0 + nj];
+          gdd[1 + im] += bdd[1 + nm]*pd[j] + bd[m]*pdd[1 + nj];
+          gdd[2 + im] += bdd[2 + nm]*pd[j] + bd[m]*pdd[2 + nj];
+          gdd[0 + jm] -= bdd[0 + nm]*pd[j] + bd[m]*pdd[0 + nj];
+          gdd[1 + jm] -= bdd[1 + nm]*pd[j] + bd[m]*pdd[1 + nj];
+          gdd[2 + jm] -= bdd[2 + nm]*pd[j] + bd[m]*pdd[2 + nj];
+        }
+      }
+    }
+
+    
   }
 }
 
@@ -1912,6 +2529,8 @@ void EAPOD::twobodydescderiv(double *d2, double *dd2, double *rbf, double *rbfx,
  * @param rbfy          Pointer to the array of derivatives of radial basis functions with respect to y.
  * @param rbfz          Pointer to the array of derivatives of radial basis functions with respect to z.
  * @param rij           Pointer to the relative positions of neighboring atoms and atom i.
+ * @param ti            Pointer to the element type of atom i.
+ * @param tj            Pointer to the element type of neighboring atoms j.
  * @param besselparams  Pointer to the array of Bessel function parameters.
  * @param rin           Minimum distance for radial basis functions.
  * @param rmax          Maximum distance for radial basis functions.
@@ -1920,11 +2539,14 @@ void EAPOD::twobodydescderiv(double *d2, double *dd2, double *rbf, double *rbfx,
  * @param nbesselpars   Number of Bessel function parameters.
  * @param N             Number of neighboring atoms.
  */
-void EAPOD::radialbasis(double *rbf, double *rbfx, double *rbfy, double *rbfz, double *rij, double *besselparams, double rin,
-        double rmax, int besseldegree, int inversedegree, int nbesselpars, int N)
+void EAPOD::radialbasis(double *rbf, double *rbfx, double *rbfy, double *rbfz, double *rij, int *ti, int *tj,
+                          double *besselparams, double *rin, double *rdiff, int besseldegree, int inversedegree, int nbesselpars, int N)
 {
+  int itype = ti[0]-1;
   // Loop over all neighboring atoms
   for (int n=0; n<N; n++) {
+    int jtype = tj[n]-1;
+    
     double xij1 = rij[0+3*n];
     double xij2 = rij[1+3*n];
     double xij3 = rij[2+3*n];
@@ -1934,7 +2556,8 @@ void EAPOD::radialbasis(double *rbf, double *rbfx, double *rbfy, double *rbfz, d
     double dr2 = xij2/dij;
     double dr3 = xij3/dij;
 
-    double r = dij - rin;
+    double r = dij - rin[jtype + itype*nelements];
+    double rmax = rdiff[jtype + itype*nelements];
     double y = r/rmax;
     double y2 = y*y;
 
@@ -1964,7 +2587,7 @@ void EAPOD::radialbasis(double *rbf, double *rbfx, double *rbfy, double *rbfz, d
     if (nbesselpars==1) {
       for (int i=0; i<besseldegree; i++) {
         double a = (i+1)*MY_PI;
-        double b = (sqrt(2.0/rmax)/(i+1));
+        double b = (sqrt(2.0/(rmax))/(i+1));
         double af1 = a*f1;
 
         double sinax = sin(a*x0);
@@ -1986,7 +2609,7 @@ void EAPOD::radialbasis(double *rbf, double *rbfx, double *rbfy, double *rbfz, d
       double dx1 = (alpha/rmax)*t2/t1;
       for (int i=0; i<besseldegree; i++) {
         double a = (i+1)*MY_PI;
-        double b = (sqrt(2.0/rmax)/(i+1));
+        double b = (sqrt(2.0/(rmax))/(i+1));
         double af1 = a*f1;
 
         double sinax = sin(a*x0);
@@ -2023,7 +2646,7 @@ void EAPOD::radialbasis(double *rbf, double *rbfx, double *rbfy, double *rbfz, d
       double dx2 = (alpha/rmax)*t2/t1;
       for (int i=0; i<besseldegree; i++) {
         double a = (i+1)*MY_PI;
-        double b = (sqrt(2.0/rmax)/(i+1));
+        double b = (sqrt(2.0/(rmax))/(i+1));
         double af1 = a*f1;
 
         double sinax = sin(a*x0);
@@ -2064,6 +2687,201 @@ void EAPOD::radialbasis(double *rbf, double *rbfx, double *rbfy, double *rbfz, d
       rbf[nij] = fcut/a;
 
       double drbfdr = (dfcut - (i+1.0)*f1)/a;
+      rbfx[nij] = drbfdr*dr1;
+      rbfy[nij] = drbfdr*dr2;
+      rbfz[nij] = drbfdr*dr3;
+    }
+  }
+}
+
+// experimental. do not review
+void EAPOD::radialbasisellipsoid(double *rbf, double *rbfx, double *rbfy, double *rbfz, double *rij, int *ti, int *tj,
+                          double *besselparams, double *rin, double *rcut, int besseldegree, int inversedegree, int nbesselpars, int N)
+{
+  int itype = ti[0]-1;
+  // Loop over all neighboring atoms
+  for (int n=0; n<N; n++) {
+    int jtype = tj[n]-1;
+    double rin_tij = rin[jtype + itype*nelements];
+    double rcut_tij = rcut[jtype + itype*nelements];
+    double rmax = rcut_tij - rin_tij;
+    double xij1 = rij[0+3*n];
+    double xij2 = rij[1+3*n];
+    double xij3 = rij[2+3*n];
+
+    // Calculate ellipsoidal distance
+    double dx = xij1;
+    double dy = xij2;
+    double dz = xij3;
+    double dij = sqrt(dx*dx + dy*dy + dz*dz);
+    double dr1 = dx/dij;
+    double dr2 = dy/dij;
+    double dr3 = dz/dij;
+
+    // Calculate ellipsoidal cutoff parameters for each dimension
+    double rcut_x = rcut[0 + itype*nelements];
+    double rcut_y = rcut[1 + itype*nelements];
+    double rcut_z = rcut[2 + itype*nelements];
+    double rin_x = rin[0 + itype*nelements];
+    double rin_y = rin[1 + itype*nelements];
+    double rin_z = rin[2 + itype*nelements];
+    
+    // Calculate normalized distances for each dimension
+    double r_x = fabs(dx) - rin_x;
+    double r_y = fabs(dy) - rin_y;
+    double r_z = fabs(dz) - rin_z;
+    
+    // Calculate ellipsoidal cutoff function
+    double rmax_x = rcut_x - rin_x;
+    double rmax_y = rcut_y - rin_y;
+    double rmax_z = rcut_z - rin_z;
+    
+    double y_x = r_x/rmax_x;
+    double y_y = r_y/rmax_y;
+    double y_z = r_z/rmax_z;
+    
+    double y2_x = y_x*y_x;
+    double y2_y = y_y*y_y;
+    double y2_z = y_z*y_z;
+    
+    double y3_x = 1.0 - y2_x*y_x;
+    double y3_y = 1.0 - y2_y*y_y;
+    double y3_z = 1.0 - y2_z*y_z;
+    
+    double y4_x = y3_x*y3_x + 1e-6;
+    double y4_y = y3_y*y3_y + 1e-6;
+    double y4_z = y3_z*y3_z + 1e-6;
+    
+    double y5_x = sqrt(y4_x);
+    double y5_y = sqrt(y4_y);
+    double y5_z = sqrt(y4_z);
+    
+    double y6_x = exp(-1.0/y5_x);
+    double y6_y = exp(-1.0/y5_y);
+    double y6_z = exp(-1.0/y5_z);
+    
+    // Calculate final cutoff function as product of all dimensions
+    double fcut = y6_x * y6_y * y6_z / (exp(-1.0)*exp(-1.0)*exp(-1.0));
+    
+    // Calculate derivatives of cutoff function
+    double dfcut_x = ((3.0/(rmax_x*exp(-1.0)))*(y2_x)*y6_x*(y_x*y2_x - 1.0))/y4_x;
+    double dfcut_y = ((3.0/(rmax_y*exp(-1.0)))*(y2_y)*y6_y*(y_y*y2_y - 1.0))/y4_y;
+    double dfcut_z = ((3.0/(rmax_z*exp(-1.0)))*(y2_z)*y6_z*(y_z*y2_z - 1.0))/y4_z;
+    
+    // Calculate fcut/r, fcut/r^2, and dfcut/r
+    double f1 = fcut/dij;
+    double f2 = f1/dij;
+    double df1 = (dfcut_x*dx + dfcut_y*dy + dfcut_z*dz)/dij;
+    
+    double alpha = besselparams[0];
+    double t1 = (1.0-exp(-alpha));
+    double t2 = exp(-alpha*dij/rmax);
+    double x0 =  (1.0 - t2)/t1;
+    double dx0 = (alpha/rmax)*t2/t1;
+
+    if (nbesselpars==1) {
+      for (int i=0; i<besseldegree; i++) {
+        double a = (i+1)*MY_PI;
+        double b = (sqrt(2.0/(rmax))/(i+1));
+        double af1 = a*f1;
+
+        double sinax = sin(a*x0);
+        int nij = n + N*i;
+
+        rbf[nij] = b*f1*sinax;
+
+        double drbfdr = b*(df1*sinax - f2*sinax + af1*cos(a*x0)*dx0);
+        rbfx[nij] = drbfdr*dr1;
+        rbfy[nij] = drbfdr*dr2;
+        rbfz[nij] = drbfdr*dr3;
+      }
+    }
+    else if (nbesselpars==2) {
+      alpha = besselparams[1];
+      t1 = (1.0-exp(-alpha));
+      t2 = exp(-alpha*dij/rmax);
+      double x1 =  (1.0 - t2)/t1;
+      double dx1 = (alpha/rmax)*t2/t1;
+      for (int i=0; i<besseldegree; i++) {
+        double a = (i+1)*MY_PI;
+        double b = (sqrt(2.0/(rmax))/(i+1));
+        double af1 = a*f1;
+
+        double sinax = sin(a*x0);
+        int nij = n + N*i;
+
+        rbf[nij] = b*f1*sinax;
+
+        double drbfdr = b*(df1*sinax - f2*sinax + af1*cos(a*x0)*dx0);
+        rbfx[nij] = drbfdr*dr1;
+        rbfy[nij] = drbfdr*dr2;
+        rbfz[nij] = drbfdr*dr3;
+
+        sinax = sin(a*x1);
+        nij = n + N*i + N*besseldegree*1;
+        rbf[nij] = b*f1*sinax;
+
+        drbfdr = b*(df1*sinax - f2*sinax + af1*cos(a*x1)*dx1);
+        rbfx[nij] = drbfdr*dr1;
+        rbfy[nij] = drbfdr*dr2;
+        rbfz[nij] = drbfdr*dr3;
+      }
+    }
+    else if (nbesselpars==3) {
+      alpha = besselparams[1];
+      t1 = (1.0-exp(-alpha));
+      t2 = exp(-alpha*dij/rmax);
+      double x1 =  (1.0 - t2)/t1;
+      double dx1 = (alpha/rmax)*t2/t1;
+
+      alpha = besselparams[2];
+      t1 = (1.0-exp(-alpha));
+      t2 = exp(-alpha*dij/rmax);
+      double x2 =  (1.0 - t2)/t1;
+      double dx2 = (alpha/rmax)*t2/t1;
+      for (int i=0; i<besseldegree; i++) {
+        double a = (i+1)*MY_PI;
+        double b = (sqrt(2.0/(rmax))/(i+1));
+        double af1 = a*f1;
+
+        double sinax = sin(a*x0);
+        int nij = n + N*i;
+
+        rbf[nij] = b*f1*sinax;
+        double drbfdr = b*(df1*sinax - f2*sinax + af1*cos(a*x0)*dx0);
+        rbfx[nij] = drbfdr*dr1;
+        rbfy[nij] = drbfdr*dr2;
+        rbfz[nij] = drbfdr*dr3;
+
+        sinax = sin(a*x1);
+        nij = n + N*i + N*besseldegree*1;
+
+        rbf[nij] = b*f1*sinax;
+        drbfdr = b*(df1*sinax - f2*sinax + af1*cos(a*x1)*dx1);
+        rbfx[nij] = drbfdr*dr1;
+        rbfy[nij] = drbfdr*dr2;
+        rbfz[nij] = drbfdr*dr3;
+
+        sinax = sin(a*x2);
+        nij = n + N*i + N*besseldegree*2;
+        rbf[nij] = b*f1*sinax;
+        drbfdr = b*(df1*sinax - f2*sinax + af1*cos(a*x2)*dx2);
+        rbfx[nij] = drbfdr*dr1;
+        rbfy[nij] = drbfdr*dr2;
+        rbfz[nij] = drbfdr*dr3;
+      }
+    }
+
+    // Calculate fcut/dij and dfcut/dij for inverse terms
+    f1 = fcut/dij;
+    for (int i=0; i<inversedegree; i++) {
+      int p = besseldegree*nbesselpars + i;
+      int nij = n + N*p;
+      double a = powint(dij, i+1);
+
+      rbf[nij] = fcut/a;
+
+      double drbfdr = (dfcut_x*dx + dfcut_y*dy + dfcut_z*dz)/a;
       rbfx[nij] = drbfdr*dr1;
       rbfy[nij] = drbfdr*dr2;
       rbfz[nij] = drbfdr*dr3;
@@ -2307,15 +3125,13 @@ void EAPOD::mknewcoeff(double *c, int nc)
  */
 void EAPOD::snapshots(double *rbf, double *xij, int N)
 {
-  // Compute the maximum distance between two atoms
-  double rmax = rcut-rin;
-
+  double rmax = rcutmax - rinmin;
   // Loop over all atoms
   for (int n=0; n<N; n++) {
     double dij = xij[n];
 
     // Compute the distance between two atoms
-    double r = dij - rin;
+    double r = dij - rinmin;
 
     // Compute the normalized distance
     double y = r/rmax;
@@ -2337,7 +3153,7 @@ void EAPOD::snapshots(double *rbf, double *xij, int N)
       // Loop over all Bessel degrees
       for (int i=0; i<besseldegree; i++) {
         double a = (i+1)*MY_PI;
-        double b = (sqrt(2.0/rmax)/(i+1));
+        double b = (sqrt(2.0/(rmax))/(i+1));
         int nij = n + N*i + N*besseldegree*j;
 
         // Compute the RBF
@@ -2383,9 +3199,10 @@ void EAPOD::eigenvaluedecomposition(double *Phi, double *Lambda, int N)
   memory->create(work, ns*ns, "eapod:work");
   memory->create(b, ns, "eapod:ns");
 
+  double rmax = rcutmax - rinmin;
   // Generate the xij array
   for (int i=0; i<N; i++)
-    xij[i] = (rin+1e-6) + (rcut-rin-1e-6)*(i*1.0/(N-1));
+    xij[i] = (rinmin+1e-6) + (rmax-1e-6)*(i*1.0/(N-1));
 
   // Compute the snapshots matrix S
   snapshots(S, xij, N);
@@ -2589,7 +3406,8 @@ int EAPOD::estimate_temp_memory(int Nj)
   // Determine the total amount of memory needed for all double memory
   ndblmem = (nmax1 + nmax8);
 
-  int nmax9 = 6*Nj + nComponents + nClusters + nClusters*nComponents + 2*nClusters*Mdesc + nClusters*nClusters;
+  //int nmax9 = 6*Nj + nComponents + nClusters + nClusters*nComponents + 2*nClusters*Mdesc + nClusters*nClusters;
+  int nmax9 = 6*Nj + nComponents + nClusters + 3*nClusters*nComponents + 2*nClusters*Mdesc + nClusters*nClusters;
   if (ndblmem < nmax9) ndblmem = nmax9;
 
   // Determine the total amount of memory needed for all integer memory
@@ -2774,6 +3592,250 @@ void EAPOD::MatMul(double *c, double *a, double *b, int r1, int c1, int c2)
         c[i + r1*j] += a[i + r1*k] * b[k + c1*j];
 }
 
+void EAPOD::calculateClusterEdges(int nClusters, double nActiveClusters, int nComponents, int nelements) {
+  
+  double lrange = 0.5 * nActiveClusters;
+  int l = lrange; // number of clusters to consider on each side
+  double fac = lrange - l;
+
+  for (int elem = 0; elem < nelements; elem++) {
+    double *centroids = &Centroids[nComponents*nClusters*elem];
+    double *ledges = &leftClusterEdges[nComponents*nClusters*elem];
+    double *redges = &rightClusterEdges[nComponents*nClusters*elem];
+    double *invlc2 = &invLeftClusterRcut2[nComponents*nClusters*elem];
+    double *invrc2 = &invRightClusterRcut2[nComponents*nClusters*elem];
+
+    std::vector<double> dist(nClusters-1);
+    for (int k = 0; k < nClusters-1; k++) {
+        dist[k] = centroids[k+1] - centroids[k];
+    }
+    // Calculate left edge positions of clusters
+    for (int k = 1; k < nClusters; k++) {
+      double lsum = 0.0;
+      for (int j = 0; j < l && k - j > 0; j++) {
+        lsum += dist[k - j - 1];
+      }
+      double lrcut = lsum + fac * dist[(k - l - 1) > 0 ? (k - l - 1) : 0];
+      ledges[k] = centroids[k] - lrcut;
+      invlc2[k] = 1.0 / (lrcut * lrcut);
+    }
+    // Calculate right edge positions of clusters
+    for (int k = 0; k < nClusters-1; k++) {
+      double rsum = 0.0;
+      for (int j = 0; j < l && k + j < nClusters-1; j++) {
+        rsum += dist[k + j];
+      }
+      double rrcut = rsum + fac * dist[(k + l < nClusters-1) ? (k + l) : (nClusters-2)];
+      redges[k] = centroids[k] + rrcut;
+      invrc2[k] = 1.0 / (rrcut * rrcut);
+    }
+    ledges[0] = ledges[1];
+    redges[nClusters-1] = redges[nClusters-2];
+    //For the poles:
+    // set the inverse square distances to 0 so that:
+    // fcut = 1.0
+    // dfcut = 0.0
+    invlc2[0] = 0.0;
+    invrc2[nClusters-1] = 0.0;
+  }
+}
+
+void EAPOD::peratomlocalenvironment_descriptors(double *P, double *dP_dR, double *B, double *dB_dR, double *tmp, int elem, int nNeighbors)
+{
+  double *pca = &tmp[0];
+  double *D = &tmp[nComponents];
+  double *dD_dpca = &tmp[nComponents + nClusters];
+  double *dD_dB = &tmp[nComponents + nClusters + nClusters*nComponents];
+  double *dP_dD = &tmp[nComponents + nClusters + nClusters*nComponents + nClusters*Mdesc];
+  double *dP_dB = &tmp[nComponents + nClusters + nClusters*nComponents + nClusters*Mdesc + nClusters*nClusters];
+  
+  double *ProjMat = &Proj[nComponents * Mdesc * elem];
+  double *centroids = &Centroids[nComponents * nClusters * elem];
+
+  double *invlcut2 = &invLeftClusterRcut2[nComponents * nClusters * elem];
+  double *invrcut2 = &invRightClusterRcut2[nComponents * nClusters * elem];
+  double *ledges = &leftClusterEdges[nComponents * nClusters * elem];
+  double *redges = &rightClusterEdges[nComponents * nClusters * elem];
+
+  double *clusterFcut = &ClusterFcut[nComponents * nClusters * elem];
+  double *clusterDFcut = &ClusterDFcut[nComponents * nClusters * elem];
+
+  for (int j = 0; j < nClusters; j++) {
+    P[j] = 0.0;
+  }
+
+  for (int j = 0; j < nClusters; j++) {
+    for (int n = 0; n < nNeighbors; n++) {
+      int nj = 3*n + 3*nNeighbors*j;
+      dP_dR[0 + nj] = 0.0;
+      dP_dR[1 + nj] = 0.0;
+      dP_dR[2 + nj] = 0.0;
+    }
+  }
+
+  // calculate pca descriptors
+  for (int k = 0; k < nComponents; k++) {
+    double sum = 0.0;
+    for (int m = 0; m < Mdesc; m++) {
+      sum += ProjMat[k + nComponents*m] * B[m];
+    }
+    pca[k] = sum;
+  }
+
+  // only one cluster active, return P and dP_dR that reduce to FPOD and exit
+  // for one active cluster: P[0] = 1 || P[nClusters-1] = 1.0
+  // dP_dR = 0.0
+  if (pca[0] <= ledges[1]) {
+    P[0] = 1.0;
+    return;
+  }
+  if (pca[0] >= redges[nClusters-2]) {
+    P[nClusters-1] = 1.0;
+    return;
+  }
+
+  // Main Routine to find active clusters
+  // Binary search for leftmost index of active cluster
+  int left = 0;
+  int right = nClusters - 1;
+  while (left < right) {
+    int mid = (left + right) >> 1;
+    if (ledges[mid] <= pca[0]) {
+      left = mid + 1;
+    } else {
+      right = mid;
+    }
+  }
+  left--;
+
+  // Since active clusters are consecutive and at most l clusters,
+  // we only need to check a window of size l+1 starting from the left index
+  int ks = MAX(left - clusterSearchBox, 0);
+  int ke = MIN(left + clusterSearchBox, nClusters);
+
+  // Find first active cluster
+  for (int k = ks; k < ke; k++) {
+    if (pca[0] > ledges[k] && pca[0] < redges[k]) {
+      ks = k;
+      break;
+    }
+  }
+
+  // Find last active cluster
+  for (int k = ke-1; k >= ks; k--) {
+    if (pca[0] > ledges[k] && pca[0] < redges[k]) {
+      ke = k + 1;
+      break;
+    }
+  }
+
+  for (int j = 0; j < nClusters; j++) {
+    D[j] = 0.0;
+    clusterFcut[j] = 0.0;
+  }
+
+  for (int k = 0; k < nClusters; k++) {
+    for (int n = 0; n < nComponents; n++) {
+      dD_dpca[k + n * nClusters] = 0.0;
+    }
+  }
+  
+  // square distances
+  for (int j = ks; j < ke; j++) {
+    D[j] = 1e-20; // fix for zero distances
+    for (int k = 0; k < nComponents; k++) {
+      D[j] += (pca[k] - centroids[k + j * nComponents]) * (pca[k] - centroids[k + j * nComponents]);
+    }
+  }
+  
+  // Assign appropriate cutoff radius
+  // With hat activation function
+  for (int j = ks; j < ke; j++) {
+    double invcut2 = 0.0;
+    if (pca[0] > centroids[j]) {
+      invcut2 = invrcut2[j];
+    } else {
+      invcut2 = invlcut2[j];
+    }
+    double D_rcut = D[j] * invcut2;
+    double fhat = 1.0 - D_rcut;  // Hat function
+    double fhat2 = fhat * fhat;
+    clusterFcut[j] = fhat2 * fhat2;  // Quartic Hat function
+    for (int n = 0; n < nComponents; n++) {
+      double dhat_pca = 2.0 * (pca[n] - centroids[n + j * nComponents]) * invcut2;
+      clusterDFcut[j + n * nClusters] = 4.0 * fhat2 * fhat * dhat_pca;
+    }
+  }
+
+  //if (pca[0] <= centroids[0]) {
+  //  clusterFcut[0] = 1.0;
+  //}
+  //
+  //if (pca[0] >= centroids[nClusters-1]) {
+  //  clusterFcut[nClusters-1] = 1.0;
+  //}
+
+  // inverse square distances
+  for (int j = ks; j < ke; j++) {
+    D[j] = 1.0 / D[j];
+  }
+
+  // calculate dD_dpca
+  for (int j = ks; j < ke; j++) {
+    for (int n = 0; n < nComponents; n++) {
+      dD_dpca[j + n * nClusters] = clusterFcut[j] * 2.0 * D[j] * D[j] * (centroids[n + j * nComponents] - pca[n]);
+    }
+  }
+  
+  // calculate modified dD_dpca_new = dfcut_dpca * D + fcut * dD_dpca = (dfcut_dD * D + fcut) * dD_dpca
+  // dD_dpca_new = (dlnfcut_dlnD + 1) * fcut * dD_dpca
+  for (int j = ks; j < ke; j++) {
+    for (int n = 0; n < nComponents; n++) {
+      dD_dpca[j + n * nClusters] += D[j] * clusterDFcut[j + n * nClusters];
+    }
+  }
+
+  double sumD = 0.0;
+  for (int j = ks; j < ke; j++) {
+    D[j] *= clusterFcut[j];
+    sumD += D[j];
+  }
+
+  for (int j = ks; j < ke; j++) {
+    P[j] = D[j] / sumD;
+  }
+
+  // calculate dD_dB
+  char chn = 'N';
+  char cht = 'T';
+  double alpha = 1.0, beta = 0.0;
+  DGEMM(&chn, &chn, &nClusters, &Mdesc, &nComponents, &alpha, dD_dpca, &nClusters, ProjMat, &nComponents, &beta, dD_dB, &nClusters);
+
+  // calculate dP_dD
+  for (int k = 0; k < nClusters; k++) {
+    for (int j = 0; j < nClusters; j++) {
+      dP_dD[j + k * nClusters] = 0.0;
+    }
+  }
+
+  double S1 = 1.0 / sumD;
+  double S2 = S1 * S1;
+  for (int j = ks; j < ke; j++) {
+    for (int k = ks; k < ke; k++) {
+      dP_dD[k + j * nClusters] = -D[k] * S2;
+    }
+    dP_dD[j + j * nClusters] += S1;
+  }
+
+  // calculate dP_dB = dP_dD * dD_dB, which are derivatives of probabilities with respect to local descriptors
+  DGEMM(&chn, &chn, &nClusters, &Mdesc, &nClusters, &alpha, dP_dD, &nClusters, dD_dB, &nClusters, &beta, dP_dB, &nClusters);
+
+  // calculate dP_dR = dB_dR * dP_dB , which are derivatives of probabilities with respect to atomic coordinates
+  int N = 3*nNeighbors;
+  DGEMM(&chn, &cht, &N, &nClusters, &Mdesc, &alpha, dB_dR, &N, dP_dB, &nClusters, &beta, dP_dR, &N);
+  
+}
+
 void EAPOD::peratomenvironment_descriptors(double *P, double *dP_dR, double *B, double *dB_dR, double *tmp, int elem, int nNeighbors)
 {
   double *ProjMat = &Proj[nComponents*Mdesc*elem];
@@ -2785,7 +3847,7 @@ void EAPOD::peratomenvironment_descriptors(double *P, double *dP_dR, double *B, 
   double *dP_dD = &tmp[nComponents + nClusters + nClusters*nComponents + nClusters*Mdesc];
   double *dP_dB = &tmp[nComponents + nClusters + nClusters*nComponents + nClusters*Mdesc + nClusters*nClusters];
 
-  // calculate principal components
+  // calculate pca descriptors
   for (int k = 0; k < nComponents; k++) {
     pca[k] = 0.0;
     for (int m = 0; m < Mdesc; m++) {

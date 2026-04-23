@@ -28,7 +28,6 @@
 #include "memory_kokkos.h"
 #include "neighbor_kokkos.h"
 #include "neigh_request.h"
-#include "safe_pointers.h"
 
 #include <cstring>
 #include <chrono>
@@ -58,7 +57,8 @@ PairPODKokkos<DeviceType>::PairPODKokkos(LAMMPS *lmp) : PairPOD(lmp)
   nimax = 0;
   nij = 0;
   nijmax = 0;
-  atomBlockSize = 2048;
+  atomBlockSize = getStreamingProcessorCount();
+  utils::logmesg(lmp, "Atom Block Size: {:d}\n", atomBlockSize);
   nAtomBlocks = 0;
   timing = 0;
   for (int i=0; i<100; i++) comptime[i] = 0;
@@ -116,9 +116,12 @@ template<class DeviceType>
 double PairPODKokkos<DeviceType>::init_one(int i, int j)
 {
   double cutone = PairPOD::init_one(i,j);
+  //double cutoneji = PairPOD::init_one(j,i);
+  //k_cutsq.view_host()(i,j) = cutone*cutone;
+  //k_cutsq.view_host()(j,i) = cutoneji*cutoneji;
 
-  k_cutsq.view_host()(i,j) = k_cutsq.view_host()(j,i) = cutone*cutone;
-  k_cutsq.modify_host();
+  //k_cutsq.view_host()(i,j) = k_cutsq.view_host()(j,i) = cutone*cutone;
+  //k_cutsq.modify_host();
 
   return cutone;
 }
@@ -140,19 +143,62 @@ void PairPODKokkos<DeviceType>::coeff(int narg, char **arg)
   MemKK::realloc_kokkos(d_map, "pair_pod:map", n);
 
   MemKK::realloc_kokkos(k_cutsq, "pair_pod:cutsq", n, n);
-  d_cutsq = k_cutsq.template view<DeviceType>();
+  //d_cutsq = k_cutsq.template view<DeviceType>();
 
   MemKK::realloc_kokkos(k_scale, "pair_pod:scale", n, n);
   d_scale = k_scale.template view<DeviceType>();
 
   // Set up element lists
-
   auto h_map = Kokkos::create_mirror_view(d_map);
 
   for (int i = 1; i <= atom->ntypes; i++)
     h_map(i) = map[i];
 
   Kokkos::deep_copy(d_map,h_map);
+
+  MemKK::realloc_kokkos(rin, "pair_pod:rin", nelements, nelements);
+  auto h_rin = Kokkos::create_mirror_view(rin);
+  for (int i = 0; i < nelements; i++)
+    for (int j = 0; j < nelements; j++) {
+      h_rin(i, j) = PairPOD::fastpodptr->rin[j + nelements*i];
+      //utils::logmesg(lmp, "rin for pairs {:d}, {:d} : {}\n", i, j, h_rin(i, j));
+    }
+      
+  Kokkos::deep_copy(rin, h_rin);
+
+  MemKK::realloc_kokkos(rcut, "pair_pod:rcut", nelements, nelements);
+  auto h_rcut = Kokkos::create_mirror_view(rcut);
+  for (int i = 0; i < nelements; i++)
+    for (int j = 0; j < nelements; j++) {
+      h_rcut(i, j) = PairPOD::fastpodptr->rcut[j + nelements*i];
+      //utils::logmesg(lmp, "rcut for pairs {:d}, {:d} : {}\n", i, j, h_rcut(i, j));
+    }
+      
+  Kokkos::deep_copy(rcut, h_rcut);
+
+  MemKK::realloc_kokkos(rdiff, "pair_pod:rdiff", nelements, nelements);
+  auto h_rdiff = Kokkos::create_mirror_view(rdiff);
+  for (int i = 0; i < nelements; i++)
+    for (int j = 0; j < nelements; j++) {
+      h_rdiff(i, j) = PairPOD::fastpodptr->rdiff[j + nelements*i];
+      //utils::logmesg(lmp, "rdiff for pairs {:d}, {:d} : {}\n", i, j, h_rdiff(i, j));
+    }
+      
+  Kokkos::deep_copy(rdiff, h_rdiff);
+
+  MemKK::realloc_kokkos(rcutsq, "pair_pod:rcutsq", nelements, nelements);
+  auto h_rcutsq = Kokkos::create_mirror_view(rcutsq);
+  for (int i = 0; i < nelements; i++)
+    for (int j = 0; j < nelements; j++) {
+      double rcutsq_ij = PairPOD::fastpodptr->rcutsq[j + nelements*i];
+      k_cutsq.view_host()(i,j) = rcutsq_ij;
+      k_cutsq.modify_host();
+      h_rcutsq(i, j) =  rcutsq_ij;
+      //utils::logmesg(lmp, "rcutsq for pairs {:d}, {:d} : {}\n", i, j, h_rcutsq(i, j));
+    }
+  d_cutsq = k_cutsq.template view<DeviceType>();
+  Kokkos::deep_copy(rcutsq, h_rcutsq);
+
 }
 
 /* ---------------------------------------------------------------------- */
@@ -263,7 +309,6 @@ void PairPODKokkos<DeviceType>::compute(int eflag_in, int vflag_in)
   grow_atoms(nmax);
   grow_pairs(nmax*maxneigh);
 
-  rcutsq = rcut*rcut;
   for (int block=0; block<nAtomBlocks; block++) {
     int gi1 = atomBlocks[block]-1;
     int gi2 = atomBlocks[block+1]-1;
@@ -271,14 +316,14 @@ void PairPODKokkos<DeviceType>::compute(int eflag_in, int vflag_in)
 
     begin = std::chrono::high_resolution_clock::now();
     // calculate the total number of pairs (i,j) in the current atom block
-    nij = NeighborCount(numij, rcutsq, gi1, ni);
+    nij = NeighborCount(numij, gi1, ni);
     Kokkos::fence();
     end = std::chrono::high_resolution_clock::now();
     comptime[0] += std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count()/1e6;
 
     begin = std::chrono::high_resolution_clock::now();
     // obtain the neighbors within rcut
-    NeighborList(rij, numij, typeai, idxi, ai, aj, ti, tj, rcutsq, gi1, ni);
+    NeighborList(rij, numij, typeai, idxi, ai, aj, ti, tj, gi1, ni);
     Kokkos::fence();
     end = std::chrono::high_resolution_clock::now();
     comptime[1] += std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count()/1e6;
@@ -356,10 +401,38 @@ void PairPODKokkos<DeviceType>::copy_from_pod_class(EAPOD *podptr)
   nClusters = podptr->nClusters; // number of environment clusters
   nComponents = podptr->nComponents; // number of principal components
   Mdesc = podptr->Mdesc; // number of base descriptors
+  nActiveClusters = podptr->nActiveClusters; // average number of active clusters
+  clusterSearchBox = podptr->clusterSearchBox; // cluster box search range
 
-  rin = podptr->rin;
-  rcut = podptr->rcut;
-  rmax = rcut - rin;
+  /*
+  MemKK::realloc_kokkos(rin, "pair_pod:rin", nelements, nelements);
+  auto h_rin = Kokkos::create_mirror_view(rin);
+  for (int i = 0; i < nelements; i++)
+    for (int j = 0; j < nelements; j++)
+      h_rin(i, j) = podptr->rin[j + nelements*i];
+  Kokkos::deep_copy(rin, h_rin);
+
+  MemKK::realloc_kokkos(rcut, "pair_pod:rcut", nelements, nelements);
+  auto h_rcut = Kokkos::create_mirror_view(rcut);
+  for (int i = 0; i < nelements; i++)
+    for (int j = 0; j < nelements; j++)
+      h_rcut(i, j) = podptr->rcut[j + nelements*i];
+  Kokkos::deep_copy(rcut, h_rcut);
+  
+  MemKK::realloc_kokkos(rdiff, "pair_pod:rdiff", nelements, nelements);
+  auto h_rdiff = Kokkos::create_mirror_view(rdiff);
+  for (int i = 0; i < nelements; i++)
+    for (int j = 0; j < nelements; j++)
+      h_rdiff(i, j) = podptr->rdiff[j + nelements*i];
+  Kokkos::deep_copy(rdiff, h_rdiff);
+
+  MemKK::realloc_kokkos(rcutsq, "pair_pod:rcutsq", nelements, nelements);
+  auto h_rcutsq = Kokkos::create_mirror_view(rcutsq);
+  for (int i = 0; i < nelements; i++)
+    for (int j = 0; j < nelements; j++)
+      h_rcutsq(i, j) = podptr->rcutsq[j + nelements*i];
+  Kokkos::deep_copy(rcutsq, h_rcutsq);
+  */
 
   MemKK::realloc_kokkos(besselparams, "pair_pod:besselparams", 3);
   auto h_besselparams = Kokkos::create_mirror_view(besselparams);
@@ -393,6 +466,59 @@ void PairPODKokkos<DeviceType>::copy_from_pod_class(EAPOD *podptr)
     auto h_Centroids = Kokkos::create_mirror_view(Centroids);
     for (int i=0; i<nClusters * nComponents * nelements; i++) h_Centroids[i] = podptr->Centroids[i];
     Kokkos::deep_copy(Centroids, h_Centroids);
+
+    if (nActiveClusters >= 2) {
+      MemKK::realloc_kokkos(invLeftClusterRcut2, "pair_pod:invLeftClusterRcut2",  nClusters * nComponents * nelements);
+      auto h_invLeftClusterRcut2 = Kokkos::create_mirror_view(invLeftClusterRcut2);
+      for (int i=0; i<nClusters * nComponents * nelements; i++) h_invLeftClusterRcut2[i] = podptr->invLeftClusterRcut2[i];
+      Kokkos::deep_copy(invLeftClusterRcut2, h_invLeftClusterRcut2);
+
+      MemKK::realloc_kokkos(invRightClusterRcut2, "pair_pod:invRightClusterRcut2",  nClusters * nComponents * nelements);
+      auto h_invRightClusterRcut2 = Kokkos::create_mirror_view(invRightClusterRcut2);
+      for (int i=0; i<nClusters * nComponents * nelements; i++) h_invRightClusterRcut2[i] = podptr->invRightClusterRcut2[i];
+      Kokkos::deep_copy(invRightClusterRcut2, h_invRightClusterRcut2);
+
+      MemKK::realloc_kokkos(leftClusterEdges, "pair_pod:leftClusterEdges",  nClusters * nComponents * nelements);
+      auto h_leftClusterEdges = Kokkos::create_mirror_view(leftClusterEdges);
+      for (int i=0; i<nClusters * nComponents * nelements; i++) h_leftClusterEdges[i] = podptr->leftClusterEdges[i];
+      Kokkos::deep_copy(leftClusterEdges, h_leftClusterEdges);
+
+      MemKK::realloc_kokkos(rightClusterEdges, "pair_pod:rightClusterEdges",  nClusters * nComponents * nelements);
+      auto h_rightClusterEdges = Kokkos::create_mirror_view(rightClusterEdges);
+      for (int i=0; i<nClusters * nComponents * nelements; i++) h_rightClusterEdges[i] = podptr->rightClusterEdges[i];
+      Kokkos::deep_copy(rightClusterEdges, h_rightClusterEdges);
+
+      
+      MemKK::realloc_kokkos(ksarray, "pair_pod:ksarray", atomBlockSize);
+      MemKK::realloc_kokkos(kearray, "pair_pod:kearray", atomBlockSize);
+
+      auto h_ksarray = Kokkos::create_mirror_view(ksarray);
+      auto h_kearray = Kokkos::create_mirror_view(kearray);
+
+      for (int i = 0; i < atomBlockSize; i++) h_ksarray[i] = -1;
+      for (int i = 0; i < atomBlockSize; i++) h_kearray[i] = -1;
+
+      Kokkos::deep_copy(ksarray,h_ksarray);
+      Kokkos::deep_copy(kearray,h_kearray);
+
+      int nMaxActiveClusters = nActiveClusters + 1;
+      int nks = atomBlockSize * nClusters;
+      MemKK::realloc_kokkos(clusterFcut, "pair_pod:clusterFcut", nks);
+      MemKK::realloc_kokkos(clusterRcut2, "pair_pod:clusterRcut2", nks);
+      MemKK::realloc_kokkos(dDdpca, "pair_pod:dD_dpca", nks);
+
+      auto h_clusterFcut = Kokkos::create_mirror_view(clusterFcut);
+      auto h_dD_dpca = Kokkos::create_mirror_view(dDdpca);
+      //auto h_clusterRcut2 = Kokkos::create_mirror_view(clusterRcut2);
+
+      for (int i = 0; i < nks; i++) h_clusterFcut[i] = 0.0;
+      for (int i = 0; i < nks; i++) h_dD_dpca[i] = 0.0;
+      //for (int i = 0; i < nks; i++) h_clusterRcut2[i] = 0.0;
+
+      Kokkos::deep_copy(clusterFcut,h_clusterFcut);
+      Kokkos::deep_copy(dDdpca,h_dD_dpca);
+      //Kokkos::deep_copy(clusterRcut2,h_clusterRcut2);
+    }
   }
 
   MemKK::realloc_kokkos(pn3, "pair_pod:pn3", nabf3+1); // array stores the number of monomials for each degree
@@ -526,18 +652,22 @@ void PairPODKokkos<DeviceType>::grow_pairs(int Nij)
 }
 
 template<class DeviceType>
-int PairPODKokkos<DeviceType>::NeighborCount(t_pod_1i l_numij, double l_rcutsq, int gi1, int Ni)
+int PairPODKokkos<DeviceType>::NeighborCount(t_pod_1i l_numij, int gi1, int Ni)
 {
   // create local shadow views for KOKKOS_LAMBDA to pass them into parallel_for
   auto l_ilist = d_ilist;
   auto l_x = x;
   auto l_numneigh = d_numneigh;
   auto l_neighbors = d_neighbors;
+  auto l_map = d_map;
+  auto l_type = type;
+  auto l_rcutsq = rcutsq;
 
   // compute number of pairs for each atom i
   Kokkos::parallel_for("NeighborCount", typename Kokkos::TeamPolicy<DeviceType>(Ni, Kokkos::AUTO), KOKKOS_LAMBDA(const typename Kokkos::TeamPolicy<DeviceType>::member_type& team) {
     int i = team.league_rank();
     int gi = l_ilist(gi1 + i);
+    int itype = l_map(l_type(gi)) + 1;
     double xi0 = l_x(gi, 0);
     double xi1 = l_x(gi, 1);
     double xi2 = l_x(gi, 2);
@@ -545,13 +675,14 @@ int PairPODKokkos<DeviceType>::NeighborCount(t_pod_1i l_numij, double l_rcutsq, 
     int ncount = 0;
     Kokkos::parallel_reduce(Kokkos::TeamThreadRange(team,jnum),
         [&] (const int jj, int& count) {
-      int j = l_neighbors(gi,jj);
-      j &= NEIGHMASK;
-      double delx = xi0 - l_x(j,0);
-      double dely = xi1 - l_x(j,1);
-      double delz = xi2 - l_x(j,2);
+      int gj = l_neighbors(gi,jj);
+      int jtype = l_map(l_type(gj)) + 1;
+      gj &= NEIGHMASK;
+      double delx = xi0 - l_x(gj,0);
+      double dely = xi1 - l_x(gj,1);
+      double delz = xi2 - l_x(gj,2);
       double rsq = delx*delx + dely*dely + delz*delz;
-      if (rsq < l_rcutsq) count++;
+      if (rsq < l_rcutsq(itype-1,jtype-1)) count++;
     },ncount);
 
     l_numij(i+1) = ncount;
@@ -575,7 +706,7 @@ int PairPODKokkos<DeviceType>::NeighborCount(t_pod_1i l_numij, double l_rcutsq, 
 
 template<class DeviceType>
 void PairPODKokkos<DeviceType>::NeighborList(t_pod_1d l_rij, t_pod_1i l_numij,  t_pod_1i l_typeai,
-  t_pod_1i l_idxi, t_pod_1i l_ai, t_pod_1i l_aj, t_pod_1i l_ti, t_pod_1i l_tj, double l_rcutsq, int gi1, int Ni)
+  t_pod_1i l_idxi, t_pod_1i l_ai, t_pod_1i l_aj, t_pod_1i l_ti, t_pod_1i l_tj, int gi1, int Ni)
 {
   // create local shadow views for KOKKOS_LAMBDA to pass them into parallel_for
   auto l_ilist = d_ilist;
@@ -584,26 +715,29 @@ void PairPODKokkos<DeviceType>::NeighborList(t_pod_1d l_rij, t_pod_1i l_numij,  
   auto l_neighbors = d_neighbors;
   auto l_map = d_map;
   auto l_type = type;
+  auto l_rcutsq = rcutsq;
 
   Kokkos::parallel_for("NeighborList", typename Kokkos::TeamPolicy<DeviceType>(Ni, Kokkos::AUTO), KOKKOS_LAMBDA(const typename Kokkos::TeamPolicy<DeviceType>::member_type& team) {
     int i = team.league_rank();
     int gi = l_ilist(gi1 + i);
+    int itype = l_map(l_type(gi)) + 1;
+    l_typeai(i) = itype;
     double xi0 = l_x(gi, 0);
     double xi1 = l_x(gi, 1);
     double xi2 = l_x(gi, 2);
-    int itype = l_map(l_type(gi)) + 1; //map[atomtypes[gi]] + 1;
-    l_typeai(i) = itype;
     int jnum = l_numneigh(gi);
     int nij0 = l_numij(i);
     Kokkos::parallel_scan(Kokkos::TeamThreadRange(team,jnum),
         [&] (const int jj, int& offset, bool final) {
       int gj = l_neighbors(gi,jj);
+      int jtype = l_map(l_type(gj)) + 1;
       gj &= NEIGHMASK;
       double delx = l_x(gj,0) - xi0;
       double dely = l_x(gj,1) - xi1;
       double delz = l_x(gj,2) - xi2;
       double rsq = delx*delx + dely*dely + delz*delz;
-      if (rsq >= l_rcutsq) return;
+      
+      if (rsq >= l_rcutsq(itype-1,jtype-1)) return;
       if (final) {
         int nij1 = nij0 + offset;
         l_rij(nij1 * 3 + 0) = delx;
@@ -613,7 +747,7 @@ void PairPODKokkos<DeviceType>::NeighborList(t_pod_1d l_rij, t_pod_1i l_numij,  
         l_ai(nij1) = gi;
         l_aj(nij1) = gj;
         l_ti(nij1) = itype;
-        l_tj(nij1) = l_map(l_type(gj)) + 1; //map[atomtypes[gj)) + 1;
+        l_tj(nij1) = jtype;
       }
       offset++;
     });
@@ -622,8 +756,8 @@ void PairPODKokkos<DeviceType>::NeighborList(t_pod_1d l_rij, t_pod_1i l_numij,  
 
 template<class DeviceType>
 void PairPODKokkos<DeviceType>::radialbasis(t_pod_1d rbft, t_pod_1d rbftx, t_pod_1d rbfty, t_pod_1d rbftz,
-    t_pod_1d l_rij, t_pod_1d l_besselparams, double l_rin, double l_rmax, int l_besseldegree,
-    int l_inversedegree, int l_nbesselpars, int Nij)
+    t_pod_1d l_rij, t_pod_1d l_besselparams, t_pod_2d l_rin, t_pod_2d l_rdiff, t_pod_1i l_ti, t_pod_1i l_tj,
+    int l_besseldegree, int l_inversedegree, int l_nbesselpars, int Nij)
 {
   Kokkos::parallel_for("ComputeRadialBasis", Kokkos::RangePolicy<DeviceType>(0,Nij), KOKKOS_LAMBDA(int n) {
     double xij1 = l_rij(0+3*n);
@@ -635,8 +769,12 @@ void PairPODKokkos<DeviceType>::radialbasis(t_pod_1d rbft, t_pod_1d rbftx, t_pod
     double dr2 = xij2/dij;
     double dr3 = xij3/dij;
 
-    double r = dij - l_rin;
-    double y = r/l_rmax;
+    int itype = l_ti(n)-1;
+    int jtype = l_tj(n)-1;
+
+    double r = dij - l_rin(itype, jtype);
+    double rmax = l_rdiff(itype, jtype);
+    double y = r/rmax;
     double y2 = y*y;
 
     double y3 = 1.0 - y2*y;
@@ -649,7 +787,7 @@ void PairPODKokkos<DeviceType>::radialbasis(t_pod_1d rbft, t_pod_1d rbftx, t_pod
     double fcut = y6/exp(-1.0);
 
     // Calculate the derivative of the final cutoff function
-    double dfcut = ((3.0/(l_rmax*exp(-1.0)))*(y2)*y6*(y*y2 - 1.0))/y7;
+    double dfcut = ((3.0/(rmax*exp(-1.0)))*(y2)*y6*(y*y2 - 1.0))/y7;
 
     // Calculate fcut/r, fcut/r^2, and dfcut/r
     double f1 = fcut/r;
@@ -658,25 +796,25 @@ void PairPODKokkos<DeviceType>::radialbasis(t_pod_1d rbft, t_pod_1d rbftx, t_pod
 
     double alpha = l_besselparams(0);
     double t1 = (1.0-exp(-alpha));
-    double t2 = exp(-alpha*r/l_rmax);
+    double t2 = exp(-alpha*r/rmax);
     double x0 =  (1.0 - t2)/t1;
-    double dx0 = (alpha/l_rmax)*t2/t1;
+    double dx0 = (alpha/rmax)*t2/t1;
 
     alpha = l_besselparams(1);
     t1 = (1.0-exp(-alpha));
-    t2 = exp(-alpha*r/l_rmax);
+    t2 = exp(-alpha*r/rmax);
     double x1 =  (1.0 - t2)/t1;
-    double dx1 = (alpha/l_rmax)*t2/t1;
+    double dx1 = (alpha/rmax)*t2/t1;
 
     alpha = l_besselparams(2);
     t1 = (1.0-exp(-alpha));
-    t2 = exp(-alpha*r/l_rmax);
+    t2 = exp(-alpha*r/rmax);
     double x2 =  (1.0 - t2)/t1;
-    double dx2 = (alpha/l_rmax)*t2/t1;
+    double dx2 = (alpha/rmax)*t2/t1;
 
     for (int i=0; i<l_besseldegree; i++) {
       double a = (i+1)*MY_PI;
-      double b = (sqrt(2.0/(l_rmax))/(i+1));
+      double b = (sqrt(2.0/(rmax))/(i+1));
       double af1 = a*f1;
 
       double sinax = sin(a*x0);
@@ -1397,7 +1535,7 @@ void PairPODKokkos<DeviceType>::blockatom_base_descriptors(t_pod_1d bd, int Ni, 
   auto d44 = Kokkos::subview(bd, std::make_pair(Ni * (nl2 + nl3 + nl4 + nl33 + nl34), Ni * (nl2 + nl3 + nl4 + nl33 + nl34 + nl44)));
 
   begin = std::chrono::high_resolution_clock::now();
-  radialbasis(abf, abfx, abfy, abfz, rij, besselparams, rin, rmax,
+  radialbasis(abf, abfx, abfy, abfz, rij, besselparams, rin, rdiff, ti, tj, 
         besseldegree, inversedegree, nbesselpars, Nij);
   Kokkos::fence();
   end = std::chrono::high_resolution_clock::now();
@@ -1485,9 +1623,9 @@ void PairPODKokkos<DeviceType>::blockatom_base_coefficients(t_pod_1d ei, t_pod_1
 
   Kokkos::parallel_for("atomic_energies", Kokkos::RangePolicy<DeviceType>(0,Ni), KOKKOS_LAMBDA(int n) {
     int nc = nCoeff*(tyai[n]-1);
-    ei[n] = cefs[0 + nc];
+    ei[n] = 0.0;
     for (int m=0; m<nDes; m++)
-      ei[n] += cefs[1 + m + nc]*B[n + Ni*m];
+      ei[n] += cefs[m + nc]*B[n + Ni*m];
   });
 
   int totalIterations = Ni*nDes;
@@ -1495,8 +1633,244 @@ void PairPODKokkos<DeviceType>::blockatom_base_coefficients(t_pod_1d ei, t_pod_1
     int n = idx % Ni;
     int m = idx / Ni;
     int nc = nCoeff*(tyai[n]-1);
-    cb[n + Ni*m] = cefs[1 + m + nc];
+    cb[n + Ni*m] = cefs[m + nc];
   });
+}
+
+// hat cluster activation function
+template<class DeviceType>
+void PairPODKokkos<DeviceType>::blockatom_local_environment_descriptors(t_pod_1d ei, t_pod_1d cb, t_pod_1d B, int Ni)
+{
+  auto P = Kokkos::subview(pd, std::make_pair(0, Ni * nClusters));
+  auto cp = Kokkos::subview(pd, std::make_pair(Ni * nClusters, 2 * Ni * nClusters));
+  auto D = Kokkos::subview(pd, std::make_pair(2 * Ni * nClusters, 3 * Ni * nClusters));
+  auto pca = Kokkos::subview(pd, std::make_pair(3 * Ni * nClusters, 3 * Ni * nClusters + Ni * nComponents));
+  auto sumD = Kokkos::subview(pd, std::make_pair(3 * Ni * nClusters + Ni * nComponents, 3 * Ni * nClusters + Ni * nComponents + Ni));
+
+  auto proj = Proj;
+  auto cent = Centroids;
+  auto cefs = coefficients;
+  auto tyai = typeai;
+
+  auto ledges = leftClusterEdges;
+  auto redges = rightClusterEdges;
+  auto invlcut2 = invLeftClusterRcut2;
+  auto invrcut2 = invRightClusterRcut2;
+
+  auto ks = ksarray;
+  auto ke = kearray;
+
+  auto fcut = clusterFcut;
+  auto dD_dpca = dDdpca;
+
+  int nCom = nComponents;
+  int nCls = nClusters;
+  int nDes = Mdesc;
+  int nCoeff = nCoeffPerElement;
+  int cSB = clusterSearchBox;
+
+  // Calculate PCA descriptors
+  int totalIterations = Ni*nCom;
+  Kokkos::parallel_for("pca", Kokkos::RangePolicy<DeviceType>(0,totalIterations), KOKKOS_LAMBDA(int idx) {
+    int i = idx % Ni;
+    int k = idx / Ni;
+    int typei = tyai[i]-1;
+    int ncdt = nCom*nDes*typei;
+    
+    double sum = 0.0;
+    for (int m = 0; m < nDes; m++) {
+      sum += proj[k + nCom*m + ncdt] * B[i + Ni*m];
+    }
+    pca[i + Ni*k] = sum;
+  });
+
+  // Main routine to find active clusters
+  Kokkos::parallel_for("active_clusters", Kokkos::RangePolicy<DeviceType>(0, Ni), KOKKOS_LAMBDA(int i) {
+    int typei = tyai[i]-1;
+    int ncct = nCls*nCom*typei;
+    
+    // If PCA descriptors before the second or after the nClusters-1 cluster:
+    // only one cluster active -> use FPOD
+    // k = -2 means left pole
+    if (pca[i + Ni*0] <= ledges[1 + ncct]) {
+      ks[i] = ke[i] = -2;
+      return;
+    }
+    // k = -1 means right pole
+    if (pca[i + Ni*0] >= redges[nCls-2 + ncct]) {
+      ks[i] = ke[i] = -1;
+      return;
+    }
+
+    // Binary search for leftmost index of active cluster
+    int left = 0;
+    int right = nCls - 1;
+    while (left < right) {
+      int mid = (left + right) >> 1;
+      if (ledges[mid + ncct] <= pca[i + Ni*0]) {
+        left = mid + 1;
+      } else {
+        right = mid;
+      }
+    }
+    left--;
+    
+    int kl = (left - cSB > 0) ? (left - cSB) : 0;
+    int kr = (left + cSB < nCls) ? (left + cSB) : nCls;
+    
+    // Find first active cluster
+    for (int k = kl; k < kr; k++) {
+      if (pca[i + Ni*0] > ledges[k + ncct] && pca[i + Ni*0] < redges[k + ncct]) {
+        kl = k;
+        ks[i] = k;
+        break;
+      }
+    }
+    
+    // Find last active cluster
+    for (int k = kr - 1; k >= kl; k--) {
+      if (pca[i + Ni*0] > ledges[k + ncct] && pca[i + Ni*0] < redges[k + ncct]) {
+        ke[i] = k + 1;
+        break;
+      }
+    }
+  });
+
+  Kokkos::parallel_for("inverse_square_distance", Kokkos::RangePolicy<DeviceType>(0, Ni), KOKKOS_LAMBDA(int i) {
+    // Calculate distances and probabilities for each cluster
+    int kl = ks[i];
+    int kr = ke[i];
+
+    if (kl < 0) return;
+
+    int typei = tyai[i]-1;
+    int ncct = nCls*nCom*typei;
+
+    for (int j = kl; j < kr; j++) {
+      double sum = 1e-20;
+      for (int n = 0; n < nCom; n++) {
+        double c = cent[n + j * nCom + ncct];
+        double p = pca[i + Ni * n];
+        sum += (p - c) * (p - c);
+      }
+      D[i + Ni*j] = 1.0/sum;
+    }
+  });
+
+  Kokkos::parallel_for("cluster_fcut", Kokkos::RangePolicy<DeviceType>(0, Ni), KOKKOS_LAMBDA(int i) {
+    int kl = ks[i];
+    int kr = ke[i];
+
+    if (kl < 0) return;
+
+    int typei = tyai[i]-1;
+    int ncct = nCls*nCom*typei;
+
+    for (int j = kl; j < kr; j++) {
+      double Dj = D[i + Ni*j];
+      double D2 = 8.0 * Dj * Dj;
+      for (int n = 0; n < nCom; n++) {
+        double p = pca[i + Ni*n];
+        double c = cent[n + j * nCom + ncct];
+        double pc = p - c;
+        double invcut2 = 0.0;
+        if (pc > 0.0) {
+          invcut2 = invrcut2[j + n*nCls + ncct];
+        } else {
+          invcut2 = invlcut2[j + n*nCls + ncct];
+        }
+        double invr_S = invcut2 / Dj;
+        double fhat = 1.0 - invr_S;
+        double fcutj = fhat * fhat * fhat * fhat;
+        double prefac = (1.0/fhat - 1.25) * fcutj * D2;
+        fcut[i + Ni*j + n*nCls] = fcutj;
+        dD_dpca[i + Ni*j + n*nCls] = prefac * pc;
+      }
+    }
+  });
+
+  Kokkos::parallel_for("probabilities", Kokkos::RangePolicy<DeviceType>(0, Ni), KOKKOS_LAMBDA(int i) {
+    int kl = ks[i];
+    int kr = ke[i];
+
+    if (kl < 0) return;
+    
+    double sum = 0;
+    for (int j = kl; j < kr; j++) sum += fcut[i + Ni*j] * D[i + Ni*j];
+    sum = 1.0 / sum;
+    sumD[i] = sum;
+    for (int j = kl; j < kr; j++) P[i + Ni*j] = fcut[i + Ni*j] * D[i + Ni*j] * sum;
+  });
+
+  Kokkos::parallel_for("atomic_energies_env_coefficients", Kokkos::RangePolicy<DeviceType>(0, Ni), KOKKOS_LAMBDA(int i) {
+    int kl = ks[i];
+    int kr = ke[i];
+    int nc = nCoeff*(tyai[i]-1);
+    double S1 = sumD[i];
+    ei[i] = 0.0;
+
+    if (kl == -2) {
+      int kc = 0 + nc;
+      for (int m=0; m < nDes; m++)
+        ei[i] += cefs[m + kc] * B[i + Ni*m];
+      return;
+    }
+
+    if (kl == -1) {
+      int kc = (nCls-1)*nDes + nc;
+      for (int m=0; m < nDes; m++)
+        ei[i] += cefs[m + kc] * B[i + Ni*m];
+      return;
+    }
+
+    for (int j = kl; j < kr; j++) {
+      double sumE = 0;
+      for (int m = 0; m<nDes; m++)
+        sumE += cefs[m + j*nDes + nc] * B[i + Ni*m];
+      ei[i] += sumE * P[i + Ni*j];
+      cp[i + Ni*j] = sumE * S1;
+    }
+    
+  });
+
+  totalIterations = Ni*nDes;
+  Kokkos::parallel_for("base_env_coefficients", Kokkos::RangePolicy<DeviceType>(0,totalIterations), KOKKOS_LAMBDA(int idx) {
+    int i = idx % Ni;
+    int m = idx / Ni;
+    int kl = ks[i];
+    int kr = ke[i];
+    int typei = tyai[i]-1;
+    int nc = nCoeff*typei;
+    int ncdt = nCom*nDes*typei;
+
+    if (kl == -2) {
+      cb[i + Ni*m] = cefs[m + nc];
+      return;
+    }
+
+    if (kl == -1) {
+      cb[i + Ni*m] = cefs[m + (nCls-1)*nDes + nc];
+      return;
+    }
+
+    double sum = 0.0;
+    for (int j = kl; j < kr; j++) {
+      double Pj = P[i + Ni*j];
+      double dP_dB = 0.0;
+      for (int k = kl; k < kr; k++) {
+        double dD_dB = 0.0;
+        for (int n = 0; n < nCom; n++) {
+          dD_dB += dD_dpca[i + Ni*k + n*nCls] * proj[n + m*nCom + ncdt];
+        }
+        dP_dB -= Pj * dD_dB;
+        if (k==j) dP_dB += dD_dB;
+      }
+      sum += cp[i + Ni*j] * dP_dB;
+      sum += cefs[m + j*nDes + nc] * Pj;
+    }
+    cb[i + Ni*m] = sum;
+  });
+
 }
 
 template<class DeviceType>
@@ -1553,10 +1927,10 @@ void PairPODKokkos<DeviceType>::blockatom_environment_descriptors(t_pod_1d ei, t
 
   Kokkos::parallel_for("atomic_energies", Kokkos::RangePolicy<DeviceType>(0,Ni), KOKKOS_LAMBDA(int n) {
     int nc = nCoeff*(tyai[n]-1);
-    ei[n] = cefs[0 + nc];
+    ei[n] = 0.0;
     for (int k = 0; k<nCls; k++)
       for (int m=0; m<nDes; m++)
-        ei[n] += cefs[1 + m + nDes*k + nc]*B[n + Ni*m]*P[n + Ni*k];
+        ei[n] += cefs[m + nDes*k + nc]*B[n + Ni*m]*P[n + Ni*k];
   });
 
   Kokkos::parallel_for("env_coefficients", Kokkos::RangePolicy<DeviceType>(0,totalIterations), KOKKOS_LAMBDA(int idx) {
@@ -1565,7 +1939,7 @@ void PairPODKokkos<DeviceType>::blockatom_environment_descriptors(t_pod_1d ei, t
     int nc = nCoeff*(tyai[n]-1);
     double sum = 0;
     for (int m = 0; m<nDes; m++)
-      sum += cefs[1 + m + k*nDes + nc]*B[n + Ni*m];
+      sum += cefs[m + k*nDes + nc]*B[n + Ni*m];
     cp[n + Ni*k] = sum;
   });
 
@@ -1576,7 +1950,7 @@ void PairPODKokkos<DeviceType>::blockatom_environment_descriptors(t_pod_1d ei, t
     int nc = nCoeff*(tyai[n]-1);
     double sum = 0.0;
     for (int k = 0; k<nCls; k++)
-      sum += cefs[1 + m + k*nDes + nc]*P[n + Ni*k];
+      sum += cefs[m + k*nDes + nc]*P[n + Ni*k];
     cb[n + Ni*m] = sum;
   });
 
@@ -1620,7 +1994,10 @@ void PairPODKokkos<DeviceType>::blockatom_energyforce(t_pod_1d l_ei, t_pod_1d l_
   comptime[4] += std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count()/1e6;
 
   begin = std::chrono::high_resolution_clock::now();
-  if (nClusters > 1) {
+  if (nActiveClusters >= 2) {
+    blockatom_local_environment_descriptors(l_ei, cb, bd, Ni);
+  }
+  else if (nClusters > 1) {
     blockatom_environment_descriptors(l_ei, cb, bd, Ni);
   }
   else {
@@ -1781,12 +2158,13 @@ void PairPODKokkos<DeviceType>::savematrix2binfile(std::string filename, t_pod_1
   auto A = Kokkos::create_mirror_view(d_A);
   Kokkos::deep_copy(A, d_A);
 
-  SafeFilePtr fp = fopen(filename.c_str(), "wb");
+  FILE *fp = fopen(filename.c_str(), "wb");
   double sz[2];
   sz[0] = (double) nrows;
   sz[1] = (double) ncols;
   fwrite( reinterpret_cast<char*>( sz ), sizeof(double) * (2), 1, fp);
   fwrite( reinterpret_cast<char*>( A.data() ), sizeof(double) * (nrows*ncols), 1, fp);
+  fclose(fp);
 }
 
 template<class DeviceType>
@@ -1795,12 +2173,54 @@ void PairPODKokkos<DeviceType>::saveintmatrix2binfile(std::string filename, t_po
   auto A = Kokkos::create_mirror_view(d_A);
   Kokkos::deep_copy(A, d_A);
 
-  SafeFilePtr fp = fopen(filename.c_str(), "wb");
+  FILE *fp = fopen(filename.c_str(), "wb");
   int sz[2];
   sz[0] = nrows;
   sz[1] = ncols;
   fwrite( reinterpret_cast<char*>( sz ), sizeof(int) * (2), 1, fp);
   fwrite( reinterpret_cast<char*>( A.data() ), sizeof(int) * (nrows*ncols), 1, fp);
+  fclose(fp);
+}
+
+template<class DeviceType>
+int PairPODKokkos<DeviceType>::getStreamingProcessorCount() {
+  int device_id = 0;
+  int streaming_processors = 2048; // Default fallback
+    
+  #ifdef __HIP_PLATFORM_HCC__
+      // AMD/ROCm case
+      hipDeviceProp_t deviceProp;
+      if (hipGetDevice(&device_id) == hipSuccess && 
+          hipGetDeviceProperties(&deviceProp, device_id) == hipSuccess) {
+            streaming_processors = deviceProp.multiProcessorCount * deviceProp.maxThreadsPerMultiProcessor;
+      }
+  #elif defined(__HIP_PLATFORM_AMD__)
+      // Modern AMD HIP platform
+      hipDeviceProp_t deviceProp;
+      if (hipGetDevice(&device_id) == hipSuccess && 
+          hipGetDeviceProperties(&deviceProp, device_id) == hipSuccess) {
+            streaming_processors = deviceProp.multiProcessorCount * deviceProp.maxThreadsPerMultiProcessor;
+      }
+  #elif defined(__CUDA_ARCH__)
+      // NVIDIA CUDA
+      cudaDeviceProp deviceProp;
+      if (cudaGetDevice(&device_id) == cudaSuccess && 
+          cudaGetDeviceProperties(&deviceProp, device_id) == cudaSuccess) {
+            streaming_processors = deviceProp.multiProcessorCount * deviceProp.maxThreadsPerMultiProcessor;
+      }
+  #elif defined(__NVCC__)
+      // NVIDIA CUDA
+      cudaDeviceProp deviceProp;
+      if (cudaGetDevice(&device_id) == cudaSuccess &&
+          cudaGetDeviceProperties(&deviceProp, device_id) == cudaSuccess) {
+            streaming_processors = deviceProp.multiProcessorCount * deviceProp.maxThreadsPerMultiProcessor;
+      }
+  #else
+      // Fallback for non-CUDA, non-ROCm systems
+      streaming_processors = 2048;
+  #endif
+    
+  return streaming_processors;
 }
 
 template<class DeviceType>

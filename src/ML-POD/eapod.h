@@ -63,9 +63,12 @@ class EAPOD : protected Pointers {
   void myneighbors(double *rij, double *x, int *ai, int *aj, int *ti, int *tj, int *jlist,
                    int *pairnumsum, int *atomtype, int *alist, int i);
 
-  void radialbasis(double *rbf, double *rbfx, double *rbfy, double *rbfz, double *rij,
-                   double *besselparams, double rin, double rmax, int besseldegree,
+  void radialbasis(double *rbf, double *rbfx, double *rbfy, double *rbfz, double *rij, int *ti, int *tj,
+                   double *besselparams, double *rin, double *rdiff, int besseldegree,
                    int inversedegree, int nbesselpars, int N);
+                  
+  void radialbasisellipsoid(double *rbf, double *rbfx, double *rbfy, double *rbfz, double *rij, int *ti, int *tj,
+                          double *besselparams, double *rin, double *rcut, int besseldegree, int inversedegree, int nbesselpars, int N);
 
   void angularbasis(double *abf, double *abfx, double *abfy, double *abfz, double *rij, double *tm,
                     int *pq, int N, int K);
@@ -85,8 +88,12 @@ class EAPOD : protected Pointers {
  public:
   std::vector<std::string> species;
 
-  double rin;
-  double rcut;
+  double *rin;
+  double *rcut;
+  double *rcutsq;
+  double *rdiff;
+  double rcutmax;
+  double rinmin;
   int true4BodyDesc;
 
   int nelements;    // number of elements
@@ -109,17 +116,31 @@ class EAPOD : protected Pointers {
 
   // environmental variables
   int nClusters;      // number of environment clusters
+  double nActiveClusters; // average number of active clusters
+  int clusterSearchBox; // Range to search for active clusters around centroids
   int nComponents;    // number of principal components
-  //int nNeighbors; // numbe of neighbors
+  //int nNeighbors; // number of neighbors
   int Mdesc;    // number of base descriptors
 
-  double *Proj;         // PCA Projection matrix
-  double *Centroids;    // centroids of the clusters
-  double *bd;           // base descriptors
-  double *bdd;          // derivatives of the base descriptors with respect to the atomic positions
-  double *pd;           //  multi-environment descriptors
-  double *
-      pdd;    // derivative of the multi-environment descriptors with respect to the atomic positions
+  double *Proj;               // PCA Projection matrix
+  
+  double *PcaMean;            // PCA standardized coordinartes
+  double *PcaInvStd;          // PCA Inverse std
+  double *DescMean;           // PCA standardized coordinartes
+  double *DescInvStd;         // PCA Inverse std
+
+  double *Centroids;          // centroids of the clusters
+  double *bd;                 // base descriptors
+  double *bdd;                // derivatives of the base descriptors with respect to the atomic positions
+  double *pd;                 //  multi-environment descriptors
+  double *pdd;                // derivative of the multi-environment descriptors with respect to the atomic positions
+  
+  double *ClusterFcut;        // Cutoff values from the cut-off function for each atom (nClusters)
+  double *ClusterDFcut;       // Cutoff values from the derivative of the cut-off function for each atom (nClusters)
+  double *invLeftClusterRcut2;   // Left-hand side squared cutoff redius for each cluster (nClusters)
+  double *invRightClusterRcut2;  // Right-hand side squared cutoff redius for each cluster (nClusters)
+  double *leftClusterEdges;   // Left-hand side edge activation position for each cluster (nClusters)
+  double *rightClusterEdges;  // Right-hand side edge activation position for each cluster (nClusters)
 
   int nproj;         // number of elements in projection matrix (nComponents * Mdesc * nelements)
   int ncentroids;    // number of centroids (nComponents * nClusters * nelements)
@@ -203,13 +224,22 @@ class EAPOD : protected Pointers {
   void descriptors(double *gd, double *gdd, double *basedesc, double *x, int *atomtype, int *alist,
                    int *jlist, int *pairnumsum, int natom);
 
-  void peratombase_descriptors(double *bd, double *bdd, double *rij, double *temp, int *tj, int Nj);
+  void peratombase_descriptors(double *bd, double *bdd, double *rij, double *temp, int *ti, int *tj, int Nj);
   double peratombase_coefficients(double *cb, double *bd, int *ti);
+  double peratombase_local_env_coefficients(double *cb, double *bd, int *ti, int k);
   double peratom_environment_descriptors(double *cb, double *bd, double *tm, int *ti);
+  double peratom_local_environment_descriptors(double *cb, double *bd, double *tm, int *ti);
+  double peratom_local_environment_descriptors2(double *cb, double *bd, double *tm, int *ti);
 
   void peratomenvironment_descriptors(double *P, double *dP_dR, double *B, double *dB_dR,
                                       double *tmp, int elem, int nNeighbors);
-
+  
+  void peratomlocalenvironment_descriptors(double *P, double *dP_dR, double *B, double *dB_dR,
+                                      double *tmp, int elem, int nNeighbors);
+  
+  void peratomlocalenvironment_descriptors2(double *P, double *dP_dR, double *B, double *dB_dR,
+                                      double *tmp, int elem, int nNeighbors);
+  
   void base_descriptors(double *basedesc, double *x, int *atomtype, int *alist, int *jlist,
                         int *pairnumsum, int natom);
 
@@ -218,6 +248,7 @@ class EAPOD : protected Pointers {
 
   double peratomenergyforce(double *fij, double *rij, double *temp, int *ti, int *tj, int Nj);
   double peratomenergyforce2(double *fij, double *rij, double *temp, int *ti, int *tj, int Nj);
+  double peratomenergyforce3(double *fij, double *rij, double *temp, int *ti, int *tj, int Nj);
 
   double energyforce(double *force, double *x, int *atomtype, int *alist, int *jlist,
                      int *pairnumsum, int natom);
@@ -232,6 +263,9 @@ class EAPOD : protected Pointers {
                       int *ind2, int n12, int N);
   void crossdesc_reduction(double *cb1, double *cb2, double *c12, double *d1, double *d2, int *ind1,
                            int *ind2, int n12);
+
+  void calculateClusterEdges(int nClusters, double nActiveClusters, int nComponents, int nelements);
+
 };
 
 }    // namespace LAMMPS_NS

@@ -83,7 +83,7 @@ class PairPODKokkos : public PairPOD {
   typedef Kokkos::View<int*, DeviceType> t_pod_1i;
   typedef Kokkos::View<KK_FLOAT*, DeviceType> t_pod_1d;
 //   typedef Kokkos::View<int**, DeviceType> t_pod_2i;
-//   typedef Kokkos::View<KK_FLOAT**, DeviceType> t_pod_2d;
+  typedef Kokkos::View<KK_FLOAT**, DeviceType> t_pod_2d;
 //   typedef Kokkos::View<KK_FLOAT**[3], DeviceType> t_pod_3d3;
 
   int atomBlockSize;        // size of each atom block
@@ -114,10 +114,14 @@ class PairPODKokkos : public PairPOD {
   int nComponents; // number of principal components
   int Mdesc; // number of base descriptors
 
-  double rin;  // inner cut-off radius
-  double rcut; // outer cut-off radius
-  double rmax; // rcut - rin
-  double rcutsq;
+  // local environmental variables
+  double nActiveClusters; // average number of active clusters
+  int clusterSearchBox; // Range to search for active clusters around centroids
+
+  t_pod_2d rin;  // inner cut-off radius
+  t_pod_2d rcut; // outer cut-off radius
+  t_pod_2d rdiff; // rcut - rin
+  t_pod_2d rcutsq; // rcut*rcut
 
   t_pod_1d rij;         // (xj - xi) for all pairs (I, J)
   t_pod_1d fij;         // force for all pairs (I, J)
@@ -144,6 +148,17 @@ class PairPODKokkos : public PairPOD {
   t_pod_1d forcecoeff; // force coefficients ni x K3 x nrbfmax x nelements
   t_pod_1d Proj; // PCA Projection matrix
   t_pod_1d Centroids; // centroids of the clusters
+  t_pod_1d invLeftClusterRcut2; // // Left-hand side squared cutoff redius for each cluster (nClusters x nelements)
+  t_pod_1d invRightClusterRcut2;  // Right-hand side squared cutoff redius for each cluster (nClusters x nelements)
+  t_pod_1d leftClusterEdges;   // Left-hand side edge activation position for each cluster (nClusters x nelements)
+  t_pod_1d rightClusterEdges;  // Right-hand side edge activation position for each cluster (nClusters x nelements)
+  
+  t_pod_1i ksarray;
+  t_pod_1i kearray;
+  t_pod_1d clusterFcut;   // cluster cutoff function
+  t_pod_1d clusterRcut2;   // cluster sq cutoff radius
+  t_pod_1d dDdpca;   // derivatives for dfcut_dpca * S + fcut * dS_dpca
+  
   t_pod_1d bd;   // base descriptors ni x Mdesc
   t_pod_1d cb;   // force coefficients for base descriptors ni x Mdesc
   t_pod_1d pd;   // environment probability descriptors ni x (1 + nComponents + 3*nClusters)
@@ -157,13 +172,13 @@ class PairPODKokkos : public PairPOD {
 
   void set_array_to_zero(t_pod_1d a, int N);
 
-  int NeighborCount(t_pod_1i, double, int, int);
+  int NeighborCount(t_pod_1i l_numij, int gi1, int Ni);
 
   void NeighborList(t_pod_1d l_rij, t_pod_1i l_numij,  t_pod_1i l_typeai, t_pod_1i l_idxi,
-    t_pod_1i l_ai, t_pod_1i l_aj, t_pod_1i l_ti, t_pod_1i l_tj, double l_rcutsq, int gi1, int Ni);
+    t_pod_1i l_ai, t_pod_1i l_aj, t_pod_1i l_ti, t_pod_1i l_tj, int gi1, int Ni);
 
   void radialbasis(t_pod_1d rbft, t_pod_1d rbftx, t_pod_1d rbfty, t_pod_1d rbftz,
-    t_pod_1d rij, t_pod_1d l_besselparams, double l_rin, double l_rmax, int l_besseldegree,
+    t_pod_1d rij, t_pod_1d l_besselparams, t_pod_2d l_rin, t_pod_2d l_rdiff, t_pod_1i l_ti, t_pod_1i tj, int l_besseldegree,
     int l_inversedegree, int l_nbesselpars, int Nij);
 
   void matrixMultiply(t_pod_1d a, t_pod_1d b, t_pod_1d c, int r1, int c1, int c2);
@@ -189,6 +204,7 @@ class PairPODKokkos : public PairPOD {
   void blockatom_base_descriptors(t_pod_1d bd, int Ni, int Nij);
   void blockatom_base_coefficients(t_pod_1d ei, t_pod_1d cb, t_pod_1d B, int Ni);
   void blockatom_environment_descriptors(t_pod_1d ei, t_pod_1d cb, t_pod_1d B, int Ni);
+  void blockatom_local_environment_descriptors(t_pod_1d ei, t_pod_1d cb, t_pod_1d B, int Ni);
 
   void twobody_forces(t_pod_1d fij, t_pod_1d cb2, t_pod_1d l_rbfx, t_pod_1d l_rbfy, t_pod_1d l_rbfz,
           t_pod_1i l_idxi, t_pod_1i l_tj, int l_nrbf2, const int Ni, const int Nij);
@@ -219,6 +235,8 @@ class PairPODKokkos : public PairPOD {
   void savematrix2binfile(std::string filename, t_pod_1d d_A, int nrows, int ncols);
   void saveintmatrix2binfile(std::string filename, t_pod_1i d_A, int nrows, int ncols);
   void savedatafordebugging();
+
+  int getStreamingProcessorCount();
 };
 }    // namespace LAMMPS_NS
 

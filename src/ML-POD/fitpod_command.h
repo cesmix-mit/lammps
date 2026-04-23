@@ -140,13 +140,25 @@ class FitPOD : public Command {
   void matrix33_inverse(double *invA, double *A1, double *A2, double *A3);
 
   double squareDistance(const double *a, const double *b, int DIMENSIONS);
+
+  // fuctions for clustering methods
+  
+  // functions for k-mean clustering
   void assignPointsToClusters(double *points, double *centroids, int *assignments,
                               int *clusterSizes, int NUM_POINTS, int NUM_CLUSTERS, int DIMENSION);
   void updateCentroids(double *points, double *centroids, int *assignments, int *clusterSizes,
                        int NUM_POINTS, int NUM_CLUSTERS, int DIMENSIONS);
   void KmeansClustering(double *points, double *centroids, int *assignments, int *clusterSizes,
                         int NUM_POINTS, int NUM_CLUSTERS, int DIMENSIONS, int MAX_ITER);
-
+  
+  // functions for standardization and active learning (future)
+  void normalize_pca_components(double* pca, double* PcaMean, double* PcaInvStd, 
+                             int nAtoms, int nComponents, int nTotalAtoms, MPI_Comm world);
+  void standardize_descriptors(double* descmatrix, double* DescMean, double* DescInvStd,
+                            int nAtoms, int Mdesc, int nTotalAtoms, MPI_Comm world);
+  
+  // functions to (optinally) save data
+  
   void savedata2textfile(const std::string &filename, const std::string &text, double *A, int n, int m, int dim);
   void savematrix2binfile(const std::string &filename, double *A, int nrows, int ncols);
   void saveintmatrix2binfile(const std::string &filename, int *A, int nrows, int ncols);
@@ -174,13 +186,15 @@ class FitPOD : public Command {
   void select_data(datastruct &newdata, const datastruct &data);
   void read_data_files(const std::string &data_file, const std::vector<std::string> &species);
   int latticecoords(double *y, int *alist, double *x, double *a1, double *a2, double *a3,
-                    double rcut, int *pbc, int nx);
-  int podneighborlist(int *neighlist, int *numneigh, double *r, double rcutsq, int nx, int N,
-                      int dim);
-  int podfullneighborlist(double *y, int *alist, int *neighlist, int *numneigh, int *numneighsum,
-                          double *x, double *a1, double *a2, double *a3, double rcut, int *pbc,
-                          int nx);
-  void estimate_memory_neighborstruct(const datastruct &data, int *pbc, double rcut, int nelements);
+                    double rmax, int *pbc, int nx);
+  int podfullneighborlist(double *y, int *alist, int *neighlist, int *numneigh,
+                                                 int *numneighsum, double *x, double *a1, double *a2, 
+                                                 double *a3, double *rcut, int *pbc, int *atomtype, 
+                                                 int nx, int nelements);
+  int podneighborlist(int *neighlist, int *numneigh, double *r, double *rcut, 
+                                             int *atomtype, int *alist, int nx, int N, int dim, int nelements);
+  
+  void estimate_memory_neighborstruct(const datastruct &data, int *pbc, double rcutmax, int nelements);
   void allocate_memory_neighborstruct();
   void allocate_memory_descriptorstruct(int nd);
   void estimate_memory_fastpod(const datastruct &data);
@@ -198,3 +212,5 @@ class FitPOD : public Command {
 }    // namespace LAMMPS_NS
 #endif
 #endif
+
+

@@ -26,7 +26,6 @@
 #include "memory.h"
 #include "neigh_list.h"
 #include "neighbor.h"
-#include "safe_pointers.h"
 
 #include <algorithm>
 #include <cmath>
@@ -56,7 +55,9 @@ PairPOD::PairPOD(LAMMPS *lmp) : Pair(lmp), fastpodptr(nullptr)
   nijmax = 0;
   atomBlockSize = 10;
   nAtomBlocks = 0;
-
+  
+  rin = nullptr;
+  rcut = nullptr;
   rij = nullptr;
   fij = nullptr;
   ei = nullptr;
@@ -106,6 +107,8 @@ PairPOD::PairPOD(LAMMPS *lmp) : Pair(lmp), fastpodptr(nullptr)
 
 PairPOD::~PairPOD()
 {
+  memory->destroy(rin);
+  memory->destroy(rcut);
   memory->destroy(rij);
   memory->destroy(fij);
   memory->destroy(ei);
@@ -181,7 +184,6 @@ void PairPOD::compute(int eflag, int vflag)
   int nlocal = atom->nlocal;
   int newton_pair = force->newton_pair;
 
-  double rcutsq = rcut*rcut;
   double evdwl = 0.0;
 
   int blockMode = 0;
@@ -204,9 +206,10 @@ void PairPOD::compute(int eflag, int vflag)
     int *aj1 = &fastpodptr->tmpint[nijmax];
     int *ti1 = &fastpodptr->tmpint[2*nijmax];
     int *tj1 = &fastpodptr->tmpint[3*nijmax];
-    lammpsNeighborList(rij1, ai1, aj1, ti1, tj1, x, firstneigh, type, map, numneigh, rcutsq, i);
+    lammpsNeighborList(rij1, ai1, aj1, ti1, tj1, x, firstneigh, type, map, numneigh, i);
 
-    evdwl = fastpodptr->peratomenergyforce2(fij1, rij1, tmp, ti1, tj1, nij);
+    //evdwl = fastpodptr->peratomenergyforce2(fij1, rij1, tmp, ti1, tj1, nij);
+    evdwl = fastpodptr->peratomenergyforce3(fij1, rij1, tmp, ti1, tj1, nij);
 
     // tally atomic energy to global energy
     ev_tally_full(i,2.0*evdwl,0.0,0.0,0.0,0.0,0.0);
@@ -232,7 +235,7 @@ void PairPOD::compute(int eflag, int vflag)
   divideInterval(atomBlocks, inum, nAtomBlocks);
 
   int nmax = 0;
-  for (int block =0; block<nAtomBlocks; block++) {
+  for (int block=0; block<nAtomBlocks; block++) {
     int n = atomBlocks[block+1] - atomBlocks[block];
     if (nmax < n) nmax = n;
   }
@@ -243,12 +246,12 @@ void PairPOD::compute(int eflag, int vflag)
     int gi2 = atomBlocks[block+1]-1;
     ni = gi2 - gi1; // total number of atoms in the current atom block
 
-    NeighborCount(x, firstneigh, ilist, numneigh, rcutsq, gi1);
+    NeighborCount(x, firstneigh, ilist, numneigh, type, gi1);
     nij = numberOfNeighbors(); // total number of pairs (i,j) in the current atom block
     grow_pairs(nij); // reallocate memory only if necessary
 
     // get neighbor list for atoms i in the current atom block
-    NeighborList(x, firstneigh, type, map, ilist, numneigh, rcutsq, gi1);
+    NeighborList(x, firstneigh, type, map, ilist, numneigh, gi1);
 
     // compute atomic energy and force for the current atom block
     blockatomenergyforce(ei, fij, ni, nij);
@@ -303,13 +306,15 @@ void PairPOD::coeff(int narg, char **arg)
   fastpodptr = new EAPOD(lmp, pod_file, coeff_file);
 
   copy_data_from_pod_class();
-  rcut = fastpodptr->rcut;
 
   memory->destroy(fastpodptr->tmpmem);
   memory->destroy(fastpodptr->tmpint);
 
-  for (int ii = 0; ii < np1; ii++)
-    for (int jj = 0; jj < np1; jj++) cutsq[ii][jj] = fastpodptr->rcut * fastpodptr->rcut;
+  for (int ii = 0; ii < nelements; ii++)
+    for (int jj = 0; jj < nelements; jj++) {
+      //utils::logmesg(lmp, "Setting squared rcutsq for pairs {:d}, {:d} with rcut: {} \n", ii, jj, rcut[jj + nelements*ii]);
+      cutsq[ii][jj] = rcut[jj + nelements*ii] * rcut[jj + nelements*ii];
+    }
 }
 
 /* ----------------------------------------------------------------------
@@ -337,11 +342,11 @@ double PairPOD::init_one(int i, int j)
   if (setflag[i][j] == 0)
     error->all(FLERR, Error::NOLASTLINE,
                "All pair coeffs are not set. Status:\n" + Info::get_pair_coeff_status(lmp));
-
-  double rcut = 0.0;
-  rcut = fastpodptr->rcut;
-
-  return rcut;
+  
+  int itype = i-1;
+  int jtype = j-1;
+  //utils::logmesg(lmp, "Setting rcut for pairs: {:d}, {:d}\n", itype, jtype);
+  return rcut[jtype + nelements*itype];
 }
 
 void PairPOD::allocate()
@@ -361,35 +366,38 @@ double PairPOD::memory_usage()
 
 void PairPOD::lammpsNeighborList(double *rij1, int *ai1, int *aj1, int *ti1, int *tj1,
                                double **x, int **firstneigh, int *atomtypes, int *map,
-                               int *numneigh, double rcutsq, int gi)
+                               int *numneigh, int gi)
 {
   nij = 0;
-  int itype = map[atomtypes[gi]] + 1;
+  int itype = map[atomtypes[gi]] + 1;     // type of atom i
   ti1[nij] = itype;
   int m = numneigh[gi];
   for (int l = 0; l < m; l++) {           // loop over each atom around atom i
     int gj = firstneigh[gi][l];           // atom j
+    int jtype = map[atomtypes[gj]] + 1;   // type of neighboring atom j
     double delx = x[gj][0] - x[gi][0];    // xj - xi
     double dely = x[gj][1] - x[gi][1];    // xj - xi
     double delz = x[gj][2] - x[gi][2];    // xj - xi
     double rsq = delx * delx + dely * dely + delz * delz;
-    if (rsq < rcutsq && rsq > 1e-20) {
+    if (rsq < cutsq[itype][jtype] && rsq > 1e-20) {
       rij1[nij * 3 + 0] = delx;
       rij1[nij * 3 + 1] = dely;
       rij1[nij * 3 + 2] = delz;
       ai1[nij] = gi;
       aj1[nij] = gj;
       ti1[nij] = itype;
-      tj1[nij] = map[atomtypes[gj]] + 1;
+      tj1[nij] = jtype;
       nij++;
     }
   }
 }
 
-void PairPOD::NeighborCount(double **x, int **firstneigh, int *ilist, int *numneigh, double rcutsq, int gi1)
+void PairPOD::NeighborCount(double **x, int **firstneigh, int *ilist, int *numneigh,
+                            int *atomtypes, int gi1)
 {
   for (int i=0; i<ni; i++) {
     int gi = ilist[gi1 + i];
+    int itype = map[atomtypes[gi]] + 1;     // type of atom i
     double xi0 = x[gi][0];
     double xi1 = x[gi][1];
     double xi2 = x[gi][2];
@@ -397,11 +405,12 @@ void PairPOD::NeighborCount(double **x, int **firstneigh, int *ilist, int *numne
     int n = 0;
     for (int l = 0; l < m; l++) {           // loop over each atom around atom i
       int gj = firstneigh[gi][l];           // atom j
+      int jtype = map[atomtypes[gj]] + 1;   // type of neighboring atom j
       double delx = x[gj][0] - xi0;    // xj - xi
       double dely = x[gj][1] - xi1;    // xj - xi
       double delz = x[gj][2] - xi2;    // xj - xi
       double rsq = delx * delx + dely * dely + delz * delz;
-      if (rsq < rcutsq && rsq > 1e-20) n++;
+      if (rsq < cutsq[itype][jtype] && rsq > 1e-20) n++;
     }
     numij[1+i] = n;
   }
@@ -418,25 +427,26 @@ int PairPOD::numberOfNeighbors()
 }
 
 void PairPOD::NeighborList(double **x, int **firstneigh, int *atomtypes, int *map,
-                               int *ilist, int *numneigh, double rcutsq, int gi1)
+                               int *ilist, int *numneigh, int gi1)
 {
   for (int i=0; i<ni; i++) {
     int gi = ilist[gi1 + i];
+    int itype = map[atomtypes[gi]] + 1;
+    typeai[i] = itype;
     double xi0 = x[gi][0];
     double xi1 = x[gi][1];
     double xi2 = x[gi][2];
-    int itype = map[atomtypes[gi]] + 1;
-    typeai[i] = itype;
     int m = numneigh[gi];
     int nij0 = numij[i];
     int k = 0;
     for (int l = 0; l < m; l++) {           // loop over each atom around atom i
       int gj = firstneigh[gi][l];           // atom j
+      int jtype = map[atomtypes[gj]] + 1;   // type of neighboring atom j
       double delx = x[gj][0] - xi0;    // xj - xi
       double dely = x[gj][1] - xi1;    // xj - xi
       double delz = x[gj][2] - xi2;    // xj - xi
       double rsq = delx * delx + dely * dely + delz * delz;
-      if (rsq < rcutsq && rsq > 1e-20) {
+      if (rsq < cutsq[itype][jtype] && rsq > 1e-20) {
         int nij1 = nij0 + k;
         rij[nij1 * 3 + 0] = delx;
         rij[nij1 * 3 + 1] = dely;
@@ -445,7 +455,7 @@ void PairPOD::NeighborList(double **x, int **firstneigh, int *atomtypes, int *ma
         ai[nij1] = gi;
         aj[nij1] = gj;
         ti[nij1] = itype;
-        tj[nij1] = map[atomtypes[gj]] + 1;
+        tj[nij1] = jtype;
         k++;
       }
     }
@@ -563,12 +573,21 @@ void PairPOD::copy_data_from_pod_class()
   K4 = fastpodptr->K4;           // number of four-body monomials
   Q4 = fastpodptr->Q4;           // number of four-body monomial coefficients
   nClusters = fastpodptr->nClusters; // number of environment clusters
+  nActiveClusters = fastpodptr->nActiveClusters; // average number of active clusters
+  clusterSearchBox = fastpodptr->clusterSearchBox; // cluster box search range
   nComponents = fastpodptr->nComponents; // number of principal components
   Mdesc = fastpodptr->Mdesc; // number of base descriptors
 
-  rin = fastpodptr->rin;
-  rcut = fastpodptr->rcut;
-  rmax = rcut - rin;
+  //rin = fastpodptr->rin;
+  //rcut = fastpodptr->rcut;
+  memory->create(rin, nelements * nelements, "pair_pod:rin");
+  for (int i=0; i < nelements * nelements; i++)
+    rin[i] = fastpodptr->rin[i];
+
+  memory->create(rcut, nelements * nelements, "pair_pod:rcut");
+  for (int i=0; i < nelements * nelements; i++)
+    rcut[i] = fastpodptr->rcut[i];
+
   besselparams[0] = fastpodptr->besselparams[0];
   besselparams[1] = fastpodptr->besselparams[1];
   besselparams[2] = fastpodptr->besselparams[2];
@@ -595,8 +614,9 @@ void PairPOD::copy_data_from_pod_class()
       Proj[i] = fastpodptr->Proj[i];
 
     memory->create(Centroids, nClusters * nComponents * nelements, "pair_pod:Centroids");
-    for (int i=0; i<nClusters * nComponents * nelements; i++)
+    for (int i=0; i<nClusters * nComponents * nelements; i++) {
       Centroids[i] = fastpodptr->Centroids[i];
+    }
   }
 
   memory->destroy(pn3);
@@ -722,7 +742,13 @@ int PairPOD::calculateNumberOfIntervals(int N, int intervalSize)
 void PairPOD::radialbasis(double *rbft, double *rbftx, double *rbfty, double *rbftz, double *rij, int Nij)
 {
   // Loop over all neighboring atoms
+  int itype = ti[0]-1;
   for (int n=0; n<Nij; n++) {
+    int jtype = tj[n]-1;
+    double rin_tij = rin[jtype + nelements*itype];
+    double rcut_tij = rcut[jtype + nelements*itype];
+    double rmax = rcut_tij - rin_tij;
+
     double xij1 = rij[0+3*n];
     double xij2 = rij[1+3*n];
     double xij3 = rij[2+3*n];
@@ -732,7 +758,7 @@ void PairPOD::radialbasis(double *rbft, double *rbftx, double *rbfty, double *rb
     double dr2 = xij2/dij;
     double dr3 = xij3/dij;
 
-    double r = dij - rin;
+    double r = dij - rin_tij;
     double y = r/rmax;
     double y2 = y*y;
 
@@ -746,7 +772,7 @@ void PairPOD::radialbasis(double *rbft, double *rbftx, double *rbfty, double *rb
     double fcut = y6/exp(-1.0);
 
     // Calculate the derivative of the final cutoff function
-    double dfcut = ((3.0/(rmax*exp(-1.0)))*y2*y6*(y*y2 - 1.0))/y7;
+    double dfcut = ((3.0/(rmax*exp(-1.0)))*(y2)*y6*(y*y2 - 1.0))/y7;
 
     // Calculate fcut/r, fcut/r^2, and dfcut/r
     double f1 = fcut/r;
@@ -2113,22 +2139,24 @@ void PairPOD::blockatomenergyforce(double *ei, double *fij, int Ni, int Nij)
 
 void PairPOD::savematrix2binfile(const std::string &filename, double *A, int nrows, int ncols)
 {
-  SafeFilePtr fp = fopen(filename.c_str(), "wb");
+  FILE *fp = fopen(filename.c_str(), "wb");
   double sz[2];
   sz[0] = (double) nrows;
   sz[1] = (double) ncols;
-  fwrite( reinterpret_cast<char*>( sz ), sizeof(double) * 2, 1, fp);
+  fwrite( reinterpret_cast<char*>( sz ), sizeof(double) * (2), 1, fp);
   fwrite( reinterpret_cast<char*>( A ), sizeof(double) * (nrows*ncols), 1, fp);
+  fclose(fp);
 }
 
 void PairPOD::saveintmatrix2binfile(const std::string &filename, int *A, int nrows, int ncols)
 {
-  SafeFilePtr fp = fopen(filename.c_str(), "wb");
+  FILE *fp = fopen(filename.c_str(), "wb");
   int sz[2];
   sz[0] = nrows;
   sz[1] = ncols;
-  fwrite( reinterpret_cast<char*>( sz ), sizeof(int) * 2, 1, fp);
+  fwrite( reinterpret_cast<char*>( sz ), sizeof(int) * (2), 1, fp);
   fwrite( reinterpret_cast<char*>( A ), sizeof(int) * (nrows*ncols), 1, fp);
+  fclose(fp);
 }
 
 void PairPOD::savedatafordebugging()

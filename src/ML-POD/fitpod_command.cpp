@@ -12,7 +12,8 @@
 ------------------------------------------------------------------------- */
 
 /* ----------------------------------------------------------------------
-   Contributing authors: Ngoc Cuong Nguyen (MIT) and Andrew Rohskopf (SNL)
+   Contributing authors: Ngoc Cuong Nguyen (MIT), Dionysios Sema (MIT),
+                         Andrew Rohskopf (SNL)
 ------------------------------------------------------------------------- */
 
 #include "fitpod_command.h"
@@ -20,7 +21,6 @@
 #include "comm.h"
 #include "error.h"
 #include "memory.h"
-#include "safe_pointers.h"
 #include "tokenizer.h"
 
 #include <algorithm>
@@ -120,12 +120,12 @@ void FitPOD::command(int narg, char **arg)
   desc.nClusters = fastpodptr->nClusters;
   read_data_files(data_file, fastpodptr->species);
 
-  estimate_memory_neighborstruct(traindata, fastpodptr->pbc, fastpodptr->rcut,
+  estimate_memory_neighborstruct(traindata, fastpodptr->pbc, fastpodptr->rcutmax,
                                  fastpodptr->nelements);
-  estimate_memory_neighborstruct(testdata, fastpodptr->pbc, fastpodptr->rcut,
+  estimate_memory_neighborstruct(testdata, fastpodptr->pbc, fastpodptr->rcutmax,
                                  fastpodptr->nelements);
   if (desc.nClusters > 1)
-    estimate_memory_neighborstruct(envdata, fastpodptr->pbc, fastpodptr->rcut,
+    estimate_memory_neighborstruct(envdata, fastpodptr->pbc, fastpodptr->rcutmax,
                                    fastpodptr->nelements);
   allocate_memory_neighborstruct();
   estimate_memory_fastpod(traindata);
@@ -154,7 +154,7 @@ void FitPOD::command(int narg, char **arg)
 
       if (comm->me == 0) {    // save coefficients into a text file
         std::string filename = traindata.filenametag + "_coefficients" + ".pod";
-        SafeFilePtr fp = fopen(filename.c_str(), "w");
+        FILE *fp = fopen(filename.c_str(), "w");
 
         int nCoeffAll = desc.nCoeffAll;
         int n1 = 0, n2 = 0;
@@ -173,6 +173,7 @@ void FitPOD::command(int narg, char **arg)
         for (int count = 0; count < n2; count++) {
           utils::print(fp, "{:<10.{}f}\n", fastpodptr->Centroids[count], 14);
         }
+        fclose(fp);
       }
     }
 
@@ -280,7 +281,7 @@ int FitPOD::read_data_file(double *fitting_weights, std::string &file_format,
   int precision = 8;
 
   std::string datafilename = data_file;
-  SafeFilePtr fpdata;
+  FILE *fpdata;
   if (comm->me == 0) {
 
     fpdata = utils::open_potential(datafilename, lmp, nullptr);
@@ -297,6 +298,7 @@ int FitPOD::read_data_file(double *fitting_weights, std::string &file_format,
       ptr = fgets(line, MAXLINE, fpdata);
       if (ptr == nullptr) {
         eof = 1;
+        fclose(fpdata);
       }
     }
     MPI_Bcast(&eof, 1, MPI_INT, 0, world);
@@ -368,7 +370,10 @@ int FitPOD::read_data_file(double *fitting_weights, std::string &file_format,
       // Get next line.
       if (comm->me == 0) {
         ptr = fgets(line, MAXLINE, fpdata);
-        if (ptr == nullptr) eof = 1;
+        if (ptr == nullptr) {
+          eof = 1;
+          fclose(fpdata);
+        }
       }
       MPI_Bcast(&eof, 1, MPI_INT, 0, world);
       if (eof) break;
@@ -391,7 +396,10 @@ int FitPOD::read_data_file(double *fitting_weights, std::string &file_format,
         // Get next line.
         if (comm->me == 0) {
           ptr = fgets(line, MAXLINE, fpdata);
-          if (ptr == nullptr) eof = 1;
+          if (ptr == nullptr) {
+            eof = 1;
+            fclose(fpdata);
+          }
         }
         MPI_Bcast(&eof, 1, MPI_INT, 0, world);
         if (eof) break;
@@ -452,7 +460,7 @@ void FitPOD::get_exyz_files(std::vector<std::string> &files, std::vector<std::st
 int FitPOD::get_number_atom_exyz(std::vector<int> &num_atom, int &num_atom_sum, std::string file)
 {
   std::string filename = std::move(file);
-  SafeFilePtr fp;
+  FILE *fp;
   if (comm->me == 0) {
     fp = utils::open_potential(filename, lmp, nullptr);
     if (fp == nullptr)
@@ -471,6 +479,7 @@ int FitPOD::get_number_atom_exyz(std::vector<int> &num_atom, int &num_atom_sum, 
       ptr = fgets(line, MAXLINE, fp);
       if (ptr == nullptr) {
         eof = 1;
+        fclose(fp);
       }
     }
     MPI_Bcast(&eof, 1, MPI_INT, 0, world);
@@ -524,7 +533,7 @@ void FitPOD::read_exyz_file(double *lattice, double *stress, double *energy, dou
 {
 
   std::string filename = std::move(file);
-  SafeFilePtr fp;
+  FILE *fp;
   if (comm->me == 0) {
     fp = utils::open_potential(filename, lmp, nullptr);
     if (fp == nullptr)
@@ -544,6 +553,7 @@ void FitPOD::read_exyz_file(double *lattice, double *stress, double *energy, dou
       ptr = fgets(line, MAXLINE, fp);
       if (ptr == nullptr) {
         eof = 1;
+        fclose(fp);
       }
     }
     MPI_Bcast(&eof, 1, MPI_INT, 0, world);
@@ -1092,16 +1102,16 @@ void FitPOD::read_data_files(const std::string &data_file, const std::vector<std
 }
 
 int FitPOD::latticecoords(double *y, int *alist, double *x, double *a1, double *a2, double *a3,
-                          double rcut, int *pbc, int nx)
+                          double rmax, int *pbc, int nx)
 {
   int m = 0, n = 0, p = 0;
-  if (pbc[0] == 1) m = (int) ceil(rcut / a1[0]);
-  if (pbc[1] == 1) n = (int) ceil(rcut / a2[1]);
-  if (pbc[2] == 1) p = (int) ceil(rcut / a3[2]);
+  if (pbc[0] == 1) m = (int) ceil(rmax / a1[0]);
+  if (pbc[1] == 1) n = (int) ceil(rmax / a2[1]);
+  if (pbc[2] == 1) p = (int) ceil(rmax / a3[2]);
 
   // index for the center lattice
 
-  int ind = m + (2 * m + 1) * n + (2 * m + 1) * (2 * n + 1) * p;
+  int ind = m + (2 * m + 1) * (n) + (2 * m + 1) * (2 * n + 1) * (p);
 
   // number of lattices
 
@@ -1133,17 +1143,43 @@ int FitPOD::latticecoords(double *y, int *alist, double *x, double *a1, double *
   return nl;
 }
 
-int FitPOD::podneighborlist(int *neighlist, int *numneigh, double *r, double rcutsq, int nx, int N,
-                            int dim)
+int FitPOD::podfullneighborlist(double *y, int *alist, int *neighlist, int *numneigh,
+                                                 int *numneighsum, double *x, double *a1, double *a2, 
+                                                 double *a3, double *rcut, int *pbc, int *atomtype, 
+                                                 int nx, int nelements)
+{
+  int dim = 3, nl = 0, nn = 0;
+  
+  // maximum cutoff for the neighbor list construction
+  // number of lattices with maximum cutoff
+  nl = latticecoords(y, alist, x, a1, a2, a3, fastpodptr->rcutmax, pbc, nx);
+  int N = nx * nl;
+
+  // total number of neighbors
+  nn = podneighborlist(neighlist, numneigh, y, rcut, atomtype, alist, nx, N, dim, nelements);
+  podCumsum(numneighsum, numneigh, nx + 1);
+  
+  return nn;
+}
+
+int FitPOD::podneighborlist(int *neighlist, int *numneigh, double *r, double *rcut, 
+                            int *atomtype, int *alist, int nx, int N, int dim, int nelements)
 {
   int k = 0;
   for (int i = 0; i < nx; i++) {
     double *ri = &r[i * dim];
     int inc = 0;
+    int itype = atomtype[i] - 1;
     for (int j = 0; j < N; j++) {
-      double *rj = &r[dim * j];
-      double rijsq = (ri[0] - rj[0]) * (ri[0] - rj[0]) + (ri[1] - rj[1]) * (ri[1] - rj[1]) +
-          (ri[2] - rj[2]) * (ri[2] - rj[2]);
+      double *rj = &r[j * dim];
+      double rijsq = (ri[0] - rj[0]) * (ri[0] - rj[0]) + 
+                     (ri[1] - rj[1]) * (ri[1] - rj[1]) + 
+                     (ri[2] - rj[2]) * (ri[2] - rj[2]);
+      
+      int jtype = atomtype[alist[j]] - 1;
+      double rcut_tij = rcut[jtype + itype * nelements];
+      double rcutsq = rcut_tij * rcut_tij;
+      
       if ((rijsq > SMALL) && (rijsq <= rcutsq)) {
         inc += 1;
         neighlist[k] = j;
@@ -1155,29 +1191,8 @@ int FitPOD::podneighborlist(int *neighlist, int *numneigh, double *r, double rcu
   return k;
 }
 
-int FitPOD::podfullneighborlist(double *y, int *alist, int *neighlist, int *numneigh,
-                                int *numneighsum, double *x, double *a1, double *a2, double *a3,
-                                double rcut, int *pbc, int nx)
-{
-  double rcutsq = rcut * rcut;
-  int dim = 3, nl = 0, nn = 0;
-
-  // number of lattices
-
-  nl = latticecoords(y, alist, x, a1, a2, a3, rcut, pbc, nx);
-  int N = nx * nl;
-
-  // total number of neighbors
-
-  nn = podneighborlist(neighlist, numneigh, y, rcutsq, nx, N, dim);
-
-  podCumsum(numneighsum, numneigh, nx + 1);
-
-  return nn;
-}
-
-void FitPOD::estimate_memory_neighborstruct(const datastruct &data, int *pbc, double rcut,
-                                            int nelements)
+void FitPOD::estimate_memory_neighborstruct(const datastruct &data, int *pbc,
+                                            double rcutmax, int nelements)
 {
   int dim = 3;
   int natom_max = data.num_atom_max;
@@ -1189,12 +1204,12 @@ void FitPOD::estimate_memory_neighborstruct(const datastruct &data, int *pbc, do
     double *a1 = &lattice[0];
     double *a2 = &lattice[3];
     double *a3 = &lattice[6];
-    if (pbc[0] == 1) m = (int) ceil(rcut / a1[0]);
-    if (pbc[1] == 1) n = (int) ceil(rcut / a2[1]);
-    if (pbc[2] == 1) p = (int) ceil(rcut / a3[2]);
+
+    if (pbc[0] == 1) m = (int) ceil(rcutmax / a1[0]);
+    if (pbc[1] == 1) n = (int) ceil(rcutmax / a2[1]);
+    if (pbc[2] == 1) p = (int) ceil(rcutmax / a3[2]);
 
     // number of lattices
-
     nl = (2 * m + 1) * (2 * n + 1) * (2 * p + 1);
     ny = MAX(ny, dim * natom * nl);
     na = MAX(na, natom * nl);
@@ -1245,20 +1260,23 @@ void FitPOD::estimate_memory_fastpod(const datastruct &data)
 {
   int dim = 3;
   int *pbc = fastpodptr->pbc;
-  double rcut = fastpodptr->rcut;
+  double *rcut = fastpodptr->rcut;
 
   int Nij = 0, Nijmax = 0;
   for (int ci = 0; ci < (int) data.num_atom.size(); ci++) {
     int natom = data.num_atom[ci];
     int natom_cumsum = data.num_atom_cumsum[ci];
+    int *atomtype = &data.atomtype[natom_cumsum];
     double *x = &data.position[dim * natom_cumsum];
     double *lattice = &data.lattice[9 * ci];
     double *a1 = &lattice[0];
     double *a2 = &lattice[3];
     double *a3 = &lattice[6];
 
-    Nij = podfullneighborlist(nb.y, nb.alist, nb.pairlist, nb.pairnum, nb.pairnum_cumsum, x, a1, a2,
-                              a3, rcut, pbc, natom);
+    Nij = podfullneighborlist(nb.y, nb.alist, nb.pairlist, nb.pairnum, nb.pairnum_cumsum, 
+                                       x, a1, a2, a3, rcut, pbc, atomtype, natom, 
+                                       fastpodptr->nelements);
+
     Nijmax = MAX(Nijmax, Nij);
   }
 
@@ -1269,7 +1287,7 @@ void FitPOD::local_descriptors_fastpod(const datastruct &data, int ci)
 {
   int dim = 3;
   int *pbc = fastpodptr->pbc;
-  double rcut = fastpodptr->rcut;
+  double *rcut = fastpodptr->rcut;
 
   int natom = data.num_atom[ci];
   int natom_cumsum = data.num_atom_cumsum[ci];
@@ -1281,8 +1299,9 @@ void FitPOD::local_descriptors_fastpod(const datastruct &data, int ci)
   double *a3 = &lattice[6];
 
   // neighbor list
-  podfullneighborlist(nb.y, nb.alist, nb.pairlist, nb.pairnum, nb.pairnum_cumsum, position, a1, a2,
-                      a3, rcut, pbc, natom);
+  podfullneighborlist(nb.y, nb.alist, nb.pairlist, nb.pairnum, nb.pairnum_cumsum, 
+                                       position, a1, a2, a3, rcut, pbc, atomtype, natom, 
+                                       fastpodptr->nelements);
 
   if (desc.nClusters > 1) {
     fastpodptr->descriptors(desc.gd, desc.gdd, desc.bd, desc.pd, nb.y, atomtype, nb.alist,
@@ -1297,7 +1316,7 @@ void FitPOD::base_descriptors_fastpod(const datastruct &data, int ci)
 {
   int dim = 3;
   int *pbc = fastpodptr->pbc;
-  double rcut = fastpodptr->rcut;
+  double *rcut = fastpodptr->rcut;
 
   int natom = data.num_atom[ci];
   int natom_cumsum = data.num_atom_cumsum[ci];
@@ -1309,8 +1328,9 @@ void FitPOD::base_descriptors_fastpod(const datastruct &data, int ci)
   double *a3 = &lattice[6];
 
   // neighbor list
-  podfullneighborlist(nb.y, nb.alist, nb.pairlist, nb.pairnum, nb.pairnum_cumsum, position, a1, a2,
-                      a3, rcut, pbc, natom);
+  podfullneighborlist(nb.y, nb.alist, nb.pairlist, nb.pairnum, nb.pairnum_cumsum, 
+                                       position, a1, a2, a3, rcut, pbc, atomtype, natom, 
+                                       fastpodptr->nelements);
 
   fastpodptr->base_descriptors(desc.bd, nb.y, atomtype, nb.alist, nb.pairlist, nb.pairnum_cumsum,
                                natom);
@@ -1337,36 +1357,39 @@ void FitPOD::descriptors_calculation(const datastruct &data)
 
       std::string filename0 =
           data.data_path + "/basedescriptors_config" + std::to_string(ci + 1) + ".bin";
-      SafeFilePtr fp0 = fopen(filename0.c_str(), "wb");
+      FILE *fp0 = fopen(filename0.c_str(), "wb");
       sz[0] = (double) data.num_atom[ci];
       sz[1] = (double) fastpodptr->Mdesc;
-      fwrite(reinterpret_cast<char *>(sz), sizeof(double) * 2, 1, fp0);
+      fwrite(reinterpret_cast<char *>(sz), sizeof(double) * (2), 1, fp0);
       fwrite(reinterpret_cast<char *>(desc.bd),
              sizeof(double) * (data.num_atom[ci] * fastpodptr->Mdesc), 1, fp0);
+      fclose(fp0);
 
       if (desc.nClusters > 1) {
         std::string filename1 =
             data.data_path + "/environmentdescriptors_config" + std::to_string(ci + 1) + ".bin";
-        SafeFilePtr fp1 = fopen(filename1.c_str(), "wb");
+        FILE *fp1 = fopen(filename1.c_str(), "wb");
         sz[0] = (double) data.num_atom[ci];
         sz[1] = (double) fastpodptr->nClusters;
-        fwrite(reinterpret_cast<char *>(sz), sizeof(double) * 2, 1, fp1);
+        fwrite(reinterpret_cast<char *>(sz), sizeof(double) * (2), 1, fp1);
         fwrite(reinterpret_cast<char *>(desc.pd),
                sizeof(double) * (data.num_atom[ci] * fastpodptr->nClusters), 1, fp1);
+        fclose(fp1);
       }
 
       std::string filename =
           data.data_path + "/globaldescriptors_config" + std::to_string(ci + 1) + ".bin";
-      SafeFilePtr fp = fopen(filename.c_str(), "wb");
+      FILE *fp = fopen(filename.c_str(), "wb");
 
       sz[0] = (double) data.num_atom[ci];
       sz[1] = (double) desc.nCoeffAll;
-      fwrite(reinterpret_cast<char *>(sz), sizeof(double) * 2, 1, fp);
+      fwrite(reinterpret_cast<char *>(sz), sizeof(double) * (2), 1, fp);
       fwrite(reinterpret_cast<char *>(desc.gd), sizeof(double) * (desc.nCoeffAll), 1, fp);
       if (compute_descriptors == 2) {
         fwrite(reinterpret_cast<char *>(desc.gdd),
                sizeof(double) * (3 * data.num_atom[ci] * desc.nCoeffAll), 1, fp);
       }
+      fclose(fp);
     }
   }
 
@@ -1374,18 +1397,29 @@ void FitPOD::descriptors_calculation(const datastruct &data)
     utils::logmesg(lmp, "**************** End Calculating Descriptors ****************\n");
 }
 
+
+
 void FitPOD::environment_cluster_calculation(const datastruct &data)
 {
   if (comm->me == 0)
     utils::logmesg(
         lmp, "**************** Begin Calculating Environment Descriptor Matrix ****************\n");
-
+  
   int nComponents = fastpodptr->nComponents;
   int Mdesc = fastpodptr->Mdesc;
   int nClusters = fastpodptr->nClusters;
+  double nActiveClusters = fastpodptr->nActiveClusters;
   int nelements = fastpodptr->nelements;
-  memory->create(fastpodptr->Centroids, nClusters * nComponents * nelements, "fitpod:centroids");
+  
   memory->create(fastpodptr->Proj, Mdesc * nComponents * nelements, "fitpod:P");
+  memory->create(fastpodptr->Centroids, nClusters * nComponents * nelements, "fitpod:centroids");
+  
+  memory->create(fastpodptr->ClusterFcut, nClusters * nComponents * nelements, "fitpod:ClusterFcut");
+  memory->create(fastpodptr->ClusterDFcut, nClusters * nComponents * nelements, "fitpod:ClusterDFcut");
+  memory->create(fastpodptr->invLeftClusterRcut2, nClusters * nComponents * nelements, "fitpod:invLeftClusterRcut2");
+  memory->create(fastpodptr->invRightClusterRcut2, nClusters * nComponents * nelements, "fitpod:invRightClusterRcut2");
+  memory->create(fastpodptr->leftClusterEdges, nClusters * nComponents * nelements, "fitpod:leftClusterEdges");
+  memory->create(fastpodptr->rightClusterEdges, nClusters * nComponents * nelements, "fitpod:rightClusterEdges");
 
   int nAtoms = 0;
   int nTotalAtoms = 0;
@@ -1459,7 +1493,7 @@ void FitPOD::environment_cluster_calculation(const datastruct &data)
         int elem = atomtype[n] - 1;    // offset by 1 to match the element index in the C++ code
         nElemAtomsCount[elem] += 1;
         int k = nElemAtomsCumSum[elem] + nElemAtomsCount[elem] - 1;
-        for (int m = 0; m < Mdesc; m++) basedescmatrix[m + Mdesc * k] = desc.bd[n + natom * m];
+        for (int m = 0; m < Mdesc; m++) basedescmatrix[m + Mdesc * k] = desc.bd[n + natom * (m)];
       }
     }
   }
@@ -1468,12 +1502,14 @@ void FitPOD::environment_cluster_calculation(const datastruct &data)
   for (int elem = 0; elem < nelements; elem++) {    // loop over each element
     nAtoms = nElemAtoms[elem];
     nTotalAtoms = nAtoms;
+
     MPI_Allreduce(MPI_IN_PLACE, &nTotalAtoms, 1, MPI_INT, MPI_SUM, world);
 
     double *descmatrix = &basedescmatrix[Mdesc * nElemAtomsCumSum[elem]];
     double *Proj = &fastpodptr->Proj[nComponents * Mdesc * elem];
     double *centroids = &fastpodptr->Centroids[nComponents * nClusters * elem];
 
+    
     // Calculate covariance matrix A = basedescmatrix*basedescmatrix'. A is a Mdesc x Mdesc matrix
     DGEMM(&chn, &cht, &Mdesc, &Mdesc, &nAtoms, &alpha, descmatrix, &Mdesc, descmatrix, &Mdesc,
           &beta, A, &Mdesc);
@@ -1498,7 +1534,7 @@ void FitPOD::environment_cluster_calculation(const datastruct &data)
       for (int i = 0; i < Mdesc; i++)
         Proj[j + nComponents * i] =
             A[i + Mdesc * (Mdesc - j - 1)] * sqrt(fabs(b[(Mdesc - j - 1)] / Lambda[0]));
-
+    
     // Calculate principal compoment analysis matrix pca = P*descmatrix. pca is a nComponents x nAtoms matrix
     DGEMM(&chn, &chn, &nComponents, &nAtoms, &Mdesc, &alpha, Proj, &nComponents, descmatrix, &Mdesc,
           &beta, pca, &nComponents);
@@ -1519,7 +1555,12 @@ void FitPOD::environment_cluster_calculation(const datastruct &data)
     int max_iter = 100;
     KmeansClustering(pca, centroids, assignments, clusterSizes, nAtoms, nClusters, nComponents,
                      max_iter);
+    
+    if (nComponents == 1) {
+      std::sort(centroids, centroids + nClusters);
+    }
 
+    
     if (save == 1) {
       if (comm->me == 0) {
         savematrix2binfile(data.filenametag + "_eigenvector_matrix_elem" +
@@ -1540,6 +1581,10 @@ void FitPOD::environment_cluster_calculation(const datastruct &data)
                                 ".bin",
                             assignments, nAtoms, 1);
     }
+  }
+
+  if (nActiveClusters >= 2) {
+    fastpodptr->calculateClusterEdges(nClusters, nActiveClusters, nComponents, nelements);
   }
 
   memory->destroy(basedescmatrix);
@@ -1625,12 +1670,13 @@ void FitPOD::least_squares_fit(const datastruct &data)
       if (save_descriptors > 0) {
         std::string filename =
             data.data_path + "/descriptors_config" + std::to_string(ci + 1) + ".bin";
-        SafeFilePtr fp = fopen(filename.c_str(), "wb");
+        FILE *fp = fopen(filename.c_str(), "wb");
         fwrite(reinterpret_cast<char *>(desc.gd), sizeof(double) * (desc.nCoeffAll), 1, fp);
         if (save_descriptors == 2) {
           fwrite(reinterpret_cast<char *>(desc.gdd),
                  sizeof(double) * (3 * data.num_atom[ci] * desc.nCoeffAll), 1, fp);
         }
+        fclose(fp);
       }
 
       // assemble the least-squares linear system
@@ -1695,7 +1741,7 @@ double FitPOD::energyforce_calculation_fastpod(double *force, const datastruct &
 {
   int dim = 3;
   int *pbc = fastpodptr->pbc;
-  double rcut = fastpodptr->rcut;
+  double *rcut = fastpodptr->rcut;
 
   int natom = data.num_atom[ci];
   int natom_cumsum2 = data.num_atom_cumsum[ci];
@@ -1706,8 +1752,9 @@ double FitPOD::energyforce_calculation_fastpod(double *force, const datastruct &
   double *a2 = &lattice[3];
   double *a3 = &lattice[6];
 
-  podfullneighborlist(nb.y, nb.alist, nb.pairlist, nb.pairnum, nb.pairnum_cumsum, position, a1, a2,
-                      a3, rcut, pbc, natom);
+  podfullneighborlist(nb.y, nb.alist, nb.pairlist, nb.pairnum, nb.pairnum_cumsum, 
+                                       position, a1, a2, a3, rcut, pbc, atomtype, natom, 
+                                       fastpodptr->nelements);
 
   double energy = fastpodptr->energyforce(force, nb.y, atomtype, nb.alist, nb.pairlist,
                                           nb.pairnum_cumsum, natom);
@@ -1727,9 +1774,10 @@ void FitPOD::print_analysis(const datastruct &data, double *outarray, double *er
   std::string filename_analysis =
       fmt::format("{}_{}_analysis.pod", data.filenametag, data.training ? "training" : "test");
 
-  SafeFilePtr fp_errors(fopen(filename_errors.c_str(), "w"));
-  SafeFilePtr fp_analysis(fopen(filename_analysis.c_str(), "w"));
-  if (!fp_errors || !fp_analysis) return;
+  FILE *fp_errors = nullptr;
+  FILE *fp_analysis = nullptr;
+  fp_errors = fopen(filename_errors.c_str(), "w");
+  fp_analysis = fopen(filename_analysis.c_str(), "w");
 
   std::string mystr =
       fmt::format("**************** Begin of Error Analysis for the {} Data Set ****************\n",
@@ -1794,6 +1842,9 @@ void FitPOD::print_analysis(const datastruct &data, double *outarray, double *er
 
   utils::logmesg(lmp, mystr);
   utils::print(fp_errors, mystr);
+
+  fclose(fp_errors);
+  fclose(fp_analysis);
 }
 
 void FitPOD::error_analysis(const datastruct &data, double *coeff)
@@ -1948,9 +1999,11 @@ void FitPOD::energyforce_calculation(const datastruct &data)
         force[0] = energy;
         std::string filename = "energyforce_config" + std::to_string(ci + 1) + ".bin";
 
-        SafeFilePtr fp = fopen(filename.c_str(), "wb");
+        FILE *fp = fopen(filename.c_str(), "wb");
 
         fwrite(reinterpret_cast<char *>(force.data()), sizeof(double) * (1 + nforce), 1, fp);
+
+        fclose(fp);
       }
       ci += 1;
     }
@@ -2148,13 +2201,16 @@ void FitPOD::assignPointsToClusters(double *points, double *centroids, int *assi
                                     int DIMENSIONS)
 {
   // Initialize clusterSizes to zero
-  for (int i = 0; i < NUM_CLUSTERS; i++) { clusterSizes[i] = 0; }
+  // should not(?) be there for HDBSCAN
+  for (int i = 0; i < NUM_CLUSTERS; i++) clusterSizes[i] = 0;
 
   for (int i = 0; i < NUM_POINTS; i++) {
-    double minDist = squareDistance(&points[i * DIMENSIONS], &centroids[0], DIMENSIONS);
+    double minDist = INFINITY;
+    //double minDist = squareDistance(&points[i * DIMENSIONS], &centroids[0], DIMENSIONS);
     int closestCluster = 0;
-    for (int j = 1; j < NUM_CLUSTERS; j++) {
-      double dist = squareDistance(&points[i * DIMENSIONS], &centroids[j * DIMENSIONS], DIMENSIONS);
+    for (int j = 0; j < NUM_CLUSTERS; j++) {
+      double dist = sqrt(squareDistance(&points[i * DIMENSIONS],
+                                        &centroids[j * DIMENSIONS], DIMENSIONS));
       if (dist < minDist) {
         minDist = dist;
         closestCluster = j;
@@ -2170,7 +2226,7 @@ void FitPOD::updateCentroids(double *points, double *centroids, int *assignments
                              int NUM_POINTS, int NUM_CLUSTERS, int DIMENSIONS)
 {
   // Reset centroids for recalculation
-  for (int i = 0; i < NUM_CLUSTERS * DIMENSIONS; i++) { centroids[i] = 0.0; }
+  for (int i = 0; i < NUM_CLUSTERS * DIMENSIONS; i++) centroids[i] = 0.0;
 
   // Accumulate sum of points in each cluster
   for (int i = 0; i < NUM_POINTS; i++) {
@@ -2193,36 +2249,175 @@ void FitPOD::updateCentroids(double *points, double *centroids, int *assignments
 }
 
 // Function for K-means clustering
-void FitPOD::KmeansClustering(double *points, double *centroids, int *assignments,
-                              int *clusterSizes, int NUM_POINTS, int NUM_CLUSTERS, int DIMENSIONS,
-                              int MAX_ITER)
+//void FitPOD::KmeansClustering(double *points, double *centroids, int *assignments, int *clusterSizes,
+//                              int NUM_POINTS, int NUM_CLUSTERS, int DIMENSIONS, int MAX_ITER)
+//{
+//  for (int iter = 0; iter < MAX_ITER; iter++) {
+//    assignPointsToClusters(points, centroids, assignments, clusterSizes,
+//                            NUM_POINTS, NUM_CLUSTERS, DIMENSIONS);
+//    updateCentroids(points, centroids, assignments, clusterSizes,
+//                            NUM_POINTS, NUM_CLUSTERS, DIMENSIONS);
+//  }
+//}
+
+// Function for K-means clustering
+void FitPOD::KmeansClustering(double *points, double *centroids, int *assignments, int *clusterSizes,
+                              int NUM_POINTS, int NUM_CLUSTERS, int DIMENSIONS, int MAX_ITER)
 {
-  for (int iter = 0; iter < MAX_ITER; iter++) {
-    assignPointsToClusters(points, centroids, assignments, clusterSizes, NUM_POINTS, NUM_CLUSTERS,
-                           DIMENSIONS);
-    updateCentroids(points, centroids, assignments, clusterSizes, NUM_POINTS, NUM_CLUSTERS,
-                    DIMENSIONS);
-  }
+    std::vector<double> prevCentroids(NUM_CLUSTERS * DIMENSIONS);
+    double CONV_THRES = 1e-4;
+    bool converged = false;
+    
+    for (int iter = 0; iter < MAX_ITER && !converged; iter++) {
+        // Store previous centroids for convergence check
+        for (int i = 0; i < NUM_CLUSTERS * DIMENSIONS; i++) {
+            prevCentroids[i] = centroids[i];
+        }
+        
+        assignPointsToClusters(points, centroids, assignments, clusterSizes,
+                                NUM_POINTS, NUM_CLUSTERS, DIMENSIONS);
+        updateCentroids(points, centroids, assignments, clusterSizes,
+                        NUM_POINTS, NUM_CLUSTERS, DIMENSIONS);
+        
+        // Check for convergence
+        double maxShift = 0.0;
+        for (int i = 0; i < NUM_CLUSTERS; i++) {
+            double shift = 0.0;
+            for (int j = 0; j < DIMENSIONS; j++) {
+                double diff = centroids[i * DIMENSIONS + j] - prevCentroids[i * DIMENSIONS + j];
+                shift += diff * diff;
+            }
+            if (shift > maxShift) maxShift = shift;
+        }
+
+        if (maxShift <= CONV_THRES) {
+            converged = true;
+        }
+    }
+}
+
+void FitPOD::normalize_pca_components(double* pca, double* PcaMean, double* PcaInvStd, 
+                             int nAtoms, int nComponents, int nTotalAtoms, MPI_Comm world) {
+    // Initialize local accumulators for the mean
+    std::vector<double> localMean(nComponents, 0.0);
+    
+    // Compute local sums of each PCA component
+    for (int i = 0; i < nAtoms; i++) {
+        for (int k = 0; k < nComponents; k++) {
+            localMean[k] += pca[k + nComponents * i];
+        }
+    }
+
+    // Reduce local sums to global sums
+    std::vector<double> globalMean(nComponents, 0.0);
+    MPI_Allreduce(localMean.data(), globalMean.data(), nComponents, MPI_DOUBLE, MPI_SUM, world);
+
+    // Compute global means and store them
+    for (int k = 0; k < nComponents; k++) {
+        PcaMean[k] = globalMean[k] / ((double) nTotalAtoms);
+    }
+
+    // Initialize local accumulators for the variance
+    std::vector<double> localVar(nComponents, 0.0);
+
+    // Compute local sums of squared deviations
+    for (int i = 0; i < nAtoms; i++) {
+        for (int k = 0; k < nComponents; k++) {
+            double diff = pca[k + nComponents * i] - PcaMean[k];
+            localVar[k] += diff * diff;
+        }
+    }
+
+    // Reduce local variances to global variances
+    std::vector<double> globalVar(nComponents, 0.0);
+    MPI_Allreduce(localVar.data(), globalVar.data(), nComponents, MPI_DOUBLE, MPI_SUM, world);
+
+    // Compute inverse standard deviations and store them
+    for (int k = 0; k < nComponents; k++) {
+        double sigma = sqrt(globalVar[k] / ((double) nTotalAtoms));
+        PcaInvStd[k] = 1.0 / (sigma + std::numeric_limits<double>::epsilon());
+    }
+
+    // Normalize pca
+    for (int i = 0; i < nAtoms; i++) {
+        for (int k = 0; k < nComponents; k++) {
+            pca[k + nComponents * i] =
+                (pca[k + nComponents * i] - PcaMean[k]) * PcaInvStd[k];
+        }
+    }
+}
+
+void FitPOD::standardize_descriptors(double* descmatrix, double* DescMean, double* DescInvStd,
+                            int nAtoms, int Mdesc, int nTotalAtoms, MPI_Comm world) {
+    // Initialize local accumulators for descriptor means
+    std::vector<double> localDescMean(Mdesc, 0.0);
+    
+    // Compute local sums of each descriptor
+    for (int i = 0; i < nAtoms; i++) {
+        for (int k = 0; k < Mdesc; k++) {
+            localDescMean[k] += descmatrix[k + Mdesc * i];
+        }
+    }
+
+    // Reduce local sums to global sums
+    std::vector<double> globalDescMean(Mdesc, 0.0);
+    MPI_Allreduce(localDescMean.data(), globalDescMean.data(), Mdesc, MPI_DOUBLE, MPI_SUM, world);
+
+    // Compute global means and store them
+    for (int k = 0; k < Mdesc; k++) {
+        DescMean[k] = globalDescMean[k] / ((double) nTotalAtoms);
+    }
+
+    // Initialize local accumulators for descriptor variances
+    std::vector<double> localDescVar(Mdesc, 0.0);
+
+    // Compute local sums of squared deviations
+    for (int i = 0; i < nAtoms; i++) {
+        for (int k = 0; k < Mdesc; k++) {
+            double diff = descmatrix[k + Mdesc * i] - DescMean[k];
+            localDescVar[k] += diff * diff;
+        }
+    }
+
+    // Reduce local variances to global variances
+    std::vector<double> globalDescVar(Mdesc, 0.0);
+    MPI_Allreduce(localDescVar.data(), globalDescVar.data(), Mdesc, MPI_DOUBLE, MPI_SUM, world);
+
+    // Compute inverse standard deviations and store them
+    for (int k = 0; k < Mdesc; k++) {
+        double sigma = sqrt(globalDescVar[k] / ((double) nTotalAtoms));
+        DescInvStd[k] = 1.0 / (sigma + std::numeric_limits<double>::epsilon());
+    }
+
+    // Standardize descriptors
+    for (int i = 0; i < nAtoms; i++) {
+        for (int k = 0; k < Mdesc; k++) {
+            descmatrix[k + Mdesc * i] = 
+                (descmatrix[k + Mdesc * i] - DescMean[k]) * DescInvStd[k];
+        }
+    }
 }
 
 void FitPOD::savematrix2binfile(const std::string &filename, double *A, int nrows, int ncols)
 {
-  SafeFilePtr fp = fopen(filename.c_str(), "wb");
+  FILE *fp = fopen(filename.c_str(), "wb");
   double sz[2];
   sz[0] = (double) nrows;
   sz[1] = (double) ncols;
-  fwrite(reinterpret_cast<char *>(sz), sizeof(double) * 2, 1, fp);
+  fwrite(reinterpret_cast<char *>(sz), sizeof(double) * (2), 1, fp);
   fwrite(reinterpret_cast<char *>(A), sizeof(double) * (nrows * ncols), 1, fp);
+  fclose(fp);
 }
 
 void FitPOD::saveintmatrix2binfile(const std::string &filename, int *A, int nrows, int ncols)
 {
-  SafeFilePtr fp = fopen(filename.c_str(), "wb");
+  FILE *fp = fopen(filename.c_str(), "wb");
   int sz[2];
   sz[0] = nrows;
   sz[1] = ncols;
-  fwrite(reinterpret_cast<char *>(sz), sizeof(int) * 2, 1, fp);
+  fwrite(reinterpret_cast<char *>(sz), sizeof(int) * (2), 1, fp);
   fwrite(reinterpret_cast<char *>(A), sizeof(int) * (nrows * ncols), 1, fp);
+  fclose(fp);
 }
 
 void FitPOD::savedata2textfile(const std::string &filename, const std::string &text, double *A,
@@ -2230,7 +2425,7 @@ void FitPOD::savedata2textfile(const std::string &filename, const std::string &t
 {
   if (comm->me == 0) {
     int precision = 15;
-    SafeFilePtr fp = fopen(filename.c_str(), "w");
+    FILE *fp = fopen(filename.c_str(), "w");
     if (dim == 1) {
       utils::print(fp, text, n);
       for (int i = 0; i < n; i++) utils::print(fp, "{:<10.{}f} \n", A[i], precision);
@@ -2242,5 +2437,6 @@ void FitPOD::savedata2textfile(const std::string &filename, const std::string &t
         utils::print(fp, "   \n");
       }
     }
+    fclose(fp);
   }
 }
