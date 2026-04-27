@@ -230,6 +230,7 @@ class EAPOD : protected Pointers {
   double peratom_environment_descriptors(double *cb, double *bd, double *tm, int *ti);
   double peratom_local_environment_descriptors(double *cb, double *bd, double *tm, int *ti);
   double peratom_local_environment_descriptors2(double *cb, double *bd, double *tm, int *ti);
+  double peratom_local_environment_descriptors3(double *cb, double *bd, double *tm, int *ti);
 
   void peratomenvironment_descriptors(double *P, double *dP_dR, double *B, double *dB_dR,
                                       double *tmp, int elem, int nNeighbors);

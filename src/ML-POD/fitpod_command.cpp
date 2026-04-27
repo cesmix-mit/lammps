@@ -1585,7 +1585,7 @@ void FitPOD::environment_cluster_calculation(const datastruct &data)
     }
   }
 
-  if (nActiveClusters >= 2) {
+  if (nActiveClusters >= 1.0) {
     fastpodptr->calculateClusterEdges(nClusters, nActiveClusters, nComponents, nelements);
   }
 
@@ -1893,7 +1893,7 @@ void FitPOD::training_cluster_calculation(const datastruct &data)
     }
   }
 
-  if (nActiveClusters >= 2) {
+  if (nActiveClusters >= 1.0) {
     fastpodptr->calculateClusterEdges(nClusters, nActiveClusters, nComponents, nelements);
   }
 

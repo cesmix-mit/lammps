@@ -468,7 +468,7 @@ void PairPODKokkos<DeviceType>::copy_from_pod_class(EAPOD *podptr)
     for (int i=0; i<nClusters * nComponents * nelements; i++) h_Centroids[i] = podptr->Centroids[i];
     Kokkos::deep_copy(Centroids, h_Centroids);
 
-    if (nActiveClusters >= 2) {
+    if (nActiveClusters >= 1.0) {
       MemKK::realloc_kokkos(invLeftClusterRcut2, "pair_pod:invLeftClusterRcut2",  nClusters * nComponents * nelements);
       auto h_invLeftClusterRcut2 = Kokkos::create_mirror_view(invLeftClusterRcut2);
       for (int i=0; i<nClusters * nComponents * nelements; i++) h_invLeftClusterRcut2[i] = podptr->invLeftClusterRcut2[i];
@@ -514,11 +514,9 @@ void PairPODKokkos<DeviceType>::copy_from_pod_class(EAPOD *podptr)
 
       for (int i = 0; i < nks; i++) h_clusterFcut[i] = 0.0;
       for (int i = 0; i < nks; i++) h_dD_dpca[i] = 0.0;
-      //for (int i = 0; i < nks; i++) h_clusterRcut2[i] = 0.0;
 
       Kokkos::deep_copy(clusterFcut,h_clusterFcut);
       Kokkos::deep_copy(dDdpca,h_dD_dpca);
-      //Kokkos::deep_copy(clusterRcut2,h_clusterRcut2);
     }
   }
 
@@ -1638,7 +1636,7 @@ void PairPODKokkos<DeviceType>::blockatom_base_coefficients(t_pod_1d ei, t_pod_1
   });
 }
 
-// hat cluster activation function
+// hat cluster activation function (original)
 template<class DeviceType>
 void PairPODKokkos<DeviceType>::blockatom_local_environment_descriptors(t_pod_1d ei, t_pod_1d cb, t_pod_1d B, int Ni)
 {
@@ -1874,6 +1872,207 @@ void PairPODKokkos<DeviceType>::blockatom_local_environment_descriptors(t_pod_1d
 
 }
 
+
+// hat cluster activation function (new simplified)
+template<class DeviceType>
+void PairPODKokkos<DeviceType>::blockatom_local_environment_descriptors2(t_pod_1d ei, t_pod_1d cb, t_pod_1d B, int Ni)
+{
+  auto P = Kokkos::subview(pd, std::make_pair(0, Ni * nClusters));
+  auto cp = Kokkos::subview(pd, std::make_pair(Ni * nClusters, 2 * Ni * nClusters));
+  auto D = Kokkos::subview(pd, std::make_pair(2 * Ni * nClusters, 3 * Ni * nClusters));
+  auto pca = Kokkos::subview(pd, std::make_pair(3 * Ni * nClusters, 3 * Ni * nClusters + Ni * nComponents));
+  auto sumD = Kokkos::subview(pd, std::make_pair(3 * Ni * nClusters + Ni * nComponents, 3 * Ni * nClusters + Ni * nComponents + Ni));
+
+  auto proj = Proj;
+  auto cent = Centroids;
+  auto cefs = coefficients;
+  auto tyai = typeai;
+
+  auto ledges = leftClusterEdges;
+  auto redges = rightClusterEdges;
+  auto invlcut2 = invLeftClusterRcut2;
+  auto invrcut2 = invRightClusterRcut2;
+
+  auto ks = ksarray;
+  auto ke = kearray;
+
+  auto fcut = clusterFcut;
+  auto dD_dpca = dDdpca;
+
+  int nCom = nComponents;
+  int nCls = nClusters;
+  int nDes = Mdesc;
+  int nCoeff = nCoeffPerElement;
+  int cSB = clusterSearchBox;
+
+  // Calculate PCA descriptors
+  int totalIterations = Ni*nCom;
+  Kokkos::parallel_for("pca", Kokkos::RangePolicy<DeviceType>(0,totalIterations), KOKKOS_LAMBDA(int idx) {
+    int i = idx % Ni;
+    int k = idx / Ni;
+    int typei = tyai[i]-1;
+    int ncdt = nCom*nDes*typei;
+    
+    double sum = 0.0;
+    for (int m = 0; m < nDes; m++) {
+      sum += proj[k + nCom*m + ncdt] * B[i + Ni*m];
+    }
+    pca[i + Ni*k] = sum;
+  });
+
+  // Main routine to find active clusters
+  Kokkos::parallel_for("active_clusters", Kokkos::RangePolicy<DeviceType>(0, Ni), KOKKOS_LAMBDA(int i) {
+    int typei = tyai[i]-1;
+    int ncct = nCls*nCom*typei;
+
+    // Binary search for leftmost index of active cluster
+    int left = 0;
+    int right = nCls;
+    while (left < right) {
+      int mid = (left + right) >> 1;
+      if (ledges[mid + ncct] <= pca[i + Ni*0]) {
+        left = mid + 1;
+      } else {
+        right = mid;
+      }
+    }
+    left--;
+    
+    int kl = (left - cSB > 0) ? (left - cSB) : 0;
+    int kr = (left + cSB < nCls) ? (left + cSB) : nCls;
+    
+    // Find first active cluster
+    for (int k = kl; k < kr; k++) {
+      if ( (pca[i + Ni*0] > ledges[k + ncct]) && (pca[i + Ni*0] < redges[k + ncct]) ) {
+        kl = k;
+        ks[i] = k;
+        break;
+      }
+    }
+    
+    // Find last active cluster
+    for (int k = kr-1; k >= kl; k--) {
+      if ( (pca[i + Ni*0] > ledges[k + ncct]) && (pca[i + Ni*0] < redges[k + ncct]) ) {
+        ke[i] = k + 1;
+        break;
+      }
+    }
+  });
+
+  Kokkos::parallel_for("inverse_square_distance", Kokkos::RangePolicy<DeviceType>(0, Ni), KOKKOS_LAMBDA(int i) {
+    // Calculate distances and probabilities for each cluster
+    int kl = ks[i];
+    int kr = ke[i];
+
+    int typei = tyai[i]-1;
+    int ncct = nCls*nCom*typei;
+
+    for (int j = kl; j < kr; j++) {
+      double sum = 1e-20;
+      for (int n = 0; n < nCom; n++) {
+        double c = cent[n + j * nCom + ncct];
+        double p = pca[i + Ni * n];
+        sum += (p - c) * (p - c);
+      }
+      D[i + Ni*j] = 1.0/sum;
+    }
+  });
+
+  Kokkos::parallel_for("cluster_fcut", Kokkos::RangePolicy<DeviceType>(0, Ni), KOKKOS_LAMBDA(int i) {
+    int kl = ks[i];
+    int kr = ke[i];
+
+    int typei = tyai[i]-1;
+    int ncct = nCls*nCom*typei;
+
+    int pow_D = 4;
+    int pow_h = 4;
+    for (int j = kl; j < kr; j++) {
+      double Dj = D[i + Ni*j];
+      double D2 = 2.0 * Dj * Dj;
+      for (int n = 0; n < nCom; n++) {
+        double p = pca[i + Ni*n];
+        double c = cent[n + j * nCom + ncct];
+        double pc = p - c;
+        double invcut2 = 0.0;
+        if (pc > 0.0) {
+          invcut2 = invrcut2[j + n*nCls + ncct];
+        } else if (pc < 0.0) {
+          invcut2 = invlcut2[j + n*nCls + ncct];
+        }
+        double D_rcut = invcut2 / Dj;
+        double D_rcut_p = D_rcut*D_rcut*D_rcut*D_rcut;
+        double fhat = 1.0 - D_rcut_p;
+        double fhat_p = fhat*fhat*fhat*fhat;
+        double dD_rcut = pow_D * (D_rcut*D_rcut*D_rcut);
+        double dfhat = pow_h * (fhat*fhat*fhat);
+        double dhat_pca = dD_rcut * 2.0 * pc * invcut2;
+        double dfcut = dfhat * dhat_pca;
+        fcut[i + Ni*j + n*nCls] = fhat_p;
+        dD_dpca[i + Ni*j + n*nCls] = dfcut * Dj - fhat_p * D2 * pc;
+      }
+    }
+  });
+
+  Kokkos::parallel_for("probabilities", Kokkos::RangePolicy<DeviceType>(0, Ni), KOKKOS_LAMBDA(int i) {
+    int kl = ks[i];
+    int kr = ke[i];
+
+    double sum = 0;
+    for (int j = kl; j < kr; j++) sum += fcut[i + Ni*j] * D[i + Ni*j];
+    sum = 1.0 / sum;
+    sumD[i] = sum;
+    for (int j = kl; j < kr; j++) P[i + Ni*j] = fcut[i + Ni*j] * D[i + Ni*j] * sum;
+  });
+
+  Kokkos::parallel_for("atomic_energies_env_coefficients", Kokkos::RangePolicy<DeviceType>(0, Ni), KOKKOS_LAMBDA(int i) {
+    int kl = ks[i];
+    int kr = ke[i];
+    int nc = nCoeff*(tyai[i]-1);
+    double S1 = sumD[i];
+
+    ei[i] = 0.0;
+    for (int j = kl; j < kr; j++) {
+      double sumE = 0;
+      for (int m = 0; m<nDes; m++)
+        sumE += cefs[m + j*nDes + nc] * B[i + Ni*m];
+      ei[i] += sumE * P[i + Ni*j];
+      cp[i + Ni*j] = sumE * S1;
+    }
+    
+  });
+
+  totalIterations = Ni*nDes;
+  Kokkos::parallel_for("base_env_coefficients", Kokkos::RangePolicy<DeviceType>(0,totalIterations), KOKKOS_LAMBDA(int idx) {
+    int i = idx % Ni;
+    int m = idx / Ni;
+    int kl = ks[i];
+    int kr = ke[i];
+    int typei = tyai[i]-1;
+    int nc = nCoeff*typei;
+    int ncdt = nCom*nDes*typei;
+
+    double sum = 0.0;
+    for (int j = kl; j < kr; j++) {
+      double Pj = P[i + Ni*j];
+      double dP_dB = 0.0;
+      for (int k = kl; k < kr; k++) {
+        double dD_dB = 0.0;
+        for (int n = 0; n < nCom; n++) {
+          dD_dB += dD_dpca[i + Ni*k + n*nCls] * proj[n + m*nCom + ncdt];
+        }
+        dP_dB -= Pj * dD_dB;
+        if (k==j) dP_dB += dD_dB;
+      }
+      sum += cp[i + Ni*j] * dP_dB;
+      sum += cefs[m + j*nDes + nc] * Pj;
+    }
+    cb[i + Ni*m] = sum;
+  });
+
+}
+
+
 template<class DeviceType>
 void PairPODKokkos<DeviceType>::blockatom_environment_descriptors(t_pod_1d ei, t_pod_1d cb, t_pod_1d B, int Ni)
 {
@@ -1995,8 +2194,9 @@ void PairPODKokkos<DeviceType>::blockatom_energyforce(t_pod_1d l_ei, t_pod_1d l_
   comptime[4] += std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count()/1e6;
 
   begin = std::chrono::high_resolution_clock::now();
-  if (nActiveClusters >= 2) {
-    blockatom_local_environment_descriptors(l_ei, cb, bd, Ni);
+  if (nActiveClusters >= 1.0) {
+    //blockatom_local_environment_descriptors(l_ei, cb, bd, Ni);
+    blockatom_local_environment_descriptors2(l_ei, cb, bd, Ni);
   }
   else if (nClusters > 1) {
     blockatom_environment_descriptors(l_ei, cb, bd, Ni);

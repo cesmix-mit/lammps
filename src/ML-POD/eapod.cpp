@@ -301,10 +301,11 @@ void EAPOD::read_pod_file(const std::string &pod_file)
   if (P4 > 6) error->all(FLERR,"four-body angular degree must be equal or less than 6");
 
   if (nClusters < 1) nClusters = 1;
+  nActiveClusters += 1e-6;
   if (nClusters == 1) nActiveClusters = 0;
-  if ((nActiveClusters < 2) && (static_cast<int>(nActiveClusters) != 0)) error->all(FLERR,"average number of active clusters must be greater or equal to 2");
+  //if ((nActiveClusters < 2) && (static_cast<int>(nActiveClusters) != 0)) error->all(FLERR,"average number of active clusters must be greater or equal to 2");
   //if (nActiveClusters < 2) utils::logmesg(lmp, "WARNING: average number of active clusters should be greater or equal to 2. Simulation might be unstable.");
-  if ( (nActiveClusters >= 2) && (nComponents != 1)) error->all(FLERR,"local EA-POD with multiple PCA components is not supported yet. Please use one principal component.");
+  if ( (nActiveClusters >= 1.0) && (nComponents != 1)) error->all(FLERR,"local EA-POD with multiple PCA components is not supported yet. Please use one principal component.");
   //if ( (nActiveClusters > static_cast<float>(nClusters)) ) error->all(FLERR,"number of active clusters larger than number of total available clusters.");
   clusterSearchBox = 0.5 * nActiveClusters + 1;
 
@@ -631,7 +632,7 @@ void EAPOD::read_model_coeff_file(const std::string &coeff_file)
     if (ncentall != nComponents*nClusters*nelements)
         error->all(FLERR,"number of coefficients in the projection file is not correct");
     
-    if (nActiveClusters >= 2) {
+    if (nActiveClusters >= 1.0) {
       memory->create(invLeftClusterRcut2, ncentall, "pod:invLeftClusterRcut2");
       memory->create(invRightClusterRcut2, ncentall, "pod:invRightClusterRcut2");
       memory->create(leftClusterEdges, ncentall, "pod:leftClusterEdges");
@@ -1114,7 +1115,7 @@ double EAPOD::peratom_local_environment_descriptors(double *cb, double *bd, doub
   // Main Routine to find active clusters
   // Binary search for leftmost index of active cluster
   int left = 0;
-  int right = nClusters - 1;
+  int right = nClusters;
   while (left < right) {
     int mid = (left + right) >> 1;
     if (ledges[mid] <= pca[0]) {
@@ -1272,7 +1273,7 @@ double EAPOD::peratom_local_environment_descriptors2(double *cb, double *bd, dou
   // Binary search for index of leftmost active cluster
   // Scaling: O(log(log(nClusters)) + 1)
   int left = 0;
-  int right = nClusters - 1;
+  int right = nClusters;
   while (left < right) {
     int mid = (left + right) >> 1;
     if (ledges[mid] <= pca[0]) {
@@ -1303,6 +1304,12 @@ double EAPOD::peratom_local_environment_descriptors2(double *cb, double *bd, dou
       ke = k + 1;
       break;
     }
+  }
+
+  for (int j = 0; j < nClusters; j++) {
+    D[j] = 0.0;
+    fcut[j] = 0.0;
+    dD_dpca[j] = 0.0;
   }
 
   // inv square distances
@@ -1338,6 +1345,158 @@ double EAPOD::peratom_local_environment_descriptors2(double *cb, double *bd, dou
       double prefac = ( 1.0/fhat - 1.25 ) * fcutj * D2;
       fcut[j + n*nClusters] = fcutj;
       dD_dpca[j + n*nClusters] = prefac * pc;
+    }
+  }
+
+  // can be combined with above loops
+  double sumD = 0.0;
+  for (int j = ks; j < ke; j++) sumD += fcut[j] * D[j];
+  double S1 = 1.0/sumD;
+  // can be combined with below loops for ei and cp
+  for (int j = ks; j < ke; j++) P[j] = fcut[j] * D[j] * S1;
+
+  //double ei = ceffs[0];
+  double ei = 0.0;
+  for (int k = ks; k<ke; k++) {
+    double sumE = 0.0;
+    for (int m=0; m<Mdesc; m++)
+      sumE += ceffs[m + k*Mdesc]*bd[m];
+    ei += sumE * P[k];
+    cp[k] = sumE * S1;
+  }
+
+  for (int m = 0; m<Mdesc; m++) {
+    double sum = 0.0;
+    for (int j=ks; j<ke; j++) {
+      double dP_dB = 0.0;
+      double Pj = P[j];
+      for (int k = ks; k < ke; k++) {
+        double dD_dB = 0.0;
+        for (int n = 0; n < nComponents; n++) {
+          dD_dB += dD_dpca[k + n*nClusters] * proj[n + m*nComponents];
+        }
+        dP_dB -= Pj * dD_dB;
+        if (k==j) dP_dB += dD_dB;
+      }
+      sum += cp[j] * dP_dB;
+      sum += ceffs[m + j*Mdesc] * Pj;
+    }
+    cb[m] = sum;
+  }
+
+  return ei;
+}
+
+double EAPOD::peratom_local_environment_descriptors3(double *cb, double *bd, double *tm, int *ti)
+{
+  int typei = ti[0]-1;
+  int nc = nCoeffPerElement*typei;
+  int ncct = nClusters*nComponents*typei;
+  int ncdt = nComponents*Mdesc*typei;
+  
+  double *ceffs = &coeff[nc];
+  double *proj = &Proj[ncdt];
+
+  double *cent = &Centroids[ncct];
+  double *ledges = &leftClusterEdges[ncct];
+  double *redges = &rightClusterEdges[ncct];
+  double *invlcut2 = &invLeftClusterRcut2[ncct];
+  double *invrcut2 = &invRightClusterRcut2[ncct];
+
+  double *P    = &tm[0];              // nClusters
+  double *cp   = &tm[nClusters];      // nClusters
+  double *D    = &tm[2*nClusters];    // nClusters
+  double *fcut = &tm[3*nClusters];    // nClusters
+  double *dD_dpca = &tm[4*nClusters]; // nClusters*nComponents
+  double *pca  = &tm[4*nClusters+nClusters*nComponents];    // nComponents
+  
+  // Calculate PCA descriptors
+  for (int k=0; k < nComponents; k++) {
+    double sum = 0.0;
+    for (int m = 0; m < Mdesc; m++) {
+      sum += proj[k + nComponents*m] * bd[m];
+    }
+    pca[k] = sum;
+  }
+
+  // Main Routine to find active clusters.
+  // Could be replaced with getting index of ledge and redge: 
+  // floor(D % dist_k) and interpolation
+  // Binary search for index of leftmost active cluster
+  // Scaling: O(log(log(nClusters)) + 1)
+  int left = 0;
+  int right = nClusters;
+  while (left < right) {
+    int mid = (left + right) >> 1;
+    if (ledges[mid] <= pca[0]) {
+      left = mid + 1;
+    } else {
+      right = mid;
+    }
+  }
+  left--;
+
+  // Since active clusters are consecutive and at most l clusters,
+  // no need to do a right side binary search
+  // we only need to check a window of size l+1 starting from the left index
+  int ks = MAX(left - clusterSearchBox, 0);
+  int ke = MIN(left + clusterSearchBox, nClusters);
+
+  // Find first active cluster
+  for (int k = ks; k < ke; k++) {
+    if ( (pca[0] > ledges[k]) && (pca[0] < redges[k]) ) {
+      ks = k;
+      break;
+    }
+  }
+
+  // Find last active cluster
+  for (int k = ke-1; k >= ks; k--) {
+    if ( (pca[0] > ledges[k]) && (pca[0] < redges[k]) ) {
+      ke = k + 1;
+      break;
+    }
+  }
+
+  // inv square distances
+  for (int j=ks; j<ke; j++) {
+    double sum = 1e-20;
+    for (int k = 0; k < nComponents; k++) {
+      double c = cent[k + j*nComponents];
+      double p = pca[k];
+      sum += (p - c) * (p - c);
+    }
+    D[j] = 1.0 / sum;
+  }
+
+  // Assign appropriate cutoff radius
+  // ToDo: Precompute, fcut, dD_dpca
+  // with a lookup table or interpolation
+  int pow_D = 4;
+  int pow_h = 4;
+  for (int j=ks; j<ke; j++) {
+    double Dj = D[j];
+    double D2 = 2.0 * Dj * Dj;
+    for (int n = 0; n < nComponents; n++) {
+      double p = pca[n];
+      double c = cent[n + j * nComponents];
+      double pc = p - c;
+      double invcut2 = 0.0;
+      if (pc > 0.0) {
+        invcut2 = invrcut2[j + n*nClusters];
+      } else if (pc < 0.0) {
+        invcut2 = invlcut2[j + n*nClusters];
+      }
+      double D_rcut = invcut2 / Dj;
+      double D_rcut_p = powint(D_rcut, pow_D);
+      double fhat = 1.0 - D_rcut_p;
+      double fhat_p = powint(fhat, pow_h);
+      double dD_rcut = pow_D * powint(D_rcut, pow_D-1);
+      double dfhat = pow_h * powint(fhat, pow_h-1);
+      double dhat_pca = dD_rcut * 2.0 * pc * invcut2;
+      double dfcut = dfhat * dhat_pca;
+      fcut[j + n*nClusters] = fhat_p;
+      dD_dpca[j + n*nClusters] = dfcut * Dj - fhat_p * D2 * pc;
     }
   }
 
@@ -1745,9 +1904,10 @@ double EAPOD::peratomenergyforce3(double *fij, double *rij, double *temp,
   }
 
   double *cb = &bdd[0];
-  if (nActiveClusters >= 2) {
+  if (nActiveClusters >= 1.0) {
     //e += peratom_local_environment_descriptors(cb, bd, &temp[4*n1 + n5 + 4*n2], ti);
-    e += peratom_local_environment_descriptors2(cb, bd, &temp[4*n1 + n5 + 4*n2], ti);
+    //e += peratom_local_environment_descriptors2(cb, bd, &temp[4*n1 + n5 + 4*n2], ti);
+    e += peratom_local_environment_descriptors3(cb, bd, &temp[4*n1 + n5 + 4*n2], ti);
   }
   else if (nClusters > 1) {
     e += peratom_environment_descriptors(cb, bd, &temp[4*n1 + n5 + 4*n2], ti);
@@ -1929,7 +2089,7 @@ double EAPOD::peratomenergyforce(double *fij, double *rij, double *temp,
   if (nClusters > 1) { // multi-environment descriptors
 
     // calculate multi-environment descriptors and their derivatives with respect to atom coordinates
-    if (nActiveClusters >= 2.0) {
+    if (nActiveClusters >= 1.0) {
       peratomlocalenvironment_descriptors(pd, pdd, bd, bdd, tmpmem, ti[0] - 1,  Nj);
     } else {
       peratomenvironment_descriptors(pd, pdd, bd, bdd, temp, ti[0] - 1,  Nj);
@@ -2152,7 +2312,7 @@ void EAPOD::descriptors(double *gd, double *gdd, double *basedesc, double *probd
     // many-body descriptors
     peratombase_descriptors(bd, bdd, rij, &tmpmem[3*Nj], ti, tj, Nj);
     
-    if (nActiveClusters >= 2.0) {
+    if (nActiveClusters >= 1.0) {
       peratomlocalenvironment_descriptors(pd, pdd, bd, bdd, tmpmem, ti[0] - 1,  Nj);
     } else {
       peratomenvironment_descriptors(pd, pdd, bd, bdd, tmpmem, ti[0] - 1,  Nj);
@@ -2692,7 +2852,7 @@ void EAPOD::radialbasis(double *rbf, double *rbfx, double *rbfy, double *rbfz, d
   }
 }
 
-// experimental. do not review
+// experimental
 void EAPOD::radialbasisellipsoid(double *rbf, double *rbfx, double *rbfy, double *rbfz, double *rij, int *ti, int *tj,
                           double *besselparams, double *rin, double *rcut, int besseldegree, int inversedegree, int nbesselpars, int N)
 {
@@ -3298,7 +3458,7 @@ void EAPOD::init3body(int Pa3)
   // Set the number of coefficients, the number of basis functions, and the degree of the Bessel function
   nabf3 = Pa3+1;    // Number of angular basis functions
   K3 = npa[nabf3];  // number of monimials
-  P3 = nabf3-1;     // the degree of angular basis functions of the three-body descriptors
+  //P3 = nabf3-1;     // the degree of angular basis functions of the three-body descriptors
 
   // Allocate memory for the coefficients, the basis functions, and the cutoff function
   memory->create(pn3, nabf3+1, "pn3"); // array stores the number of monomials for each degree
@@ -3627,19 +3787,61 @@ void EAPOD::calculateClusterEdges(int nClusters, double nActiveClusters, int nCo
       redges[k] = centroids[k] + rrcut;
       invrc2[k] = 1.0 / (rrcut * rrcut);
     }
-    ledges[0] = ledges[1];
-    redges[nClusters-1] = redges[nClusters-2];
-    //For the poles:
-    // set the inverse square distances to 0 so that:
-    // fcut = 1.0
-    // dfcut = 0.0
+
+    // For poles:
+    // - set left and right edges to 0 and +-inf
+    // - set the inverse square distances to 0 so that: fcut = 1.0 , dfcut = 0.0
+    // double inf_val = std::numeric_limits<double>::infinity();
+    if (centroids[0] > 0.0) {
+      ledges[0] = 0.0;
+      redges[nClusters-1] = std::numeric_limits<double>::infinity();
+    } else {
+      ledges[0] = -std::numeric_limits<double>::infinity();
+      redges[nClusters-1] = 0.0;
+    }
     invlc2[0] = 0.0;
     invrc2[nClusters-1] = 0.0;
+
+    if (comm->me == 0) {
+      utils::logmesg(lmp, "Clustering for element type {}\n", elem);
+      
+      utils::logmesg(lmp, "Centroids:");
+      for (int j = 0; j < nClusters; j++) {
+        utils::logmesg(lmp, " {:.4f}", centroids[j]);
+      }
+      utils::logmesg(lmp, "\n");
+      
+      utils::logmesg(lmp, "Left edges:");
+      for (int j = 0; j < nClusters; j++) {
+        utils::logmesg(lmp, " {:.4f}", ledges[j]);
+      }
+      utils::logmesg(lmp, "\n");
+
+      utils::logmesg(lmp, "Right edges:");
+      for (int j = 0; j < nClusters; j++) {
+        utils::logmesg(lmp, " {:.4f}", redges[j]);
+      }
+      utils::logmesg(lmp, "\n");
+
+      utils::logmesg(lmp, "Inverse Left Rcut2:");
+      for (int j = 0; j < nClusters; j++) {
+        utils::logmesg(lmp, " {:.4f}", invlc2[j]);
+      }
+      utils::logmesg(lmp, "\n");
+
+      utils::logmesg(lmp, "Inverse Right Rcut2:");
+      for (int j = 0; j < nClusters; j++) {
+        utils::logmesg(lmp, " {:.4f}", invrc2[j]);
+      }
+      utils::logmesg(lmp, "\n");
+    }
+    
   }
 }
 
 void EAPOD::peratomlocalenvironment_descriptors(double *P, double *dP_dR, double *B, double *dB_dR, double *tmp, int elem, int nNeighbors)
 {
+  //utils::logmesg(lmp, "Entered local EAPOD fitting function\n");
   double *pca = &tmp[0];
   double *D = &tmp[nComponents];
   double *dD_dpca = &tmp[nComponents + nClusters];
@@ -3680,22 +3882,10 @@ void EAPOD::peratomlocalenvironment_descriptors(double *P, double *dP_dR, double
     pca[k] = sum;
   }
 
-  // only one cluster active, return P and dP_dR that reduce to FPOD and exit
-  // for one active cluster: P[0] = 1 || P[nClusters-1] = 1.0
-  // dP_dR = 0.0
-  if (pca[0] <= ledges[1]) {
-    P[0] = 1.0;
-    return;
-  }
-  if (pca[0] >= redges[nClusters-2]) {
-    P[nClusters-1] = 1.0;
-    return;
-  }
-
   // Main Routine to find active clusters
   // Binary search for leftmost index of active cluster
   int left = 0;
-  int right = nClusters - 1;
+  int right = nClusters;
   while (left < right) {
     int mid = (left + right) >> 1;
     if (ledges[mid] <= pca[0]) {
@@ -3713,7 +3903,7 @@ void EAPOD::peratomlocalenvironment_descriptors(double *P, double *dP_dR, double
 
   // Find first active cluster
   for (int k = ks; k < ke; k++) {
-    if (pca[0] > ledges[k] && pca[0] < redges[k]) {
+    if ( (pca[0] > ledges[k]) && (pca[0] < redges[k]) ) {
       ks = k;
       break;
     }
@@ -3721,7 +3911,7 @@ void EAPOD::peratomlocalenvironment_descriptors(double *P, double *dP_dR, double
 
   // Find last active cluster
   for (int k = ke-1; k >= ks; k--) {
-    if (pca[0] > ledges[k] && pca[0] < redges[k]) {
+    if ( (pca[0] > ledges[k]) && (pca[0] < redges[k]) ) {
       ke = k + 1;
       break;
     }
@@ -3748,30 +3938,76 @@ void EAPOD::peratomlocalenvironment_descriptors(double *P, double *dP_dR, double
   
   // Assign appropriate cutoff radius
   // With hat activation function
+  int flag_hat = 0;
+  int pow_D = 4;
+  int pow_h = 4;
   for (int j = ks; j < ke; j++) {
     double invcut2 = 0.0;
     if (pca[0] > centroids[j]) {
       invcut2 = invrcut2[j];
-    } else {
+    } else if (pca[0] < centroids[j]) {
       invcut2 = invlcut2[j];
     }
     double D_rcut = D[j] * invcut2;
-    double fhat = 1.0 - D_rcut;  // Hat function
-    double fhat2 = fhat * fhat;
-    clusterFcut[j] = fhat2 * fhat2;  // Quartic Hat function
+    double D_rcut_p = powint(D_rcut, pow_D);
+    double fhat = 1.0 - D_rcut_p;
+    double fhat_p = powint(fhat, pow_h);
+    clusterFcut[j] = fhat_p;
+    double dD_rcut = pow_D * powint(D_rcut, pow_D-1);
+    double dfhat = pow_h * powint(fhat, pow_h-1);
     for (int n = 0; n < nComponents; n++) {
-      double dhat_pca = 2.0 * (pca[n] - centroids[n + j * nComponents]) * invcut2;
-      clusterDFcut[j + n * nClusters] = 4.0 * fhat2 * fhat * dhat_pca;
+      double dhat_pca = dD_rcut * 2.0 * (pca[n] - centroids[n + j * nComponents]) * invcut2;
+      clusterDFcut[j + n * nClusters] = dfhat * dhat_pca;
     }
+    if (fhat_p > 1.0) flag_hat = 1;
   }
 
-  //if (pca[0] <= centroids[0]) {
-  //  clusterFcut[0] = 1.0;
+
+  // With tanh activation function
+  //int flag_hat = 0;
+  //double k_act = 40.0;  // steepness parameter
+  //double x0 = 1.0;  // center parameter
+  //for (int j = ks; j < ke; j++) {
+  //  double invcut2 = 0.0;
+  //  if (pca[0] > centroids[j]) {
+  //    invcut2 = invrcut2[j];
+  //  } else if (pca[0] < centroids[j]) {
+  //    invcut2 = invlcut2[j];
+  //  }
+  //  double D_rcut = D[j] * invcut2;
+  //  double arg = k_act * (D_rcut - x0);
+  //  double tanharg = tanh(arg);
+  //  double fhat = 0.5 - 0.5 * tanharg;
+  //  clusterFcut[j] = fhat;
+  //  double dfhat = -0.5 * (1.0 - tanharg*tanharg);
+  //  for (int n = 0; n < nComponents; n++) {
+  //    double dhat_pca = k_act * 2.0 * (pca[n] - centroids[n + j * nComponents]) * invcut2;
+  //    clusterDFcut[j + n * nClusters] = dfhat * dhat_pca;
+  //  }
+  //  if (fhat > 1.0) flag_hat = 1;
   //}
-  //
-  //if (pca[0] >= centroids[nClusters-1]) {
-  //  clusterFcut[nClusters-1] = 1.0;
-  //}
+
+
+  // checks
+  if (comm->me == 0) {
+    if (flag_hat == 1) {
+      utils::logmesg(lmp, "fcut:");
+      for (int j = 0; j < nClusters; j++) {
+        utils::logmesg(lmp, " {:.4f}", clusterFcut[j]);
+      }
+      utils::logmesg(lmp, "\n");
+
+      for (int j = 0; j < nClusters; j++) {
+        if (clusterFcut[j] > 1.0) {
+          utils::logmesg(lmp, "  Cluster = {:d}\n", j);
+          utils::logmesg(lmp, "  D[j] = {:.4f}\n", D[j]);
+          utils::logmesg(lmp, "  invrcut2[j] = {:.4f}\n", invrcut2[j]);
+          utils::logmesg(lmp, "  invlcut2[j] = {:.4f}\n", invlcut2[j]);
+          utils::logmesg(lmp, "\n");
+        }
+      }
+    }
+  }
 
   // inverse square distances
   for (int j = ks; j < ke; j++) {
@@ -3802,6 +4038,15 @@ void EAPOD::peratomlocalenvironment_descriptors(double *P, double *dP_dR, double
   for (int j = ks; j < ke; j++) {
     P[j] = D[j] / sumD;
   }
+
+  
+  //if (comm->me == 0) {
+  //  utils::logmesg(lmp, "Prob:");
+  //  for (int j = 0; j < nClusters; j++) {
+  //    utils::logmesg(lmp, " {:.4f}", P[j]);
+  //  }
+  //  utils::logmesg(lmp, "\n");
+  //}     
 
   // calculate dD_dB
   char chn = 'N';

@@ -579,8 +579,6 @@ void PairPOD::copy_data_from_pod_class()
   nComponents = fastpodptr->nComponents; // number of principal components
   Mdesc = fastpodptr->Mdesc; // number of base descriptors
 
-  //rin = fastpodptr->rin;
-  //rcut = fastpodptr->rcut;
   memory->create(rin, nelements * nelements, "pair_pod:rin");
   for (int i=0; i < nelements * nelements; i++)
     rin[i] = fastpodptr->rin[i];
